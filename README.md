@@ -8,16 +8,56 @@
 
 ## 快速开始
 
-### 最低环境要求
+### 部署方式一：Docker 一键部署（推荐）
 
-| 项 | 要求 |
-| --- | --- |
-| Docker | Docker Desktop（切换到 **Linux containers**），或 Linux Docker Engine + Compose v2 |
-| 内存 | 至少为 Docker 分配 **4 GB**（MySQL + Redis + MinIO + ClamAV 同时运行） |
-| 磁盘 | 预留 **5 GB**（镜像 + ClamAV 病毒库 + 构建缓存） |
-| 网络 | 首次构建需联网：拉取 Maven/npm 依赖与 ClamAV 病毒库 |
+**这种方式下你不需要在本机安装 Java、Node、Maven**——它们只在容器内使用。
 
-> 仅用 Docker 一键部署时，**无需**在本机安装 Java、Node、Maven。它们只在容器内使用。
+| 项 | 最低要求 | 说明 |
+| --- | --- | --- |
+| 操作系统 | Windows 10/11（64 位）、macOS 12+、主流 Linux 发行版 | Windows 需启用 WSL 2 |
+| Docker | Docker Desktop 4.x+（切换到 **Linux containers**），或 Linux Docker Engine 24+ 配 Compose v2（`docker compose` 子命令，不是旧版 `docker-compose`） | 用 `docker compose version` 自检，应输出 v2.x |
+| 内存 | 为 Docker 分配 **≥ 4 GB** | 7 个容器同时运行：MySQL、Redis、MinIO、ClamAV、API、Worker、前端 |
+| 磁盘 | 预留 **≥ 6 GB** 空闲 | 镜像约 2.5 GB + ClamAV 病毒库约 0.3 GB + 构建缓存与数据卷 |
+| CPU | 2 核可用 | 首次构建后端（Maven 编译 + 测试）较吃 CPU |
+| 网络 | 首次构建需联网 | 拉取 Maven/npm 依赖、基础镜像、ClamAV 病毒库；之后可离线运行 |
+
+启动命令见下一节。
+
+### 部署方式二：不用 Docker，纯本机开发
+
+若你要改代码并直接在本机跑（不用容器），需要装齐下列工具。**版本需与 CI 一致**（`.github/workflows/verify.yml`）：
+
+| 软件 | 版本 | 用途 | 自检命令 |
+| --- | --- | --- | --- |
+| JDK | **17**（Temurin/Oracle 均可） | 编译与运行 Spring Boot 后端 | `java -version` |
+| Maven | **3.9+** | 依赖管理与构建 | `mvn -version` |
+| Node.js | **22.x**（LTS） | 前端构建与开发服务器 | `node -v` |
+| npm | 随 Node 22 附带（≥ 10） | 前端依赖安装 | `npm -v` |
+| FFmpeg | 4.x 或 5.x/6.x/7.x，需在 `PATH` 中 | 视频音轨降噪与媒体测试 | `ffmpeg -version` |
+| MySQL | **8.4** | 业务数据库（Docker 方式无需自装） | `mysql --version` |
+| Redis | **7.4+** | 任务队列（Docker 方式无需自装） | `redis-server --version` |
+
+> FFmpeg 是硬依赖：后端测试与视频降噪分支都会调用它。缺了它 `mvn verify` 的媒体测试会失败。Windows 可用 `winget install Gyan.FFmpeg` 安装并确认 `ffmpeg` 在 PATH。
+
+### 软件版本清单（仓库实际锁定值）
+
+以下是构建文件里**真实声明**的版本，便于排查兼容性问题：
+
+| 组件 | 版本 | 来源 |
+| --- | --- | --- |
+| Spring Boot | 3.3.5 | `pom.xml` |
+| Java（字节码目标） | 17 | `pom.xml` |
+| 后端构建镜像 | `maven:3.9.9-eclipse-temurin-17` | `src/Dockerfile` |
+| 后端运行镜像 | `eclipse-temurin:17-jre` | `src/Dockerfile` |
+| Vue | 3.5.13 | `cle/package.json` |
+| Vite | ^6.4.3 | `cle/package.json` |
+| 前端构建镜像 | `node:22-alpine` | `cle/Dockerfile` |
+| 前端服务镜像 | `nginx:1.27-alpine` | `cle/Dockerfile` |
+| MySQL | 8.4 | `compose.yaml` |
+| Redis | 7.4-alpine | `compose.yaml` |
+| MinIO | 固定 sha256 摘要（不可变） | `compose.yaml` |
+| ClamAV | stable | `compose.yaml` |
+| 浏览器 | Chrome / Edge / Firefox / Safari 近两年版本 | 前端未用实验性 API |
 
 ### 启动命令
 
