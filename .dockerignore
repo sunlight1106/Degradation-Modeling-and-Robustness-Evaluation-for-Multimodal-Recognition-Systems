@@ -1,0 +1,8 @@
+.git
+.env
+.env.*
+cle
+output
+**/target
+**/node_modules
+**/*.log

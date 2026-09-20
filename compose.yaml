@@ -1,0 +1,165 @@
+name: robust-vision
+
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-robust_vision}
+      MYSQL_USER: ${MYSQL_USER:-robust_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Run deploy.ps1 or deploy.sh first}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Run deploy.ps1 or deploy.sh first}
+    volumes: ["mysql_data:/var/lib/mysql"]
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${MYSQL_ROOT_PASSWORD:?Run deploy.ps1 or deploy.sh first}"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes: ["redis_data:/data"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  minio:
+    image: minio/minio@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-personaladmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Run deploy.ps1 or deploy.sh first}
+    volumes: ["object_data:/data"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  minio-init:
+    image: minio/mc@sha256:a7fe349ef4bd8521fb8497f55c6042871b2ae640607cf99d9bede5e9bdf11727
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-personaladmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Run deploy.ps1 or deploy.sh first}
+      S3_BUCKET: ${S3_BUCKET:-personal-platform}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >-
+        mc alias set local http://minio:9000 "$${MINIO_ROOT_USER}" "$${MINIO_ROOT_PASSWORD}" &&
+        mc mb --ignore-existing "local/$${S3_BUCKET}" &&
+        mc anonymous set none "local/$${S3_BUCKET}"
+
+  clamav:
+    image: clamav/clamav:stable
+    expose: ["3310"]
+    volumes: ["clamav_data:/var/lib/clamav"]
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/clamdcheck.sh"]
+      interval: 15s
+      timeout: 8s
+      retries: 30
+      start_period: 60s
+
+  backend:
+    build:
+      context: .
+      dockerfile: src/Dockerfile
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+    environment: &backend-environment
+      SPRING_JPA_HIBERNATE_DDL_AUTO: none
+      DB_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-robust_vision}?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC&allowPublicKeyRetrieval=true&useSSL=false
+      DB_USERNAME: ${MYSQL_USER:-robust_user}
+      DB_PASSWORD: ${MYSQL_PASSWORD:?Run deploy.ps1 or deploy.sh first}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      QUEUE_MODE: redis
+      JWT_SECRET: ${JWT_SECRET:?Run deploy.ps1 or deploy.sh first}
+      BOOTSTRAP_ADMIN_USERNAME: ${BOOTSTRAP_ADMIN_USERNAME:-admin}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:?Run deploy.ps1 or deploy.sh first}
+      RESET_ADMIN_PASSWORD: ${RESET_ADMIN_PASSWORD:-false}
+      BOOTSTRAP_TEST_USERNAME: ${BOOTSTRAP_TEST_USERNAME:-test}
+      BOOTSTRAP_TEST_PASSWORD: ${BOOTSTRAP_TEST_PASSWORD:-}
+      BOOTSTRAP_TEST_EMAIL: ${BOOTSTRAP_TEST_EMAIL:-test@personal-platform.local}
+      RESET_TEST_PASSWORD: ${RESET_TEST_PASSWORD:-true}
+      MODEL_MODE: ${MODEL_MODE:-demo}
+      MODEL_BASE_URL: ${MODEL_BASE_URL:-http://host.docker.internal:8000}
+      DEEPSEEK_BASE_URL: ${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
+      DEEPSEEK_API_KEYS: ${DEEPSEEK_API_KEYS:-${DEEPSEEK_API_KEY:-}}
+      DEEPSEEK_MODEL: ${DEEPSEEK_MODEL:-deepseek-v4-flash-vision-exp}
+      KIMI_BASE_URL: ${KIMI_BASE_URL:-https://api.moonshot.cn/v1}
+      KIMI_API_KEYS: ${KIMI_API_KEYS:-}
+      KIMI_MODEL: ${KIMI_MODEL:-kimi-k3}
+      QWEN_BASE_URL: ${QWEN_BASE_URL:-https://dashscope.aliyuncs.com/compatible-mode/v1}
+      QWEN_API_KEYS: ${QWEN_API_KEYS:-${DASHSCOPE_API_KEY:-}}
+      QWEN_MODEL: ${QWEN_MODEL:-qwen3-vl-plus}
+      QWEN_VIDEO_MODEL: ${QWEN_VIDEO_MODEL:-qwen3.5-omni-plus}
+      STORAGE_MODE: minio
+      S3_ENDPOINT: http://minio:9000
+      S3_ACCESS_KEY: ${MINIO_ROOT_USER:-personaladmin}
+      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:?Run deploy.ps1 or deploy.sh first}
+      S3_BUCKET: ${S3_BUCKET:-personal-platform}
+      LEGACY_STORAGE_ROOT: /app/data/legacy-uploads
+      ANTIVIRUS_ENABLED: "true"
+      ANTIVIRUS_REQUIRED: "true"
+      CLAMAV_HOST: clamav
+      CLAMAV_PORT: 3310
+      PAYMENT_SANDBOX_OTP: ${PAYMENT_SANDBOX_OTP:-246810}
+      CREDENTIAL_MASTER_KEY: ${CREDENTIAL_MASTER_KEY:?Run deploy.ps1 or deploy.sh first}
+      PUBLIC_WEB_URL: ${PUBLIC_WEB_URL:-http://localhost:${WEB_PORT:-4173}}
+      SMS_MODE: ${SMS_MODE:-sandbox}
+      SMS_WEBHOOK_URL: ${SMS_WEBHOOK_URL:-}
+      WORKER_ENABLED: "false"
+      LOGGING_PATTERN_CONSOLE: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level [%thread] traceId=%X{traceId:-none} %logger{36} - %msg%n"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+      clamav:
+        condition: service_healthy
+
+  model-worker:
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: src/Dockerfile
+    environment:
+      <<: *backend-environment
+      SERVER_PORT: 8081
+      WORKER_ENABLED: "true"
+      APP_BOOTSTRAP_ENABLED: "false"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  frontend:
+    build: ./cle
+    ports: ["127.0.0.1:${WEB_PORT:-4173}:80"]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  mysql_data:
+  redis_data:
+  object_data:
+  clamav_data:

@@ -1,0 +1,21 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:robustvision;MODE=MySQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE
+    username: sa
+    password:
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: create-drop
+  flyway:
+    enabled: false
+app:
+  storage:
+    root: ${java.io.tmpdir}/robustvision-tests
+  jwt:
+    secret: test-secret-with-more-than-thirty-two-characters
+  bootstrap:
+    enabled: false
+    admin-password: TestPassword123!
+  credentials:
+    master-key: test-only-master-key-not-for-deployment

@@ -1,0 +1,122 @@
+server:
+  port: 8080
+  error:
+    include-message: never
+
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/robust_vision?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC&allowPublicKeyRetrieval=true&useSSL=false}
+    username: ${DB_USERNAME:robust_user}
+    password: ${DB_PASSWORD:robust_password}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 105MB
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 3s
+  jackson:
+    time-zone: UTC
+    serialization:
+      write-dates-as-timestamps: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+app:
+  jwt:
+    secret: ${JWT_SECRET}
+    expiration-minutes: ${JWT_EXPIRATION_MINUTES:120}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:4173}
+  storage:
+    mode: ${STORAGE_MODE:filesystem}
+    root: ${STORAGE_ROOT:./data/uploads}
+    legacy-root: ${LEGACY_STORAGE_ROOT:./data/uploads}
+    max-size-bytes: 20971520
+    s3:
+      endpoint: ${S3_ENDPOINT:http://localhost:9000}
+      access-key: ${S3_ACCESS_KEY:minioadmin}
+      secret-key: ${S3_SECRET_KEY:minioadmin}
+      bucket: ${S3_BUCKET:personal-platform}
+  antivirus:
+    enabled: ${ANTIVIRUS_ENABLED:false}
+    required: ${ANTIVIRUS_REQUIRED:true}
+    host: ${CLAMAV_HOST:localhost}
+    port: ${CLAMAV_PORT:3310}
+    connect-timeout-ms: 3000
+    read-timeout-ms: 30000
+  queue:
+    mode: ${QUEUE_MODE:inline}
+    key: ${INFERENCE_QUEUE_KEY:personal:inference:jobs}
+  worker:
+    enabled: ${WORKER_ENABLED:true}
+    poll-delay-ms: ${WORKER_POLL_DELAY_MS:350}
+  rate-limit:
+    enabled: ${RATE_LIMIT_ENABLED:true}
+    general-per-minute: ${RATE_LIMIT_GENERAL:120}
+    upload-per-minute: ${RATE_LIMIT_UPLOAD:30}
+    inference-per-minute: ${RATE_LIMIT_INFERENCE:20}
+  billing:
+    default-balance-cny: ${DEFAULT_USER_BALANCE_CNY:20.00}
+    default-monthly-quota-cny: ${DEFAULT_USER_MONTHLY_QUOTA_CNY:100.00}
+    sandbox-otp: ${PAYMENT_SANDBOX_OTP:246810}
+  credentials:
+    master-key: ${CREDENTIAL_MASTER_KEY}
+  payment:
+    public-web-url: ${PUBLIC_WEB_URL:http://localhost:4173}
+  sms:
+    mode: ${SMS_MODE:sandbox}
+    webhook-url: ${SMS_WEBHOOK_URL:}
+  bootstrap:
+    admin-username: ${BOOTSTRAP_ADMIN_USERNAME:admin}
+    admin-password: ${BOOTSTRAP_ADMIN_PASSWORD:}
+    admin-email: ${BOOTSTRAP_ADMIN_EMAIL:admin@personal-platform.local}
+    reset-admin-password: ${RESET_ADMIN_PASSWORD:false}
+    test-username: ${BOOTSTRAP_TEST_USERNAME:test}
+    test-password: ${BOOTSTRAP_TEST_PASSWORD:}
+    test-email: ${BOOTSTRAP_TEST_EMAIL:test@personal-platform.local}
+    reset-test-password: ${RESET_TEST_PASSWORD:true}
+  model:
+    mode: ${MODEL_MODE:demo}
+    base-url: ${MODEL_BASE_URL:http://localhost:8000}
+    deepseek:
+      base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
+      api-key: ${DEEPSEEK_API_KEY:}
+      api-keys: ${DEEPSEEK_API_KEYS:${DEEPSEEK_API_KEY:}}
+      model: ${DEEPSEEK_MODEL:deepseek-v4-flash-vision-exp}
+      input-price-cny-per-million: ${DEEPSEEK_INPUT_PRICE_CNY:2.00}
+      output-price-cny-per-million: ${DEEPSEEK_OUTPUT_PRICE_CNY:8.00}
+    kimi:
+      base-url: ${KIMI_BASE_URL:https://api.moonshot.cn/v1}
+      api-keys: ${KIMI_API_KEYS:${KIMI_API_KEY:}}
+      model: ${KIMI_MODEL:kimi-k3}
+      input-price-cny-per-million: ${KIMI_INPUT_PRICE_CNY:4.00}
+      output-price-cny-per-million: ${KIMI_OUTPUT_PRICE_CNY:16.00}
+    qwen:
+      base-url: ${QWEN_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}
+      api-keys: ${QWEN_API_KEYS:${DASHSCOPE_API_KEY:}}
+      model: ${QWEN_MODEL:qwen3-vl-plus}
+      video-model: ${QWEN_VIDEO_MODEL:qwen3.5-omni-plus}
+      input-price-cny-per-million: ${QWEN_INPUT_PRICE_CNY:3.00}
+      output-price-cny-per-million: ${QWEN_OUTPUT_PRICE_CNY:9.00}
