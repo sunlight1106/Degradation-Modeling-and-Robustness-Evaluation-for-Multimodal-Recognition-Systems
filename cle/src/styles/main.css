@@ -645,6 +645,39 @@ body[data-density="compact"] .data-table td,body[data-density="compact"] .log-ro
 .login-aside:hover .login-photo { transform:scale(1.075);filter:saturate(1) contrast(1.06); }
 .login-photo-shade { position:absolute;inset:0;background:linear-gradient(180deg,rgba(9,14,12,.08),rgba(9,14,12,.2) 40%,rgba(9,14,12,.88)); }
 .login-quote { text-shadow:0 2px 25px rgba(0,0,0,.35); }
+
+/* ==========================================================================
+   2026.09 — 官方素材展示与右下角常驻入口徽章
+   素材为第三方版权内容（见 cle/public/art/SOURCE.txt），仅私有仓库自用
+   ========================================================================== */
+
+/* 登录页：角色立绘完整展示（contain），底部渐隐融入背景 */
+.login-art {
+  object-fit: contain;
+  object-position: 50% 78%;
+  filter: saturate(.92) contrast(1.06) drop-shadow(0 18px 40px rgba(0,0,0,.5));
+}
+.login-art-tag {
+  position: absolute; left: 0; right: 0; bottom: 14px; z-index: 3;
+  margin: 0; padding: 0 18px;
+  color: rgba(255,255,255,.55); font-size: 9px; letter-spacing: .14em; text-transform: uppercase;
+  text-align: center;
+}
+
+/* 模型卡：官方素材头图，裁切上半身并保持角色居中 */
+.model-art {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; object-position: 50% 22%;
+  filter: saturate(.9) contrast(1.08) brightness(.92);
+  transform: scale(1.02);
+  transition: transform .6s cubic-bezier(.2,.7,.2,1), filter .4s;
+}
+.model-showcase-card:hover .model-art { transform: scale(1.08); filter: saturate(1) contrast(1.1) brightness(1); }
+/* 头图底部压暗，保证叠加的检测框与读数可读 */
+.model-showcase-image::after {
+  content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background: linear-gradient(180deg, rgba(8,11,10,.05) 30%, rgba(8,11,10,.55) 78%, rgba(8,11,10,.8));
+}
 .login-quote > span { color:#bde2d1; }
 .login-quote small { color:#c7ceca; }
 
@@ -1188,4 +1221,73 @@ body, button, input, select, textarea { font-family: inherit; }
 /* 尊重系统的减少动效偏好 */
 @media (prefers-reduced-motion: reduce) {
   .pp-gear { opacity: .1; }
+}
+
+/* ==========================================================================
+   2026.09 r7 — 文档页与首页视觉统一
+   复用首页母题：品红斜切判定线 + 印章式标签 + 黑边偏移阴影 + 网点颗粒
+   ========================================================================== */
+
+/* 文档 hero：加品红斜切与网点，与首页 hero 呼应 */
+.developer-hero { position: relative; overflow: hidden; }
+.developer-hero::before {
+  content: ""; position: absolute; left: -12%; right: -12%; top: 62%; height: 3px;
+  background: #e60067; transform: rotate(-4deg);
+  box-shadow: 0 0 14px rgba(230, 0, 103, .45);
+  pointer-events: none;
+}
+.developer-hero::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .5;
+  background-image: radial-gradient(rgba(26, 26, 26, .07) 1px, transparent 1px);
+  background-size: 8px 8px;
+  -webkit-mask-image: linear-gradient(180deg, transparent 10%, #000 55%, transparent 95%);
+  mask-image: linear-gradient(180deg, transparent 10%, #000 55%, transparent 95%);
+}
+
+/* 面包屑改为印章式黄底黑字，与首页 PERSONAL PLATFORM 印章一致 */
+.docs-breadcrumb {
+  display: inline-block; padding: 4px 12px; margin-bottom: 26px;
+  background: #ffd21e; color: #1a1a1a; border: 2px solid #1a1a1a;
+  box-shadow: 3px 3px 0 #1a1a1a; transform: rotate(-1.5deg);
+  font-size: 10px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase;
+}
+.docs-breadcrumb span { color: #1a1a1a; }
+
+/* 章节标题：黑字 + 品红编号块，与首页卡片语言一致 */
+.developer-step-title > span {
+  display: grid; place-items: center; width: 34px; height: 34px;
+  background: #1a1a1a; color: #ffd21e; border-radius: 8px;
+  box-shadow: 3px 3px 0 #e60067;
+  font-size: 15px; font-weight: 900;
+}
+.developer-step-title p { color: #e60067; letter-spacing: .18em; }
+
+/* 代码窗口：黑边 + 偏移阴影，替换原有软阴影 */
+.docs-code-window {
+  border: 2px solid #1a1a1a; border-radius: 10px;
+  box-shadow: 5px 5px 0 rgba(26, 26, 26, .12);
+}
+.docs-code-window header { border-bottom: 2px solid #1a1a1a; }
+
+/* 提示框：左侧品红竖条，强化判定感 */
+.docs-callout { border-left: 4px solid #e60067; }
+.docs-callout--warning { border-left-color: #ffd21e; }
+.docs-callout--danger { border-left-color: #c22; }
+
+/* 字段表：行悬停品红高亮 */
+.docs-field-table > div:hover { background: rgba(230, 0, 103, .05); }
+
+/* 侧栏激活项：品红左条 + 黑字加粗 */
+.developer-sidebar nav a.active {
+  color: #1a1a1a; font-weight: 700;
+  box-shadow: inset 3px 0 0 #e60067;
+}
+
+/* 模型页操作卡：品红左条 + 悬停偏移阴影，与首页卡片语言一致 */
+.model-utility-card a, .model-utility-card button {
+  border-left: 4px solid #e60067;
+}
+.model-utility-card a:hover, .model-utility-card button:hover {
+  box-shadow: 4px 4px 0 rgba(230, 0, 103, .18);
+  transform: translate(-1px, -1px);
 }

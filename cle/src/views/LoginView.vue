@@ -5,7 +5,6 @@ import AppLogo from '@/components/AppLogo.vue'
 import AppIcon from '@/components/AppIcon.vue'
 import { authStore } from '@/stores/auth'
 import { ApiClientError } from '@/api/client'
-import SyntheticScene from '@/components/SyntheticScene.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -54,12 +53,8 @@ async function submit() {
       <p class="login-footnote">初始账号由部署环境变量设置。首次登录后请修改默认密码。</p>
     </section>
     <div class="login-aside">
-      <SyntheticScene class="login-photo" variant="plate" scale="lg" code="苏C88R21" scanning />
-      <div class="login-quote">
-        <span>“</span>
-        <p>可靠的识别系统，不只是平均准确率更高；它还应知道何时不该自信。</p>
-        <small>Robustness · Calibration · Selective output</small>
-      </div>
+      <img class="login-photo login-art" src="/art/nanami.webp" alt="官方角色素材：七海千秋" />
+      <p class="login-art-tag">Danganronpa official artwork · 仅私有仓库自用</p>
       <div class="login-photo-shade" />
     </div>
   </div>

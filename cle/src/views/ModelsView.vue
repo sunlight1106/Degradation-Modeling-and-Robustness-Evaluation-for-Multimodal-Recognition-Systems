@@ -7,7 +7,6 @@ import type { ModelRuntimeView, ModelView } from '@/types/api'
 import AppIcon from '@/components/AppIcon.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { toastStore } from '@/stores/toast'
-import SyntheticScene from '@/components/SyntheticScene.vue'
 import { authStore } from '@/stores/auth'
 import AppLogo from '@/components/AppLogo.vue'
 
@@ -40,7 +39,18 @@ async function exportDataset() {
   } finally { exporting.value = false }
 }
 
-const taskVariant = (model: ModelView) => model.taskType === 'RECEIPT' ? 'receipt' : model.taskType === 'VIDEO_ANALYSIS' ? 'video' : 'plate'
+/**
+ * 任务类型 → 官方角色素材（仓库内 cle/public/art/，含 SOURCE.txt 署名）。
+ * 素材为第三方版权内容，仅本私有仓库自用展示，不做公开分发。
+ */
+const artFor = (model: ModelView) =>
+  model.taskType === 'RECEIPT' ? '/art/hinata.webp'
+  : model.taskType === 'VIDEO_ANALYSIS' ? '/art/komaeda.webp'
+  : '/art/nanami.webp'
+const artAlt = (model: ModelView) =>
+  model.taskType === 'RECEIPT' ? '官方角色素材：日向创'
+  : model.taskType === 'VIDEO_ANALYSIS' ? '官方角色素材：狛枝斗'
+  : '官方角色素材：七海千秋'
 const taskLabel = (model: ModelView) => model.taskType === 'LICENSE_PLATE' ? '车牌识别 · 质量分析' : model.taskType === 'RECEIPT' ? '票据 OCR · 字段抽取' : '视频理解 · 音轨降噪'
 const modelTarget = (model: ModelView) => authStore.state.user ? `/app/upload?model=${model.id}` : '/login'
 const providerName = (model: ModelView) => model.provider === 'DEEPSEEK' ? 'DeepSeek' : model.provider === 'KIMI' ? 'Kimi' : 'Qwen'
@@ -72,7 +82,7 @@ const providerName = (model: ModelView) => model.provider === 'DEEPSEEK' ? 'Deep
 
           <article v-for="model in models" :key="model.id" class="model-showcase-card" :class="`provider-${model.provider.toLowerCase()}`">
             <div class="model-showcase-image">
-              <SyntheticScene :variant="taskVariant(model)" scale="md" code="苏C88R21" />
+              <img class="model-art" :src="artFor(model)" :alt="artAlt(model)" loading="lazy" />
               <span class="model-scan-line" />
               <div class="model-detection-box" :class="{ receipt: model.taskType === 'RECEIPT', video: model.taskType === 'VIDEO_ANALYSIS' }"><i /><span>{{ model.taskType === 'LICENSE_PLATE' ? 'plate · 0.91' : model.taskType === 'RECEIPT' ? 'fields · 8' : 'events · 4' }}</span></div>
               <div class="model-hover-readout"><span><small>QUALITY</small><b>{{ model.taskType === 'LICENSE_PLATE' ? '0.71' : '0.84' }}</b></span><span><small>OUTPUT</small><b>JSON</b></span><span><small>MEDIA</small><b>{{ model.taskType === 'VIDEO_ANALYSIS' ? 'VIDEO' : 'IMAGE' }}</b></span></div>

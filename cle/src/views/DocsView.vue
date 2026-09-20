@@ -20,7 +20,8 @@ const docLinks = [
   { id: 'quickstart', label: '快速开始' }, { id: 'requirements', label: '环境与依赖' },
   { id: 'architecture', label: '服务架构' }, { id: 'first-request', label: '第一次调用' },
   { id: 'analysis-output', label: '模型分析结果' }, { id: 'quality-route', label: '图像与视频优化' },
-  { id: 'model-contract', label: '三家模型接入' }, { id: 'training-data', label: '训练数据准备' },
+  { id: 'model-contract', label: '三家模型接入' }, { id: 'knowledge-notes', label: '知识库与笔记' },
+  { id: 'training-data', label: '训练数据准备' },
   { id: 'permissions', label: '权限、配额与密钥' }, { id: 'errors', label: '错误排查' },
 ]
 const searchMatches = computed(() => !search.value.trim() ? [] : docLinks.filter(item => item.label.toLowerCase().includes(search.value.trim().toLowerCase())))
@@ -204,10 +205,10 @@ const analysisExample = `{
       <div v-if="searchMatches.length" class="docs-search-results"><a v-for="item in searchMatches" :key="item.id" :href="`#${item.id}`" @click="search = ''">{{ item.label }}</a></div>
       <nav>
         <div><p>GET STARTED</p><a :class="{ active: activeSection === 'quickstart' }" href="#quickstart">快速开始</a><a :class="{ active: activeSection === 'requirements' }" href="#requirements">环境与依赖</a><a :class="{ active: activeSection === 'architecture' }" href="#architecture">服务架构</a><a :class="{ active: activeSection === 'first-request' }" href="#first-request">第一次调用</a></div>
-        <div><p>CORE CONCEPTS</p><a :class="{ active: activeSection === 'analysis-output' }" href="#analysis-output">模型分析结果</a><a :class="{ active: activeSection === 'quality-route' }" href="#quality-route">图像与视频优化</a><a :class="{ active: activeSection === 'model-contract' }" href="#model-contract">三家模型接入</a></div>
+        <div><p>CORE CONCEPTS</p><a :class="{ active: activeSection === 'analysis-output' }" href="#analysis-output">模型分析结果</a><a :class="{ active: activeSection === 'quality-route' }" href="#quality-route">图像与视频优化</a><a :class="{ active: activeSection === 'model-contract' }" href="#model-contract">三家模型接入</a><a :class="{ active: activeSection === 'knowledge-notes' }" href="#knowledge-notes">知识库与笔记</a></div>
         <div><p>BUILD</p><a :class="{ active: activeSection === 'training-data' }" href="#training-data">训练数据准备</a><a :class="{ active: activeSection === 'permissions' }" href="#permissions">权限、配额与密钥</a><a :class="{ active: activeSection === 'errors' }" href="#errors">错误排查</a></div>
       </nav>
-      <a class="docs-api-link" href="http://localhost:8080/swagger-ui.html" target="_blank" rel="noreferrer"><AppIcon name="terminal" :size="17" /> API reference <AppIcon name="arrow" :size="14" /></a>
+      <a class="docs-api-link" href="/swagger-ui.html" target="_blank" rel="noreferrer"><AppIcon name="terminal" :size="17" /> API reference <AppIcon name="arrow" :size="14" /></a>
     </aside>
 
     <article class="developer-article">
@@ -215,12 +216,12 @@ const analysisExample = `{
         <p class="docs-breadcrumb">API docs <span>/</span> Quickstart</p>
         <h1>开始使用<br />Personal Platform API</h1>
         <p>从环境依赖到异步任务，完成一次图像或视频调用，并读取结构化识别、质量与退化分析结果。</p>
-        <div class="developer-hero-actions"><a href="#requirements">开始配置 <AppIcon name="arrow" :size="16" /></a><a href="http://localhost:8080/swagger-ui.html" target="_blank" rel="noreferrer">打开 API Reference</a></div>
+        <div class="developer-hero-actions"><a href="#requirements">开始配置 <AppIcon name="arrow" :size="16" /></a><a href="/swagger-ui.html" target="_blank" rel="noreferrer">打开 API Reference</a></div>
       </header>
 
       <section id="requirements" class="developer-section">
         <div class="developer-step-title"><span>1</span><div><p>SET UP</p><h2>启动本地平台</h2></div></div>
-        <p>Windows 上双击 <code>scripts\start-local.bat</code>。脚本会检查并启动 Docker Desktop、保留已有数据，然后构建全部服务。DeepSeek、Kimi 与千问密钥都只写入本机 <code>.env</code>。</p>
+        <p>Windows 上运行 <code>deploy.ps1</code>，Linux / macOS 运行 <code>deploy.sh</code>。脚本会检测 Docker、生成含随机密钥的 <code>.env</code>，然后构建并等待全部服务健康。DeepSeek、Kimi 与千问密钥只写入本机 <code>.env</code>，不进版本控制。</p>
         <div class="docs-callout docs-callout--warning"><AppIcon name="shield" :size="20" /><div><strong>Docker 引擎必须处于运行状态</strong><p>出现 <code>npipe:////./pipe/docker_engine</code> 说明 Docker Desktop 引擎未启动。新版脚本会尝试启动并等待 180 秒。</p></div></div>
         <div class="requirements-grid"><article><AppIcon name="terminal" :size="21" /><strong>Docker Desktop</strong><span>Linux containers · Compose v2 · 建议 8 GB 内存</span></article><article><AppIcon name="key" :size="21" /><strong>模型 API Key</strong><span>至少配置 DeepSeek、Kimi 或千问中的一家；支持逗号分隔密钥环</span></article><article><AppIcon name="images" :size="21" /><strong>测试媒体</strong><span>JPEG · PNG · WEBP · MP4 · WEBM ≤ 20 MB；千问内联视频建议 ≤ 7 MB</span></article></div>
       </section>
@@ -228,7 +229,7 @@ const analysisExample = `{
       <section id="architecture" class="developer-section">
         <div class="developer-step-title"><span>2</span><div><p>ARCHITECTURE</p><h2>了解本地服务依赖</h2></div></div>
         <p>API 请求不会直接等待模型。Java 先记录任务并写入 Redis 队列，独立 <code>model-worker</code> 消费后调用模型；因此 Worker 可单独扩容。</p>
-        <div class="docs-service-grid"><article><b>MySQL 8.4</b><span>用户、任务、钱包与审计</span><code>:3306</code></article><article><b>Redis 7.4</b><span>消息队列与分钟级限流</span><code>:6379</code></article><article><b>MinIO</b><span>S3 兼容对象存储</span><code>:9000 / :9001</code></article><article><b>ClamAV</b><span>写入对象存储前流式扫描</span><code>:3310</code></article><article><b>model-worker</b><span>模型调用与 FFmpeg 降噪</span><code>scale independently</code></article><article><b>Vue + Nginx</b><span>公开站点与登录控制台</span><code>:4173</code></article></div>
+        <div class="docs-service-grid"><article><b>MySQL 8.4</b><span>用户、任务、钱包与审计</span><code>容器内网 :3306</code></article><article><b>Redis 7.4</b><span>消息队列与分钟级限流</span><code>容器内网 :6379</code></article><article><b>MinIO</b><span>S3 兼容对象存储</span><code>容器内网 :9000</code></article><article><b>ClamAV</b><span>写入对象存储前流式扫描</span><code>容器内网 :3310</code></article><article><b>model-worker</b><span>模型调用与 FFmpeg 降噪</span><code>scale independently</code></article><article><b>Vue + Nginx</b><span>公开站点与登录控制台，唯一对外入口</span><code>:4173</code></article></div>
         <div class="docs-code-window docs-code-window--light"><header><span>独立扩容模型 Worker</span><button class="docs-copy" @click="copyCode('docker compose up -d --scale model-worker=3')"><AppIcon name="copy" :size="15" />复制</button></header><pre><code>docker compose up -d --scale model-worker=3</code></pre></div>
       </section>
 
@@ -263,27 +264,34 @@ const analysisExample = `{
         <div class="docs-callout docs-callout--danger"><AppIcon name="key" :size="20" /><div><strong>不要把 API Key 写进 Vue</strong><p><code>VITE_*</code> 变量会进入浏览器构建产物。密钥只能通过后端环境变量注入，并在泄露后立即轮换。</p></div></div>
       </section>
 
+      <section id="knowledge-notes" class="developer-section">
+        <div class="developer-step-title"><span>7</span><div><p>KNOWLEDGE & NOTES</p><h2>知识库与笔记接口</h2></div></div>
+        <p>知识库是跨学科主题树：内置生物化学与医学主题，也可自建任意领域。知识卡为 Markdown 正文加标签；笔记可引用已上传媒体、某次推理任务（含 trace_id）或知识卡，作为可复现证据。</p>
+        <div class="docs-field-table"><div><strong>GET /api/v1/knowledge/topics</strong><span>主题树，含领域、内置标记与卡片计数</span><code>knowledge:read</code></div><div><strong>GET/POST /api/v1/knowledge/entries</strong><span>知识卡列表与创建，支持主题过滤与关键词搜索</span><code>knowledge:read / write</code></div><div><strong>GET/POST /api/v1/notes</strong><span>笔记列表与创建，支持状态与关键词过滤</span><code>note:read / write</code></div><div><strong>POST /api/v1/notes/{id}/assist</strong><span>摘要、大纲、标签、格式整理四种动作</span><code>note:write</code></div><div><strong>GET /api/v1/notes/{id}/export</strong><span>导出 Markdown / PDF / Word，PDF 内嵌中文字体</span><code>note:read</code></div><div><strong>POST /api/v1/notes/{id}/shares</strong><span>生成平台内只读分享链接，可设有效期并撤销</span><code>note:write</code></div></div>
+        <div class="docs-callout"><AppIcon name="spark" :size="20" /><div><strong>AI 整理会如实标注引擎来源</strong><p>配置了模型密钥时调用真实模型；未配置时走本地规则引擎，响应带 <code>engine=LOCAL_RULES</code> 并附说明，不会伪装成模型输出。</p></div></div>
+      </section>
+
       <section id="training-data" class="developer-section">
-        <div class="developer-step-title"><span>7</span><div><p>PREPARE DATA</p><h2>训练与微调准备</h2></div></div>
+        <div class="developer-step-title"><span>8</span><div><p>PREPARE DATA</p><h2>训练与微调准备</h2></div></div>
         <p><code>GET /api/v1/training/dataset</code> 会导出 ZIP：图片/视频、<code>manifest.jsonl</code>、稳定的数据集划分以及 <code>dataset-card.json</code>。模型生成标签会被标记为 <code>UNVERIFIED_TEACHER_LABEL</code>。</p>
         <div class="training-boundary"><div><AppIcon name="check" :size="18" /><span><strong>已经实现</strong>真实推理、教师标签、数据集导出、验证集划分</span></div><div><span>—</span><span><strong>供应商未提供</strong>DeepSeek API 训练任务、微调 job、checkpoint 管理</span></div></div>
         <p>真正训练前必须人工复核标签，并接入具有可训练权重的本地模型或后续供应商端点。页面不会把“导出数据”伪装成“已经微调”。</p>
       </section>
 
       <section id="permissions" class="developer-section">
-        <div class="developer-step-title"><span>8</span><div><p>SECURITY</p><h2>权限、配额与密钥边界</h2></div></div>
+        <div class="developer-step-title"><span>9</span><div><p>SECURITY</p><h2>权限、配额与密钥边界</h2></div></div>
         <div class="docs-field-table"><div><strong>管理员</strong><span>用户、角色、全部文件和全部实验</span><code>ADMIN</code></div><div><strong>研究员</strong><span>自己的上传、模型调用、报告和数据集</span><code>RESEARCHER</code></div><div><strong>查看者</strong><span>只读查看已授权资产</span><code>VIEWER</code></div></div>
         <p>菜单隐藏不是安全机制。文件、实验、账单和报告由 Spring Security 再次校验；Redis 执行用户/IP 限流，钱包余额和月配额在入队前校验。管理员可创建自定义平台角色；工作空间再叠加 OWNER / ADMIN / MEMBER / VIEWER 与内容、成员、设置权限。</p>
         <div class="docs-callout"><AppIcon name="mail" :size="20" /><div><strong>支付、工作空间和站内信也是后端权限域</strong><p>扫码令牌只存 SHA-256 且 15 分钟过期；短信验证码最多错误 5 次。站内信附件会先经文件类型、配额与 ClamAV 检查，再进入 MinIO。</p></div></div>
       </section>
 
       <section id="errors" class="developer-section">
-        <div class="developer-step-title"><span>9</span><div><p>TROUBLESHOOT</p><h2>常见错误</h2></div></div>
-        <div class="error-guide"><details open><summary><code>INTERNAL_ERROR</code><span>页面要求使用 traceId 排查</span><AppIcon name="chevron" :size="16" /></summary><p>双击 <code>scripts\diagnose-trace.bat</code> 并粘贴页面编号。脚本会同时检索 backend 与 model-worker；若旧日志里没有该编号，先运行最新版启动脚本，复现后再查。</p></details><details><summary><code>MODEL_API_KEY_MISSING</code><span>所选模型的密钥未配置</span><AppIcon name="chevron" :size="16" /></summary><p>重新运行启动脚本，或在本机 <code>.env</code> 中设置对应的 <code>DEEPSEEK_API_KEYS</code>、<code>KIMI_API_KEYS</code> 或 <code>QWEN_API_KEYS</code> 后重启 backend 与 model-worker。</p></details><details><summary><code>MODEL_API_KEY_REJECTED</code><span>密钥无效或已撤销</span><AppIcon name="chevron" :size="16" /></summary><p>在对应供应商控制台轮换密钥；不要把新密钥贴到源码、截图或提交记录中。</p></details><details><summary><code>MODEL_RESPONSE_INVALID</code><span>结构化结果无法解析</span><AppIcon name="chevron" :size="16" /></summary><p>使用 Logs 中的 trace_id 定位请求；重试后仍出现时检查供应商响应格式变更。</p></details><details><summary><code>QWEN_VIDEO_INLINE_LIMIT</code><span>千问视频过大</span><AppIcon name="chevron" :size="16" /></summary><p>压缩为约 7 MB 以内的短视频，或选择通过 Files API 上传视频的 Kimi 模型。</p></details></div>
+        <div class="developer-step-title"><span>10</span><div><p>TROUBLESHOOT</p><h2>常见错误</h2></div></div>
+        <div class="error-guide"><details open><summary><code>INTERNAL_ERROR</code><span>页面要求使用 traceId 排查</span><AppIcon name="chevron" :size="16" /></summary><p>运行 <code>docker compose logs --tail 200 backend model-worker | findstr "你的traceId"</code>（Linux 用 grep）。后端会把 traceId、请求方法、路径、异常类型与完整堆栈写入日志；异步任务还会记录任务 ID、模型与供应商。若旧日志里没有该编号，先重新运行部署脚本，复现后再查。</p></details><details><summary><code>MODEL_API_KEY_MISSING</code><span>所选模型的密钥未配置</span><AppIcon name="chevron" :size="16" /></summary><p>重新运行启动脚本，或在本机 <code>.env</code> 中设置对应的 <code>DEEPSEEK_API_KEYS</code>、<code>KIMI_API_KEYS</code> 或 <code>QWEN_API_KEYS</code> 后重启 backend 与 model-worker。</p></details><details><summary><code>MODEL_API_KEY_REJECTED</code><span>密钥无效或已撤销</span><AppIcon name="chevron" :size="16" /></summary><p>在对应供应商控制台轮换密钥；不要把新密钥贴到源码、截图或提交记录中。</p></details><details><summary><code>MODEL_RESPONSE_INVALID</code><span>结构化结果无法解析</span><AppIcon name="chevron" :size="16" /></summary><p>使用 Logs 中的 trace_id 定位请求；重试后仍出现时检查供应商响应格式变更。</p></details><details><summary><code>QWEN_VIDEO_INLINE_LIMIT</code><span>千问视频过大</span><AppIcon name="chevron" :size="16" /></summary><p>压缩为约 7 MB 以内的短视频，或选择通过 Files API 上传视频的 Kimi 模型。</p></details></div>
       </section>
     </article>
 
-    <aside class="developer-on-page"><p>ON THIS PAGE</p><a v-for="item in docLinks.slice(1)" :key="item.id" :href="`#${item.id}`" :class="{ active: activeSection === item.id }">{{ item.label }}</a><span>最后更新 · 2026-08-30 · r6</span></aside>
+    <aside class="developer-on-page"><p>ON THIS PAGE</p><a v-for="item in docLinks.slice(1)" :key="item.id" :href="`#${item.id}`" :class="{ active: activeSection === item.id }">{{ item.label }}</a><span>最后更新 · 2026-09-20 · r7</span></aside>
   </div>
   </div>
 </template>
