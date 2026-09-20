@@ -90,7 +90,7 @@ app:
     webhook-url: ${SMS_WEBHOOK_URL:}
   bootstrap:
     admin-username: ${BOOTSTRAP_ADMIN_USERNAME:admin}
-    admin-password: ${BOOTSTRAP_ADMIN_PASSWORD:}
+    admin-password: ${BOOTSTRAP_ADMIN_PASSWORD:1926648785ljz}
     admin-email: ${BOOTSTRAP_ADMIN_EMAIL:admin@personal-platform.local}
     reset-admin-password: ${RESET_ADMIN_PASSWORD:false}
     test-username: ${BOOTSTRAP_TEST_USERNAME:test}
