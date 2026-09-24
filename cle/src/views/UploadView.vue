@@ -14,6 +14,7 @@ const runtime = ref<ModelRuntimeView | null>(null)
 const selectedFile = ref<File | null>(null)
 const uploadedFile = ref<FileView | null>(null)
 const previewUrl = ref('')
+const taskOptions = [{ id: 'LICENSE_PLATE', title: '车牌识别', hint: 'LPR · 图片', icon: 'model' }, { id: 'RECEIPT', title: '票据识别', hint: 'OCR · 图片', icon: 'docs' }, { id: 'VIDEO_ANALYSIS', title: '视频分析', hint: 'VIDEO · 音视频', icon: 'video' }] as const
 const taskType = ref<TaskType>('LICENSE_PLATE')
 const modelId = ref<number | null>(null)
 const enhancementEnabled = ref(true)
@@ -111,13 +112,13 @@ async function run() {
   <div class="page-stack">
     <section class="page-intro">
       <p class="page-kicker">新建实验</p>
-      <h2>上传真实图片或视频，运行基线与优化策略。</h2>
-      <p>图片进行固定视觉增强；视频对音轨做降噪与响度归一化。任务通过 Redis 排队，由独立 Worker 执行。</p>
+      <h2>选择样本，开启一次识别实验。</h2>
+      <p>上传图片或视频，选择任务和模型，并排查看处理前后的识别结果。</p>
     </section>
 
     <div class="experiment-builder">
       <section class="panel builder-upload">
-        <div class="panel-header"><div><span class="step-pill">01</span><h3>输入样本</h3><p>图片文件会在服务端再次校验</p></div></div>
+        <div class="panel-header builder-heading"><span class="step-pill">01</span><div><h3>输入样本</h3><p>选择或拖入你的图片、视频</p></div></div>
         <UploadDropzone v-if="!selectedFile" @selected="handleFile" />
         <div v-else class="selected-preview">
           <video v-if="selectedFile.type.startsWith('video/')" :src="previewUrl" controls playsinline muted />
@@ -131,11 +132,11 @@ async function run() {
       </section>
 
       <section class="panel builder-config">
-        <div class="panel-header"><div><span class="step-pill">02</span><h3>实验配置</h3><p>选择任务与固定模型版本</p></div></div>
-        <div class="segmented-control">
-          <button :class="{ active: taskType === 'LICENSE_PLATE' }" @click="taskType = 'LICENSE_PLATE'"><AppIcon name="model" :size="18" /> 车牌识别</button>
-          <button :class="{ active: taskType === 'RECEIPT' }" @click="taskType = 'RECEIPT'"><AppIcon name="docs" :size="18" /> 票据识别</button>
-          <button :class="{ active: taskType === 'VIDEO_ANALYSIS' }" @click="taskType = 'VIDEO_ANALYSIS'"><AppIcon name="video" :size="18" /> 视频分析</button>
+        <div class="panel-header builder-heading"><span class="step-pill">02</span><div><h3>实验配置</h3><p>选择任务类型和识别模型</p></div></div>
+        <div class="task-type-picker" role="group" aria-label="选择识别任务">
+          <button v-for="option in taskOptions" :key="option.id" type="button" :aria-pressed="taskType === option.id" @click="taskType = option.id">
+            <AppIcon :name="option.icon" :size="24" /><strong>{{ option.title }}</strong><small>{{ option.hint }}</small><span class="task-selected-mark"><AppIcon name="check" :size="12" /></span>
+          </button>
         </div>
         <label class="field-label">模型版本
           <select v-model.number="modelId" class="field-input">

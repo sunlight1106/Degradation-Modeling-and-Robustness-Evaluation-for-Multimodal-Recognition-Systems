@@ -48,15 +48,31 @@ const money = (value: number | null | undefined) => `¥${Number(value || 0).toFi
 
 <template>
   <div class="page-stack portal-overview">
-    <PortalBanner />
     <section class="page-intro page-intro--split">
       <div>
-        <p class="page-kicker">LATEST / 工作台动态</p>
-        <h2>每一次识别，都有迹可循。</h2>
-        <p>查看当前实验状态、置信度变化和最近运行记录。</p>
+        <p class="page-kicker">YOUR WORKSPACE / 工作空间</p>
+        <h2>欢迎回来，{{ authStore.state.user?.displayName || '研究者' }}。</h2>
+        <p>继续你的研究，或开启一个新的发现。</p>
       </div>
-      <RouterLink to="/app/upload" class="button button--dark"><AppIcon name="upload" :size="17" /> 新建识别实验</RouterLink>
+      <RouterLink v-if="authStore.has('experiment:run')" to="/app/upload" class="button button--dark"><AppIcon name="upload" :size="17" /> 新建识别实验</RouterLink>
     </section>
+
+    <div class="workspace-feature-grid">
+      <PortalBanner />
+      <aside class="workspace-shortcuts" aria-label="常用入口">
+        <header><span>QUICK ACCESS</span><h3>接下来，做点什么？</h3></header>
+        <RouterLink v-if="authStore.has('knowledge:read')" to="/app/knowledge" class="workspace-shortcut" data-tone="cyan">
+          <span class="shortcut-icon"><AppIcon name="book" :size="23" /></span><span><strong>探索知识库</strong><small>把线索，连成答案</small></span><AppIcon name="arrow" :size="17" />
+        </RouterLink>
+        <RouterLink v-if="authStore.has('note:read')" to="/app/notes" class="workspace-shortcut" data-tone="pink">
+          <span class="shortcut-icon"><AppIcon name="note" :size="23" /></span><span><strong>整理我的笔记</strong><small>灵感与证据，都在这里</small></span><AppIcon name="arrow" :size="17" />
+        </RouterLink>
+        <RouterLink v-if="authStore.has('model:read')" to="/app/models" class="workspace-shortcut" data-tone="yellow">
+          <span class="shortcut-icon"><AppIcon name="model" :size="23" /></span><span><strong>挑选识别模型</strong><small>找到适合这次任务的搭档</small></span><AppIcon name="arrow" :size="17" />
+        </RouterLink>
+        <footer><i /> 每一步探索，都值得记录。</footer>
+      </aside>
+    </div>
 
     <div v-if="loading" class="loading-grid"><span v-for="i in 4" :key="i" /></div>
     <div v-else-if="error" class="inline-alert inline-alert--error">{{ error }}</div>
@@ -65,17 +81,6 @@ const money = (value: number | null | undefined) => `¥${Number(value || 0).toFi
       <MetricCard label="完成率" :value="`${summary.successRate.toFixed(1)}%`" :hint="`${summary.completedTasks} 次成功完成`" tone="green" />
       <MetricCard label="平均置信度变化" :value="`${(summary.averageConfidenceLift * 100).toFixed(1)}%`" hint="模型自评变化，不等于准确率提升" tone="green" />
       <MetricCard label="失败任务" :value="summary.failedTasks" hint="可按 trace_id 排查" :tone="summary.failedTasks ? 'amber' : 'default'" />
-    </section>
-
-    <section v-if="billing" class="home-balance-strip panel">
-      <div><span class="wallet-icon"><AppIcon name="wallet" :size="22" /></span><span><small>我的可用余额</small><strong>{{ money(billing.wallet.balanceCny) }}</strong></span></div>
-      <div class="home-quota"><span>本月配额 · 已用 {{ money(billing.wallet.monthSpentCny) }}</span><i><b :style="{ width: `${billing.wallet.quotaProgressPercent}%` }" /></i><strong>剩余 {{ money(billing.wallet.remainingQuotaCny) }}</strong></div>
-      <RouterLink to="/app/billing" class="button button--ghost button--small">查看或充值 <AppIcon name="arrow" :size="15" /></RouterLink>
-    </section>
-
-    <section v-if="providerBudgets.length" class="home-provider-section">
-      <div class="panel-header"><div><p class="page-kicker">ADMIN · LIVE BUDGET</p><h3>模型 API 预算与余额</h3><p>本地用量和人民币预算每 15 秒更新；可用时同时展示供应商官方余额。</p></div><RouterLink to="/app/billing" class="text-arrow">完整账单 <AppIcon name="arrow" :size="16" /></RouterLink></div>
-      <div class="home-provider-grid"><article v-for="provider in providerBudgets" :key="provider.provider" class="panel"><header><span>{{ provider.provider === 'DEEPSEEK' ? 'DS' : provider.provider === 'KIMI' ? 'K' : 'Q' }}</span><div><strong>{{ provider.displayName }}</strong><small>{{ provider.configuredKeyCount }} keys · round robin</small></div><i :class="{ ready: provider.configuredKeyCount }" /></header><div class="home-provider-values"><span><small>已用</small><b>{{ money(provider.usedCny) }}</b></span><span><small>预算剩余</small><b>{{ money(provider.remainingCny) }}</b></span><span><small>{{ provider.providerReportedBalance != null ? '官方余额' : '月度预算' }}</small><b>{{ money(provider.providerReportedBalance ?? provider.monthlyBudgetCny) }}</b></span></div><div class="provider-progress"><i :style="{ width: `${provider.progressPercent}%` }" /></div></article></div>
     </section>
 
     <section class="panel">
@@ -103,6 +108,17 @@ const money = (value: number | null | undefined) => `¥${Number(value || 0).toFi
         </table>
       </div>
     </section>
+
+    <section v-if="billing" class="home-balance-strip panel">
+      <div><span class="wallet-icon"><AppIcon name="wallet" :size="22" /></span><span><small>我的可用余额</small><strong>{{ money(billing.wallet.balanceCny) }}</strong></span></div>
+      <div class="home-quota"><span>本月配额 · 已用 {{ money(billing.wallet.monthSpentCny) }}</span><i><b :style="{ width: `${billing.wallet.quotaProgressPercent}%` }" /></i><strong>剩余 {{ money(billing.wallet.remainingQuotaCny) }}</strong></div>
+      <RouterLink to="/app/billing" class="button button--ghost button--small">查看或充值 <AppIcon name="arrow" :size="15" /></RouterLink>
+    </section>
+
+    <details v-if="providerBudgets.length" class="home-provider-section panel"><summary><span><AppIcon name="wallet" :size="18" /> 模型预算与用量</span><span>展开查看 <AppIcon name="chevron" :size="15" /></span></summary>
+      <div class="panel-header"><div><p class="page-kicker">ADMIN · LIVE BUDGET</p><h3>模型 API 预算与余额</h3><p>本地用量和人民币预算每 15 秒更新；可用时同时展示供应商官方余额。</p></div><RouterLink to="/app/billing" class="text-arrow">完整账单 <AppIcon name="arrow" :size="16" /></RouterLink></div>
+      <div class="home-provider-grid"><article v-for="provider in providerBudgets" :key="provider.provider" class="panel"><header><span>{{ provider.provider === 'DEEPSEEK' ? 'DS' : provider.provider === 'KIMI' ? 'K' : 'Q' }}</span><div><strong>{{ provider.displayName }}</strong><small>{{ provider.configuredKeyCount }} keys · round robin</small></div><i :class="{ ready: provider.configuredKeyCount }" /></header><div class="home-provider-values"><span><small>已用</small><b>{{ money(provider.usedCny) }}</b></span><span><small>预算剩余</small><b>{{ money(provider.remainingCny) }}</b></span><span><small>{{ provider.providerReportedBalance != null ? '官方余额' : '月度预算' }}</small><b>{{ money(provider.providerReportedBalance ?? provider.monthlyBudgetCny) }}</b></span></div><div class="provider-progress"><i :style="{ width: `${provider.progressPercent}%` }" /></div></article></div>
+    </details>
 
     <section class="overview-bottom-grid">
       <article class="panel quick-start">

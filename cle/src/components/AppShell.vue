@@ -42,11 +42,11 @@ function menuKeydown(event: KeyboardEvent) {
 watch(() => route.fullPath, () => { mobileOpen.value = false })
 
 const mainItems: NavItem[] = [
-  { label: '首页', to: '/app/home', icon: 'home', permission: 'dashboard:read' },
+  { label: '工作台', to: '/app/home', icon: 'home', permission: 'dashboard:read' },
   { label: '知识库', to: '/app/knowledge', icon: 'book', permission: 'knowledge:read' },
   { label: '我的笔记', to: '/app/notes', icon: 'note', permission: 'note:read' },
   { label: '实验台', to: '/app/upload', icon: 'spark', permission: 'experiment:run' },
-  { label: '模型', to: '/app/models', icon: 'model', permission: 'model:read' },
+  { label: '模型中心', to: '/app/models', icon: 'model', permission: 'model:read' },
   { label: '素材库', to: '/app/images', icon: 'images', any: ['file:read', 'file:read:any'] },
   { label: '调用日志', to: '/app/logs', icon: 'logs', any: ['experiment:read', 'experiment:read:any'] },
   { label: '优化对比', to: '/app/comparisons', icon: 'compare', any: ['experiment:read', 'experiment:read:any'] },
@@ -71,6 +71,11 @@ function visible(items: NavItem[]) {
     : item.permission ? authStore.has(item.permission) : authStore.hasAny(...(item.any || [])))
 }
 
+const navGroups = computed(() => [
+  { label: '探索与创作', items: visible(mainItems.filter(item => ['/app/home', '/app/knowledge', '/app/notes'].includes(item.to))) },
+  { label: '识别与评测', items: visible(mainItems.filter(item => ['/app/upload', '/app/models', '/app/images', '/app/comparisons'].includes(item.to))) },
+  { label: '记录与账户', items: visible(mainItems.filter(item => ['/app/logs', '/app/downloads', '/app/billing', '/app/mail'].includes(item.to))) },
+])
 const title = computed(() => {
   const all = [...mainItems, ...adminItems, ...supportItems]
   return all.find(item => route.path === item.to)?.label || '控制台'
@@ -92,11 +97,12 @@ function logout() {
       <RouterLink to="/" class="sidebar-brand" aria-label="返回首页"><AppLogo light /></RouterLink>
 
       <nav class="sidebar-nav" aria-label="控制台导航">
-        <p class="nav-caption">工作空间</p>
-        <RouterLink v-for="item in visible(mainItems)" :key="item.to" :to="item.to" class="nav-item" @click="mobileOpen = false">
-          <AppIcon :name="item.icon" :size="19" />
-          <span>{{ item.label }}</span>
-        </RouterLink>
+        <template v-for="group in navGroups" :key="group.label">
+          <p v-if="group.items.length" class="nav-caption">{{ group.label }}</p>
+          <RouterLink v-for="item in group.items" :key="item.to" :to="item.to" class="nav-item" @click="mobileOpen = false">
+            <AppIcon :name="item.icon" :size="18" /><span>{{ item.label }}</span><i class="nav-active-marker" aria-hidden="true" />
+          </RouterLink>
+        </template>
 
         <template v-if="visible(adminItems).length">
           <p class="nav-caption nav-caption--spaced">系统管理</p>
@@ -127,7 +133,7 @@ function logout() {
       <header class="app-topbar">
         <button ref="menuButton" class="icon-button mobile-menu" aria-label="打开菜单" :aria-expanded="mobileOpen" aria-controls="workspace-navigation" @click="mobileOpen = true"><AppIcon name="menu" /></button>
         <div>
-          <span class="topbar-eyebrow">RECOGNITION / RESEARCH LAB</span>
+          <span class="topbar-eyebrow">PERSONAL WORKSPACE</span>
           <h1>{{ title }}</h1>
         </div>
         <div class="topbar-tools">
@@ -135,10 +141,10 @@ function logout() {
           <button class="topbar-tool" type="button" :title="themeStore.isDark() ? '切换到浅色' : '切换到暗色'" @click="themeStore.toggle()">
             <AppIcon :name="themeStore.isDark() ? 'sun' : 'moon'" :size="18" />
           </button>
-          <span class="topbar-build">WORKSPACE 01</span>
+
           <RouterLink to="/docs" class="topbar-tool" title="查看文档"><AppIcon name="docs" :size="18" /></RouterLink>
           <RouterLink to="/app/settings" class="topbar-tool" title="设置"><AppIcon name="settings" :size="18" /></RouterLink>
-          <span class="topbar-status"><span class="live-dot" /> 私人工作空间</span>
+
         </div>
       </header>
       <div id="workspace-content" class="app-content" tabindex="-1"><RouterView /></div>
