@@ -39,6 +39,37 @@ General product inspiration: [不背单词 official website](https://www.bbdc.cn
 
 The import format is in `docs/vocabulary/import-example.json`. `rightsConfirmed` is intentionally false in the sample. The user must explicitly confirm their right to use all imported content; private import is not permission to republish someone else's corpus. Imported text and examples should be reviewed for correctness and ambiguous distractors.
 
+## Exporting and reimporting private books
+
+Settings → Privacy and data → Export my data requires the current account password. The account JSON has `schemaVersion: 2`; it is a personal data copy, **not a complete system backup or an account-restore format**. It excludes uploaded file bytes, passwords, API credentials, sessions, question/answer snapshots and other accounts' data. It cannot recover media or keys. System recovery requires separately verified database, object-storage and encryption-key backups.
+
+The existing `vocabularyBooks`, `vocabularyWords`, `vocabularyProfile` and `vocabularyProgress` sections remain available for inspection. `vocabularyWords.distractors` now contains the stored JSON-encoded list of incorrect meanings. Older account exports (version 1) omitted this list and cannot reconstruct a private book completely without the original import or manually supplied distractors.
+
+For content round trips, use **`vocabularyBookImports`**. Each object is one self-contained private-book import with its own `schemaVersion: 1`, title, description, original attribution and ordered words. Every word preserves the stored term, IPA, part of speech, focused meaning, example, translation and ordered distractors. The schema has one focused meaning per word, not a separate multi-sense dictionary model. The portable section excludes shared starter books, owner/account identifiers, database IDs and study progress.
+
+1. Download the account JSON from Settings. Keep it private; it contains personal data.
+2. Copy just the desired object from `vocabularyBookImports` into a separate UTF-8 `.json` file. Do not import the whole account export or the raw SQL-shaped vocabulary rows. This local extraction example creates a new file and will not overwrite an existing one (change the input filename and `index` as needed):
+
+   ```python
+   import json
+   from pathlib import Path
+   account = json.loads(Path("personal-platform-data.json").read_text(encoding="utf-8"))
+   if account.get("schemaVersion") != 2:
+       raise ValueError("Expected account export version 2")
+   index = 0
+   book = dict(account["vocabularyBookImports"][index])
+   if book.pop("schemaVersion", None) != 1:
+       raise ValueError("Expected portable book version 1")
+   book.pop("rightsConfirmed", None)  # No carried-over consent; the import UI requires confirmation.
+   with Path("private-wordbook.json").open("x", encoding="utf-8") as output:
+       json.dump(book, output, ensure_ascii=False, separators=(",", ":"))
+   ```
+
+3. In Vocabulary → Import private book, read that file, review the content and explicitly confirm you have the right to use it. Exports deliberately set `rightsConfirmed: false`; exporting is not renewed permission to use or share someone else's content. API callers must likewise set it to true only after confirmation.
+4. Import creates a **new** private book owned by the currently authenticated account, with new book/word IDs and no restored progress, stars, questions or review dates. It never updates an existing book or transfers ownership of the original. The original attribution is retained verbatim after the import's normal surrounding-whitespace normalization. Attribution is user-provided provenance, not a verified license or authenticity certificate.
+
+Legacy unversioned book imports remain supported. Explicit versions other than 1 are rejected. All existing validation still applies: 4–500 words/book, 20 private books/account, a 2 MiB request limit and bounded fields/distractors. A historical unversioned import within a few bytes of the 2 MiB cap may produce a versioned portable object over that cap because of metadata; it is not guaranteed to reimport unchanged. The extraction example checks the portable version, then emits the supported unversioned format without a consent flag; this avoids adding format metadata or whitespace to a historical import already near 2 MiB. The import UI still requires its explicit rights checkbox, and the API requires `rightsConfirmed: true`. Importing a copy uses another book slot; it does not deduplicate or reset the original.
+
 ## API
 
 All endpoints require authentication and use the current account; client-supplied owner IDs are ignored.
@@ -58,6 +89,7 @@ All endpoints require authentication and use the current account; client-supplie
 `VocabularyIntegrationTest` exercises the actual Spring MVC/security/service/persistence paths on H2:
 
 - Authentication, timezone validation and goal validation
+- Account export → fresh-account import → export equality for complete canonical private-book content and attribution, explicit rights reconfirmation, new IDs/ownership, no copied progress, unauthorized/other-owner denial, schema rejection, 500-word/20-book bounds, and compact extraction/reconfirmation for an unversioned import within 10 bytes of the 2 MiB cap
 - Complete 60-word original seed and 4 distinct options with no answer leak
 - Invalid options do not mutate state; refresh resumes the same question
 - 4-correct transition, daily goal, no premature review, cross-account progress isolation

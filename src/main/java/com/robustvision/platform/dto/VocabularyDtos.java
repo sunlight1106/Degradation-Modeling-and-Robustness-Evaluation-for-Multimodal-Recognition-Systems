@@ -43,5 +43,6 @@ public final class VocabularyDtos {
                                 @NotBlank @Size(max=600) String description,
                                 @NotBlank @Size(max=300) String attribution,
                                 @AssertTrue boolean rightsConfirmed,
-                                @NotNull @Size(min=4,max=500) List<@NotNull @Valid ImportWord> words) {}
+                                @NotNull @Size(min=4,max=500) List<@NotNull @Valid ImportWord> words,
+                                @Min(1) @Max(1) Integer schemaVersion) {}
 }

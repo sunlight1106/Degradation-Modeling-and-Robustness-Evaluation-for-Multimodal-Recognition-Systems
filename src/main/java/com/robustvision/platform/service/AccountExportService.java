@@ -1,7 +1,12 @@
 package com.robustvision.platform.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.robustvision.platform.domain.UserEntity;
 import com.robustvision.platform.dto.ApiDtos;
+import com.robustvision.platform.dto.VocabularyDtos.ImportRequest;
+import com.robustvision.platform.dto.VocabularyDtos.ImportWord;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import java.sql.Timestamp;
@@ -14,11 +19,12 @@ import java.util.Map;
 @Service
 public class AccountExportService {
     private final JdbcTemplate jdbc;
-    public AccountExportService(JdbcTemplate jdbc) { this.jdbc = jdbc; }
+    private final ObjectMapper json;
+    public AccountExportService(JdbcTemplate jdbc, ObjectMapper json) { this.jdbc = jdbc; this.json = json; }
     public Map<String, Object> export(UserEntity user, ApiDtos.UserView profile) {
         Long id = user.getId();
         Map<String, Object> data = new LinkedHashMap<>();
-        data.put("schemaVersion", 1);
+        data.put("schemaVersion", 2);
         data.put("exportedAt", Instant.now());
         data.put("profile", profile);
         data.put("notes", rows("SELECT id, title, body, tags, status, created_at, updated_at FROM note WHERE owner_id = ? ORDER BY created_at, id", id));
@@ -37,11 +43,24 @@ public class AccountExportService {
         data.put("sentMessages", rows("SELECT id, subject, body, created_at FROM internal_message WHERE sender_id = ? ORDER BY created_at, id", id));
         data.put("personalRecognition", rows("SELECT r.id, r.file_id, r.file_name, r.provider, r.model, r.task_type, r.result_text, r.input_tokens, r.output_tokens, r.created_at FROM personal_recognition_result r JOIN file_asset f ON f.id = r.file_id WHERE r.owner_id = ? AND f.owner_id = r.owner_id ORDER BY r.created_at, r.id", id));
         data.put("vocabularyBooks", rows("SELECT id, title, description, attribution, level, created_at FROM vocabulary_book WHERE owner_id = ? ORDER BY created_at, id", id));
-        data.put("vocabularyWords", rows("SELECT w.id, w.book_id, w.term, w.ipa, w.pos, w.meaning, w.example_text, w.example_translation, w.sort_order FROM vocabulary_word w JOIN vocabulary_book b ON b.id = w.book_id WHERE b.owner_id = ? ORDER BY w.book_id, w.sort_order, w.id", id));
+        data.put("vocabularyWords", rows("SELECT w.id, w.book_id, w.term, w.ipa, w.pos, w.meaning, w.example_text, w.example_translation, w.distractors, w.sort_order FROM vocabulary_word w JOIN vocabulary_book b ON b.id = w.book_id WHERE b.owner_id = ? ORDER BY w.book_id, w.sort_order, w.id", id));
+        data.put("vocabularyBookImports", bookImports(id));
         data.put("vocabularyProfile", rows("SELECT zone_id, daily_goal, selected_book_id, updated_at FROM vocabulary_profile WHERE owner_id = ?", id));
         data.put("vocabularyProgress", rows("SELECT p.id, p.word_id, w.book_id, w.term, p.learning_correct, p.review_stage, p.wrong_count, p.mistake, p.starred, p.due_date, p.learned_date, p.last_attempt_at, p.last_review_date FROM vocabulary_progress p JOIN vocabulary_word w ON w.id = p.word_id JOIN vocabulary_book b ON b.id = w.book_id WHERE p.owner_id = ? AND (b.owner_id IS NULL OR b.owner_id = p.owner_id) ORDER BY p.id", id));
         data.put("exclusions", List.of("Passwords and password hashes", "API keys and encrypted credentials", "Session, sharing and payment tokens", "Raw uploaded media and internal storage paths", "Raw upstream inference payloads", "Vocabulary question and answer snapshots", "Other users' private data"));
         return data;
+    }
+    /** Portable content only: new ownership/IDs on import, no progress, and rights must be reconfirmed. */
+    private List<ImportRequest> bookImports(Long owner) {
+        return jdbc.query("SELECT id, title, description, attribution FROM vocabulary_book WHERE owner_id = ? ORDER BY created_at, id",
+                (book, rowNumber) -> new ImportRequest(book.getString("title"), book.getString("description"), book.getString("attribution"), false,
+                        jdbc.query("SELECT w.term, w.ipa, w.pos, w.meaning, w.example_text, w.example_translation, w.distractors FROM vocabulary_word w JOIN vocabulary_book b ON b.id = w.book_id WHERE w.book_id = ? AND b.owner_id = ? ORDER BY w.sort_order, w.id",
+                                (word, wordNumber) -> new ImportWord(word.getString("term"), word.getString("ipa"), word.getString("pos"), word.getString("meaning"),
+                                        word.getString("example_text"), word.getString("example_translation"), distractors(word.getString("distractors"))), book.getString("id"), owner), 1), owner);
+    }
+    private List<String> distractors(String encoded) {
+        try { return json.readValue(encoded, new TypeReference<List<String>>() {}); }
+        catch (JsonProcessingException exception) { throw new IllegalStateException("Vocabulary export data is invalid", exception); }
     }
     private List<Map<String, Object>> rows(String sql, Long id) {
         return jdbc.query(sql, (rs, rowNumber) -> {

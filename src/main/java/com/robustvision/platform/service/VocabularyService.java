@@ -194,6 +194,8 @@ public class VocabularyService {
     @Transactional(isolation=Isolation.READ_COMMITTED)
     public Book importBook(ImportRequest request) {
         long owner=lockedOwner();
+        // Unversioned original imports remain compatible; future schemas must not be silently reinterpreted.
+        if(request.schemaVersion()!=null && request.schemaVersion()!=1)throw bad("IMPORT_SCHEMA","不支持此词书格式版本");
         if(!request.rightsConfirmed())throw bad("RIGHTS_REQUIRED","请确认你有权使用这些词条、释义和例句");
         if(request.words()==null||request.words().size()<4||request.words().size()>500)throw bad("IMPORT_SIZE","每本词书需要 4 至 500 个词条");
         long count=em.createQuery("select count(b) from VocabularyBookEntity b where b.ownerId=:owner",Long.class).setParameter("owner",owner).getSingleResult();

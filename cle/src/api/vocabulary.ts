@@ -9,7 +9,7 @@ export interface VocabularyNext { question: VocabularyQuestion | null; reason: s
 export interface VocabularyAnswer { questionId: string; wordId: string; correct: boolean; correctOptionId: string; meaning: string; example: string; exampleTranslation: string; learningCorrect: number; masteryTarget: number; newlyLearned: boolean; dueDate: string | null; reviewStage: number; starred: boolean; message: string }
 export interface VocabularyWord { id: string; term: string; ipa: string; pos: string; meaning: string; example: string; exampleTranslation: string; learningCorrect: number; wrongCount: number; mistake: boolean; starred: boolean; dueDate: string | null; reviewStage: number }
 export interface VocabularyWordPage { items: VocabularyWord[]; total: number; page: number; pageSize: number }
-export interface VocabularyImport { title: string; description: string; attribution: string; rightsConfirmed: boolean; words: { term: string; ipa: string; pos: string; meaning: string; example: string; exampleTranslation: string; distractors: string[] }[] }
+export interface VocabularyImport { schemaVersion?: 1; title: string; description: string; attribution: string; rightsConfirmed: boolean; words: { term: string; ipa: string; pos: string; meaning: string; example: string; exampleTranslation: string; distractors: string[] }[] }
 export const vocabularyApi = {
   dashboard: () => request<VocabularyDashboard>('/vocabulary/dashboard'),
   settings: (input: Omit<VocabularySettings, 'masteryTarget'>) => request<VocabularySettings>('/vocabulary/settings', { method: 'PUT', body: JSON.stringify(input) }),

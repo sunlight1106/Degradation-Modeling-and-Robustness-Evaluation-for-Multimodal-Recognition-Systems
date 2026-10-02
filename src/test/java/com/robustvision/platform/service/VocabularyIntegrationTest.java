@@ -2,6 +2,8 @@ package com.robustvision.platform.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.robustvision.platform.domain.RoleEntity;
 import com.robustvision.platform.domain.UserEntity;
 import com.robustvision.platform.repository.RoleRepository;
@@ -16,6 +18,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
@@ -191,6 +194,114 @@ class VocabularyIntegrationTest {
         settings(alice,"Asia/Shanghai",1,"vocab-daily");answer(alice,next(alice,"vocab-daily","LEARN").path("question"),true);
         var all=call(as(get("/api/v1/vocabulary/books/vocab-daily/words?filter=ALL&query=apple"),bob));assertThat(all.path("items").size()).isEqualTo(1);assertThat(all.path("items").get(0).path("learningCorrect").asInt()).isZero();
         mvc.perform(as(get("/api/v1/vocabulary/books/vocab-daily/words?filter=FORGED"),alice)).andExpect(status().isBadRequest());mvc.perform(as(get("/api/v1/vocabulary/books/vocab-daily/words?page=-1"),alice)).andExpect(status().isBadRequest());
+    }
+    private static final String EXPORT_PASSWORD="SyntheticExportPassword123!";
+    private void exportPasswords() {
+        String hash=new BCryptPasswordEncoder(4).encode(EXPORT_PASSWORD);
+        jdbc.update("update app_user set password_hash=? where id in (?,?)",hash,alice.getId(),bob.getId());
+    }
+    private JsonNode export(UserEntity person) throws Exception {
+        return call(json(post("/api/v1/account/export"),person,Map.of("currentPassword",EXPORT_PASSWORD,"ownerId",alice.getId())));
+    }
+    @Test void accountExportRoundTripsPrivateBookContentWithNewOwnershipAndExplicitRights() throws Exception {
+        exportPasswords();
+        ObjectNode input=mapper.valueToTree(importPayload());input.put("schemaVersion",1);
+        input.put("title","  Synthetic portable book  ");input.put("description","  Original content for round-trip verification  ");
+        input.put("attribution","  Original test author; permission limited to private study  ");
+        ObjectNode first=(ObjectNode)input.path("words").get(0);
+        first.put("ipa","/rɛd/");first.put("example","This is a \"red\" label \\ sample.");first.put("exampleTranslation","原创中文例句，保留标点🙂。");
+        first.set("distractors",mapper.valueToTree(List.of("蓝色的","绿色的","黑色的","紫色的","黄色的","带\"引号\"的","带\\斜杠的","有形的🙂")));
+        String ownId=call(json(post("/api/v1/vocabulary/books/import"),alice,input)).path("id").asText();
+        settings(alice,"Asia/Shanghai",1,ownId);
+        var answer=answer(alice,next(alice,ownId,"LEARN").path("question"),true);
+        call(json(put("/api/v1/vocabulary/words/{id}/star",answer.path("wordId").asText()),alice,Map.of("starred",true)));
+        JsonNode original=export(alice);assertThat(original.path("schemaVersion").asInt()).isEqualTo(2);
+        assertThat(original.path("vocabularyBookImports").size()).isEqualTo(1);
+        ObjectNode portable=(ObjectNode)original.path("vocabularyBookImports").get(0);
+        assertThat(portable.path("schemaVersion").asInt()).isEqualTo(1);
+        assertThat(portable.path("rightsConfirmed").asBoolean()).isFalse();
+        assertThat(portable.path("title").asText()).isEqualTo(input.path("title").asText().trim());
+        assertThat(portable.path("description").asText()).isEqualTo(input.path("description").asText().trim());
+        assertThat(portable.path("attribution").asText()).isEqualTo(input.path("attribution").asText().trim());
+        assertThat(portable.path("words")).isEqualTo(input.path("words"));
+        assertThat(mapper.readTree(original.path("vocabularyWords").get(0).path("distractors").asText())).isEqualTo(first.path("distractors"));
+        assertThat(portable.toString()).doesNotContain(ownId,answer.path("wordId").asText(),"ownerId","progress","question","dueDate");
+        assertThat(original.path("vocabularyProgress").size()).isEqualTo(1);
+
+        // Knowing an owner/book ID, including with administrative authority, never grants export access.
+        bob=users.findById(bob.getId()).orElseThrow();bob.setRole(roles.findByCode("ADMIN").orElseGet(()->roles.save(new RoleEntity("ADMIN","Admin","Synthetic",com.robustvision.platform.security.Permissions.allCodes()))));users.save(bob);
+        JsonNode other=export(bob);
+        assertThat(other.path("vocabularyBooks").isEmpty()).isTrue();assertThat(other.path("vocabularyWords").isEmpty()).isTrue();assertThat(other.path("vocabularyBookImports").isEmpty()).isTrue();
+        mvc.perform(as(get("/api/v1/vocabulary/books/{id}/words",ownId),bob)).andExpect(status().isNotFound());
+        mvc.perform(post("/api/v1/account/export").contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsBytes(Map.of("currentPassword",EXPORT_PASSWORD,"ownerId",alice.getId())))).andExpect(status().isUnauthorized());
+        mvc.perform(json(post("/api/v1/account/export"),alice,Map.of("currentPassword","wrong"))).andExpect(status().isForbidden());
+        mvc.perform(json(post("/api/v1/vocabulary/books/import"),bob,portable)).andExpect(status().isBadRequest());
+        assertThat(export(bob).path("vocabularyBookImports").isEmpty()).isTrue();
+
+        ObjectNode confirmed=portable.deepCopy();confirmed.put("rightsConfirmed",true);confirmed.put("ownerId",alice.getId());confirmed.put("id",ownId);
+        String newId=call(json(post("/api/v1/vocabulary/books/import"),bob,confirmed)).path("id").asText();
+        assertThat(newId).isNotEqualTo(ownId);
+        assertThat(jdbc.queryForObject("select owner_id from vocabulary_book where id=?",Long.class,newId)).isEqualTo(bob.getId());
+        assertThat(jdbc.queryForList("select id from vocabulary_word where book_id=?",String.class,newId)).doesNotContainAnyElementsOf(jdbc.queryForList("select id from vocabulary_word where book_id=?",String.class,ownId));
+        JsonNode reexported=export(bob);
+        assertThat(reexported.path("vocabularyBookImports").get(0)).isEqualTo(portable);
+        assertThat(reexported.path("vocabularyProgress").isEmpty()).isTrue();
+        assertThat(export(alice).path("vocabularyBookImports")).isEqualTo(original.path("vocabularyBookImports"));
+        mvc.perform(as(get("/api/v1/vocabulary/books/{id}/words",newId),alice)).andExpect(status().isNotFound());
+    }
+    @Test void portableBookVersionsAndImportBoundsAreValidatedWithoutPartialWrites() throws Exception {
+        ObjectNode input=mapper.valueToTree(importPayload());
+        for(int version:new int[]{0,-1,2,Integer.MAX_VALUE}) {
+            input.put("schemaVersion",version);
+            mvc.perform(json(post("/api/v1/vocabulary/books/import"),alice,input)).andExpect(status().isBadRequest());
+        }
+        input.put("schemaVersion",1);
+        mvc.perform(as(post("/api/v1/vocabulary/books/import"),alice).contentType(MediaType.APPLICATION_JSON)
+                .content(mapper.writeValueAsString(input)+" ".repeat(2*1024*1024))).andExpect(status().isPayloadTooLarge());
+        ArrayNode words=(ArrayNode)input.path("words");ObjectNode template=((ObjectNode)words.get(0)).deepCopy();words.removeAll();
+        for(int i=0;i<501;i++) {ObjectNode word=template.deepCopy();word.put("term","word"+(char)('a'+i/26)+(char)('a'+i%26));words.add(word);}
+        mvc.perform(json(post("/api/v1/vocabulary/books/import"),alice,input)).andExpect(status().isBadRequest());
+        assertThat(jdbc.queryForObject("select count(*) from vocabulary_book where owner_id=?",Integer.class,alice.getId())).isZero();
+        words.remove(500);exportPasswords();
+        call(json(post("/api/v1/vocabulary/books/import"),alice,input));
+        ObjectNode portable=(ObjectNode)export(alice).path("vocabularyBookImports").get(0);
+        assertThat(portable.path("words").size()).isEqualTo(500);
+        assertThat(mapper.writeValueAsBytes(portable).length).isLessThan(2*1024*1024);
+        portable.put("rightsConfirmed",true);
+        call(json(post("/api/v1/vocabulary/books/import"),bob,portable));
+        assertThat(export(bob).path("vocabularyBookImports").get(0).path("words")).isEqualTo(input.path("words"));
+        // A portable file does not bypass existing per-account capacity.
+        for(int i=1;i<20;i++)jdbc.update("insert into vocabulary_book (id,owner_id,title,description,attribution,level,created_at) values (?,?,?,?,?,'自建词书',CURRENT_TIMESTAMP)",UUID.randomUUID().toString(),alice.getId(),"Synthetic capacity "+i,"Original test data","Original test author");
+        mvc.perform(json(post("/api/v1/vocabulary/books/import"),alice,portable)).andExpect(status().isBadRequest()).andExpect(jsonPath("$.error.code").value("BOOK_LIMIT"));
+        assertThat(jdbc.queryForObject("select count(*) from vocabulary_book where owner_id=?",Integer.class,alice.getId())).isEqualTo(20);
+    }
+    @Test void nearLimitLegacyBookRoundTripsWithDocumentedCompactExtraction() throws Exception {
+        exportPasswords();
+        ObjectNode input=mapper.valueToTree(importPayload());ArrayNode words=(ArrayNode)input.path("words");
+        ObjectNode template=((ObjectNode)words.get(0)).deepCopy();template.put("example","原".repeat(400));template.put("exampleTranslation","译".repeat(400));
+        template.set("distractors",mapper.valueToTree(List.of("错甲","错乙","错丙","错丁","错戊","错己","错庚","错辛")));words.removeAll();
+        for(int i=0;i<500;i++){ObjectNode word=template.deepCopy();word.put("term","word"+(char)('a'+i/26)+(char)('a'+i%26));words.add(word);}
+        int limit=2*1024*1024,target=limit-8,size=mapper.writeValueAsBytes(input).length;
+        for(var word:words)for(int i=0;i<8;i++) {
+            ArrayNode options=(ArrayNode)word.path("distractors");String old=options.get(i).asText();
+            int available=target-size+old.getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
+            String value="错".repeat(Math.min(159,Math.max(0,(available-1)/3)))+(char)('a'+i);
+            int delta=value.getBytes(java.nio.charset.StandardCharsets.UTF_8).length-old.getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
+            if(delta>0){options.set(i,mapper.getNodeFactory().textNode(value));size+=delta;}
+        }
+        assertThat(mapper.writeValueAsBytes(input).length).isBetween(limit-10,limit-8);
+        call(json(post("/api/v1/vocabulary/books/import"),alice,input));
+        ObjectNode portable=(ObjectNode)export(alice).path("vocabularyBookImports").get(0);
+        // Version/false-consent metadata can push an otherwise valid historical input over the cap.
+        assertThat(mapper.writeValueAsBytes(portable).length).isGreaterThan(limit);
+        mvc.perform(json(post("/api/v1/vocabulary/books/import"),bob,portable)).andExpect(status().isPayloadTooLarge());
+        ObjectNode extracted=portable.deepCopy();assertThat(extracted.remove("schemaVersion").asInt()).isEqualTo(1);extracted.remove("rightsConfirmed");
+        assertThat(mapper.writeValueAsBytes(extracted).length).isLessThan(limit);
+        mvc.perform(json(post("/api/v1/vocabulary/books/import"),bob,extracted)).andExpect(status().isBadRequest());
+        extracted.put("rightsConfirmed",true);
+        assertThat(mapper.writeValueAsBytes(extracted).length).isLessThanOrEqualTo(limit);
+        call(json(post("/api/v1/vocabulary/books/import"),bob,extracted));
+        assertThat(export(bob).path("vocabularyBookImports").get(0)).isEqualTo(portable);
     }
     static class MutableClock extends Clock {
         final AtomicReference<Instant> value=new AtomicReference<>(Instant.parse("2026-10-02T12:00:00Z"));
