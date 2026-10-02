@@ -20,11 +20,27 @@ public interface KnowledgeEntryRepository extends JpaRepository<KnowledgeEntryEn
     /** Listing follows topic visibility, matching the original topic-by-topic traversal. */
     @Query("""
             select e from KnowledgeEntryEntity e join fetch e.topic t
-            where t.owner is null or t.owner.id = :ownerId
+            where (t.owner is null or t.owner.id = :ownerId)
+              and (e.owner is null or e.owner.id = :ownerId)
             order by case when t.owner is null then 0 else 1 end,
                      t.sortOrder, t.id, e.sortOrder, e.createdAt, e.id
             """)
     List<KnowledgeEntryEntity> findInVisibleTopics(@Param("ownerId") Long ownerId);
+
+    @Query("""
+            select e from KnowledgeEntryEntity e join fetch e.topic
+            where e.topic.id = :topicId and (e.owner is null or e.owner.id = :ownerId)
+              and (e.topic.owner is null or e.topic.owner.id = :ownerId)
+            order by e.sortOrder, e.createdAt, e.id
+            """)
+    List<KnowledgeEntryEntity> findReadableInTopic(@Param("topicId") Long topicId, @Param("ownerId") Long ownerId);
+
+    @Query("""
+            select count(e) > 0 from KnowledgeEntryEntity e
+            where e.id = :id and (e.owner is null or e.owner.id = :ownerId)
+              and (e.topic.owner is null or e.topic.owner.id = :ownerId)
+            """)
+    boolean isReadable(@Param("id") String id, @Param("ownerId") Long ownerId);
 
     interface TopicEntryCount {
         Long getTopicId();
@@ -62,6 +78,7 @@ public interface KnowledgeEntryRepository extends JpaRepository<KnowledgeEntryEn
     @Query("""
             SELECT e FROM KnowledgeEntryEntity e JOIN FETCH e.topic
             WHERE (e.owner IS NULL OR e.owner.id = :ownerId)
+              AND (e.topic.owner IS NULL OR e.topic.owner.id = :ownerId)
               AND (:topicId IS NULL OR e.topic.id = :topicId)
               AND (LOWER(e.title) LIKE LOWER(CONCAT('%', :keyword, '%'))
                    OR LOWER(e.summary) LIKE LOWER(CONCAT('%', :keyword, '%'))

@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
  * 知识库服务：跨学科主题与知识卡的增删改查。
  *
  * 可见性规则：预置内容 owner 为空，所有登录用户可读；用户自建内容仅本人可读写。
- * 预置卡片允许编辑（编辑后仍标记 builtin，用于区分来源），删除即永久移除。
+ * 预置卡片仅管理员可维护；个人内容仅本人可修改。
  */
 @Service
 public class KnowledgeService {
@@ -123,7 +123,7 @@ public class KnowledgeService {
             entries = entryRepository.search(user.getId(), keyword.trim(), topicId);
         } else if (topicId != null) {
             requireReadableTopic(topicId, user);
-            entries = entryRepository.findByTopicIdOrderBySortOrderAscCreatedAtAsc(topicId);
+            entries = entryRepository.findReadableInTopic(topicId, user.getId());
         } else {
             entries = entryRepository.findInVisibleTopics(user.getId());
         }
@@ -214,22 +214,19 @@ public class KnowledgeService {
     }
 
     private KnowledgeEntryEntity requireReadableEntry(String id, UserEntity user) {
-        return entryRepository.findByIdAndOwnerIsNull(id)
-                .or(() -> entryRepository.findByIdAndOwnerId(id, user.getId()))
+        if (!entryRepository.isReadable(id, user.getId())) {
+            throw new BusinessException(HttpStatus.NOT_FOUND, "ENTRY_NOT_FOUND", "知识卡不存在");
+        }
+        return entryRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "ENTRY_NOT_FOUND", "知识卡不存在"));
     }
 
-    /**
-     * 可写校验：预置知识卡（owner 为空）允许任何持 knowledge:write 的用户编辑——
-     * 个人知识库场景下内置内容也应可增补修正；用户自建卡则仅限本人或管理员。
-     */
+    /** Public knowledge remains readable; only an administrator can change global content. */
     private KnowledgeEntryEntity requireWritableEntry(String id, UserEntity user) {
-        KnowledgeEntryEntity entry = entryRepository.findById(id)
-                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "ENTRY_NOT_FOUND", "知识卡不存在"));
-        if (entry.getOwner() != null
-                && !entry.getOwner().getId().equals(user.getId())
-                && !currentUserService.isSuperAdmin(user)) {
-            throw new BusinessException(HttpStatus.FORBIDDEN, "ENTRY_FORBIDDEN", "无权编辑他人创建的知识卡");
+        KnowledgeEntryEntity entry = requireReadableEntry(id, user);
+        if (entry.getOwner() == null && !currentUserService.isSuperAdmin(user)) {
+            throw new BusinessException(HttpStatus.FORBIDDEN, "ENTRY_READONLY",
+                    "预置知识卡仅管理员可维护，请复制到自己的主题后编辑");
         }
         return entry;
     }

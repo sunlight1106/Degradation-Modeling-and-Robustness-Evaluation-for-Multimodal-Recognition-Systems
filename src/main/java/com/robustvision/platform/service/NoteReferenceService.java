@@ -63,11 +63,11 @@ public class NoteReferenceService {
 
     /** 校验引用目标当前是否存在，供笔记服务在新增引用时调用。 */
     @Transactional(readOnly = true)
-    public boolean targetExists(NoteReferenceType type, String referenceId) {
+    public boolean targetAccessible(NoteReferenceType type, String referenceId, Long ownerId) {
         return switch (type) {
-            case FILE -> fileAssetRepository.existsById(referenceId);
-            case TASK -> inferenceTaskRepository.existsById(referenceId);
-            case ENTRY -> knowledgeEntryRepository.existsById(referenceId);
+            case FILE -> fileAssetRepository.existsByIdAndOwnerId(referenceId, ownerId);
+            case TASK -> inferenceTaskRepository.existsByIdAndRequestedByIdAndInputFileOwnerId(referenceId, ownerId, ownerId);
+            case ENTRY -> knowledgeEntryRepository.isReadable(referenceId, ownerId);
         };
     }
 
@@ -99,8 +99,8 @@ public class NoteReferenceService {
             case ENTRY -> "已删除的知识卡";
         };
         String displayTitle = label != null && !label.isBlank() ? label : target != null ? target.title() : fallbackTitle;
-        // Accessibility deliberately retains its existing target-exists meaning. Note
-        // ownership/share authorization remains with the calling note/share services.
+        // Resolve only targets the note owner may reference. Authorized note sharing grants
+        // this embedded metadata, never access to the underlying private file or task.
         return new ApiDtos.NoteReferenceView(reference.getId(), type.name(), reference.getReferenceId(), label,
                 displayTitle, target != null ? target.meta() : "引用目标已被删除", target != null);
     }

@@ -52,6 +52,7 @@ public interface NoteReferenceRepository extends JpaRepository<NoteReferenceEnti
                    f.contentType as contentType, f.sizeBytes as sizeBytes, f.sha256 as sha256
             from NoteReferenceEntity r, FileAssetEntity f
             where r.id in :referenceIds and f.id = r.referenceId
+              and f.owner.id = r.note.owner.id
               and r.referenceType = com.robustvision.platform.domain.NoteReferenceType.FILE
             """)
     List<FileTargetSummary> findFileTargets(@Param("referenceIds") Collection<Long> referenceIds);
@@ -69,6 +70,8 @@ public interface NoteReferenceRepository extends JpaRepository<NoteReferenceEnti
                    t.status as status, t.costCny as costCny
             from NoteReferenceEntity r, InferenceTaskEntity t
             where r.id in :referenceIds and t.id = r.referenceId
+              and t.requestedBy.id = r.note.owner.id
+              and t.inputFile.owner.id = r.note.owner.id
               and r.referenceType = com.robustvision.platform.domain.NoteReferenceType.TASK
             """)
     List<TaskTargetSummary> findTaskTargets(@Param("referenceIds") Collection<Long> referenceIds);
@@ -85,6 +88,8 @@ public interface NoteReferenceRepository extends JpaRepository<NoteReferenceEnti
                    e.topic.domain as domain, e.topic.name as topicName
             from NoteReferenceEntity r, KnowledgeEntryEntity e
             where r.id in :referenceIds and e.id = r.referenceId
+              and (e.owner is null or e.owner.id = r.note.owner.id)
+              and (e.topic.owner is null or e.topic.owner.id = r.note.owner.id)
               and r.referenceType = com.robustvision.platform.domain.NoteReferenceType.ENTRY
             """)
     List<EntryTargetSummary> findEntryTargets(@Param("referenceIds") Collection<Long> referenceIds);

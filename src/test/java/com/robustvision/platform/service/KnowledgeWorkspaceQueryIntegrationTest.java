@@ -153,24 +153,33 @@ class KnowledgeWorkspaceQueryIntegrationTest {
     }
 
     @Test
-    void topicListingAndSearchKeepTheirExistingVisibilityRules() {
+    void topicListingAndSearchRequireBothTopicAndEntryVisibility() {
         KnowledgeTopicEntity ownTopic = topic(current, "science", 0);
         KnowledgeTopicEntity hiddenTopic = topic(other, "science", 0);
         KnowledgeEntryEntity otherOwnedInVisibleTopic = entry(ownTopic, "needle other-owned", other, 0);
         KnowledgeEntryEntity builtinInHiddenTopic = entry(hiddenTopic, "needle builtin", null, 0);
         clearPersistenceContextAndStatistics();
 
-        // A card can retain its original owner when moved. Listing has always followed
-        // topic visibility, while search and single-card reads follow card ownership.
-        assertThat(knowledgeService.listEntries(null, null)).extracting(ApiDtos.KnowledgeEntryView::id)
-                .containsExactly(otherOwnedInVisibleTopic.getId());
+        // Legacy mismatched ownership must not turn a visible topic into a private-card leak.
+        assertThat(knowledgeService.listEntries(null, null)).isEmpty();
         clearPersistenceContextAndStatistics();
-        assertThat(knowledgeService.listEntries(null, "needle")).extracting(ApiDtos.KnowledgeEntryView::id)
-                .containsExactly(builtinInHiddenTopic.getId());
-        assertThat(statistics.getPrepareStatementCount()).isEqualTo(2);
+        assertThat(knowledgeService.listEntries(null, "needle")).isEmpty();
+        assertThat(statistics.getPrepareStatementCount()).isEqualTo(1);
         clearPersistenceContextAndStatistics();
         assertThat(knowledgeService.listEntries(Long.MAX_VALUE, "needle")).isEmpty();
         assertThat(statistics.getPrepareStatementCount()).isEqualTo(1);
+    }
+
+    @Test
+    void publicKnowledgeIsReadableButCannotBeChangedByOrdinaryUsers() {
+        KnowledgeTopicEntity shared = topic(null, "science", 0);
+        KnowledgeEntryEntity card = entry(shared, "Shared card", null, 0);
+        assertThat(knowledgeService.entry(card.getId()).title()).isEqualTo("Shared card");
+        assertThatThrownBy(() -> knowledgeService.deleteEntry(card.getId()))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("仅管理员");
+        when(currentUserService.isSuperAdmin(current)).thenReturn(true);
+        knowledgeService.deleteEntry(card.getId());
+        assertThat(entityManager.find(KnowledgeEntryEntity.class, card.getId())).isNull();
     }
 
     @Test

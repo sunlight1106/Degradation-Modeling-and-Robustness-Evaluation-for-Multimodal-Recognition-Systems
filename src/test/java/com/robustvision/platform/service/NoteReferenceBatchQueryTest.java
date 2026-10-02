@@ -138,6 +138,47 @@ class NoteReferenceBatchQueryTest {
     }
 
     @Test
+    void forgedCrossUserReferencesAreRejectedAndLegacyRowsNeverLeakOnReadOrShare() {
+        NoteEntity privateNote = note("owned note");
+        UserEntity noteOwner = owner;
+        UserEntity other = new UserEntity("private-" + UUID.randomUUID(), "fixture", "Other",
+                UUID.randomUUID() + "@example.invalid", owner.getRole());
+        em.persist(other);
+        owner = other;
+        NoteEntity otherNote = seedMixed(3);
+        owner = noteOwner;
+        em.flush();
+        List<NoteReferenceEntity> privateTargets = repository.findByNoteIdOrderBySortOrderAscIdAsc(otherNote.getId());
+        for (NoteReferenceEntity target : privateTargets) {
+            assertThatThrownBy(() -> notes.addReference(privateNote.getId(), new ApiDtos.AddNoteReferenceRequest(
+                    target.getReferenceType().name(), target.getReferenceId(), null)))
+                    .isInstanceOf(BusinessException.class).hasMessage("引用目标不存在或无权访问");
+            ref(privateNote, target.getReferenceType(), target.getReferenceId(), null, 0);
+        }
+        List<ApiDtos.NoteReferenceView> hidden = references.resolveForNote(privateNote.getId());
+        assertThat(hidden).hasSize(3).allMatch(view -> !view.accessible());
+        assertThat(hidden).allMatch(view -> !view.displayMeta().contains("traceId") && !view.displayMeta().contains("SHA-256"));
+        String token = UUID.randomUUID().toString().replace("-", "");
+        em.persist(new NoteShareEntity(privateNote, owner, token, "fixture", null));
+        when(currentUser.requireCurrent()).thenReturn(other);
+        assertThat(shares.readByToken(token).references()).containsExactlyElementsOf(hidden);
+    }
+
+    @Test
+    void publicKnowledgeCanBeReferencedAndMetadataSharedByNoteOwner() {
+        NoteEntity note = note("public reference");
+        KnowledgeTopicEntity topic = new KnowledgeTopicEntity("public", "public", null, true, null, 0);
+        em.persist(topic);
+        KnowledgeEntryEntity entry = new KnowledgeEntryEntity(topic, "Public card", null, "body", null, true, null, 0);
+        em.persist(entry);
+        assertThat(notes.addReference(note.getId(), new ApiDtos.AddNoteReferenceRequest("ENTRY", entry.getId(), null))
+                .references()).singleElement().satisfies(view -> {
+                    assertThat(view.accessible()).isTrue();
+                    assertThat(view.displayTitle()).isEqualTo("Public card");
+                });
+    }
+
+    @Test
     void emptyNoteDoesNotQueryTargets() {
         NoteEntity note = note("empty");
         Measurement result = measure(() -> references.resolveForNote(note.getId()));

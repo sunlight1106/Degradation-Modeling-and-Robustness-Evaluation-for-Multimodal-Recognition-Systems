@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 
 public interface InferenceTaskRepository extends JpaRepository<InferenceTaskEntity, String> {
+    boolean existsByIdAndRequestedByIdAndInputFileOwnerId(String id, Long requestedById, Long ownerId);
     @EntityGraph(attributePaths = {"inputFile.owner", "outputFile.owner", "model", "requestedBy"})
     List<InferenceTaskEntity> findAllByOrderByCreatedAtDesc();
     @EntityGraph(attributePaths = {"inputFile.owner", "outputFile.owner", "model", "requestedBy"})

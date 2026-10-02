@@ -118,9 +118,9 @@ public class NoteService {
         UserEntity user = currentUserService.requireCurrent();
         NoteEntity note = requireOwn(id, user);
         NoteReferenceType type = parseReferenceType(request.referenceType());
-        if (!referenceService.targetExists(type, request.referenceId())) {
+        if (!referenceService.targetAccessible(type, request.referenceId(), user.getId())) {
             throw new BusinessException(HttpStatus.NOT_FOUND, "REFERENCE_TARGET_NOT_FOUND",
-                    "引用目标不存在，可能已被删除");
+                    "引用目标不存在或无权访问");
         }
         if (referenceService.exists(note.getId(), type, request.referenceId())) {
             throw new BusinessException(HttpStatus.CONFLICT, "REFERENCE_DUPLICATE", "该引用已存在");
