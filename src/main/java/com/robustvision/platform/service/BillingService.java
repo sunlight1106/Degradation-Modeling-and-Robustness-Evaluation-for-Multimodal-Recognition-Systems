@@ -62,6 +62,14 @@ public class BillingService {
         prices.put(ModelProvider.CUSTOM, new Price(BigDecimal.ZERO, BigDecimal.ZERO));
     }
 
+    @Value("${app.model.mode:demo}")
+    private String modelMode = "demo";
+
+    private void requireSandbox() {
+        if (!"demo".equalsIgnoreCase(modelMode)) throw new BusinessException(HttpStatus.FORBIDDEN,
+                "SANDBOX_PAYMENT_DISABLED", "真实模型模式禁止沙箱充值；私人 API 费用由供应商直接计费");
+    }
+
     @Transactional
     public void assertCanRun(UserEntity user) {
         WalletEntity wallet = wallet(user); wallet.resetPeriodIfNeeded(LocalDate.now());
@@ -97,6 +105,7 @@ public class BillingService {
 
     @Transactional
     public ApiDtos.RechargeOrderView createRecharge(ApiDtos.CreateRechargeRequest request) {
+        requireSandbox();
         UserEntity user = currentUserService.requireCurrent();
         BigDecimal amount = request.amount().setScale(2, RoundingMode.HALF_UP);
         if (amount.compareTo(BigDecimal.ONE) < 0 || amount.compareTo(new BigDecimal("10000")) > 0)
@@ -131,6 +140,7 @@ public class BillingService {
 
     @Transactional(noRollbackFor = BusinessException.class)
     public ApiDtos.RechargeOrderView confirmRecharge(String id, ApiDtos.ConfirmRechargeRequest request) {
+        requireSandbox();
         UserEntity user = currentUserService.requireCurrent();
         RechargeOrderEntity order = rechargeRepository.findLockedById(id)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "RECHARGE_NOT_FOUND", "充值订单不存在"));
@@ -156,6 +166,7 @@ public class BillingService {
 
     @Transactional(noRollbackFor = BusinessException.class)
     public ApiDtos.PublicPaymentView completeQrPayment(String token) {
+        requireSandbox();
         RechargeOrderEntity order = rechargeRepository.findLockedByPaymentTokenHash(hash(token))
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "PAYMENT_NOT_FOUND", "支付二维码无效"));
         requirePending(order, RechargeStatus.PENDING_PAYMENT); expireIfNeeded(order);
@@ -234,6 +245,7 @@ public class BillingService {
         }
     }
     private void settle(RechargeOrderEntity order, String description) {
+        requireSandbox();
         order.markPaid(); rechargeRepository.save(order); WalletEntity wallet = wallet(order.getUser());
         wallet.credit(order.getAmount()); walletRepository.save(wallet);
         ledgerRepository.save(new WalletLedgerEntity(order.getUser(), "RECHARGE", order.getAmount(), wallet.getBalanceCny(), order.getId(), description));

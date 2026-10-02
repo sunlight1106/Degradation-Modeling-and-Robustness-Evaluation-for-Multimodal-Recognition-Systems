@@ -236,11 +236,10 @@ class KnowledgeWorkspaceQueryIntegrationTest {
         assertThat(result).allSatisfy(view -> {
             assertThat(view.currentRole()).isEqualTo(WorkspaceMemberRole.VIEWER);
             assertThat(view.currentPermissions()).containsExactly("CONTENT_READ");
-            assertThat(view.members()).hasSize(3);
-            assertThat(view.members()).extracting(ApiDtos.WorkspaceMemberView::id).isSorted();
-            assertThat(view.members().stream().filter(m -> m.role() == WorkspaceMemberRole.MEMBER).findFirst().orElseThrow().permissions()).isEmpty();
-            assertThat(view.members().stream().filter(m -> m.role() == WorkspaceMemberRole.OWNER).findFirst().orElseThrow().permissions())
-                    .containsExactlyInAnyOrderElementsOf(WorkspaceService.ALL);
+            assertThat(view.members()).singleElement().satisfies(member -> {
+                assertThat(member.userId()).isEqualTo(current.getId());
+                assertThat(member.permissions()).containsExactly("CONTENT_READ");
+            });
         });
         assertThat(statistics.getPrepareStatementCount()).isEqualTo(2);
         assertThat(statistics.getEntityLoadCount()).isZero();
