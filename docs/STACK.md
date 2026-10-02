@@ -9,7 +9,7 @@ Prerequisites: Docker Engine and Compose **2.20.2+**, Linux x86_64 (the MinIO so
 3. `scripts/stack.sh start` starts already-built images with readiness checks and **no Maven/npm rebuild**.
 4. After source edits, `scripts/stack.sh rebuild` rebuilds changed layers.
 
-MySQL8.4 owns the22 application tables; Flyway V1–V7 is the sole schema authority. API migrates and bootstraps first; the independent Redis worker starts only after API readiness, runs Hibernate schema validation and does not rerun migrations or seeds. Backend and worker share one built image. Redis uses AOF. Uploads require real ClamAV; MinIO is private by default and the API idempotently creates its bucket. All data ports remain internal to Compose; only frontend binds127.0.0.1.
+MySQL 8.4 owns the 31 application tables; Flyway V1–V12 is the sole schema authority. API migrates and bootstraps first; the independent Redis worker starts only after API readiness, runs Hibernate schema validation and does not rerun migrations or seeds. Backend and worker share one built image. Redis uses AOF. Uploads require real ClamAV; MinIO is private by default and the API idempotently creates its bucket. All data ports remain internal to Compose; only the frontend binds 127.0.0.1 (default port 4173). The same-origin Nginx proxy serves `/api/`, `/swagger-ui.html` and `/v3/api-docs`; no extra backend port is needed.
 
 Migration validation remains enabled. Never set ddl-auto=create/update against persisted data. Do not edit applied SQL or automatically run Flyway repair/clean. See [database/README.md](../database/README.md) for schema inventory, fresh/upgrade contracts, backup and diagnostics. Back up MySQL, objects and the encryption secrets together. Never use `docker compose down -v` as a restart.
 
@@ -37,7 +37,7 @@ Data persists under`.runtime/mysql`,`.runtime/redis`,`.runtime/minio`,`.runtime/
 
 ### Current verified environment boundary
 
-- Actual MySQL8.4.6 and Redis7.4.7 run; Flyway fresh and populated V6→V7 contracts pass on MySQL.
+- Actual MySQL 8.4.6 and Redis 7.4.7 run. Latest isolated MySQL contracts cover fresh V1–V12 plus populated V6/V7 → latest upgrades, 31 application tables and 29 Hibernate entities; see [the dated validation record](VALIDATION.md#private-ai--personal-settings--vocabulary-feature-verification-2026-10-02).
 - ClamAV1.4.3 runs with the complete official signature databases and passes PING, clean INSTREAM and EICAR detection.
 - MinIO final official community source `RELEASE.2025-10-15T17-29-55Z` builds with verified modules. However this cloud sandbox forbids the netlink interface enumeration MinIO performs before flag parsing. Even the supported escalation leaves that denial in place. No source patch or security bypass was used. Therefore S3 runtime/full-stack MinIO verification is blocked here.
 - `LOCAL_STORAGE_MODE=filesystem scripts/local/start-stack.sh` is an **explicit partial profile** for validating MySQL+Redis+ClamAV+API+worker while the S3 blocker remains. It prints that limitation and keeps mandatory antivirus enabled. Filesystem persistence is not a claim that MinIO passed.
@@ -48,7 +48,7 @@ The upstream MinIO community repository and binaries are archived/unsupported. T
 
 `/actuator/health/readiness` requires application-ready state, MySQL, Redis and the configured external upload dependencies. `/actuator/health/liveness` is process liveness. No detailed health or credential information is exposed publicly. Authentication, BCrypt strength, permissions, rate limits and required virus checks are unchanged. Built-in test account reset defaults off to avoid rehashing/resetting it on every restart.
 
-This is a development/research application: model mode remains DEMO unless real provider credentials are explicitly configured. Local payment/SMS flows remain sandbox simulations. The Redis list queue still has no transactional outbox/acknowledgment or crash-recovery lease; a process crash between dequeue and completion can strand work. Bounded queue draining improves backlog throughput without claiming durable exactly-once delivery.
+This is a development/research application. The legacy experiment path is synthetic-only with `MODEL_MODE=demo`; other modes are refused even when shared credentials exist. Personal AI uses owner-scoped encrypted BYOK settings and an explicit preview/confirm workflow. Its remote execution defaults to `PERSONAL_AI_REMOTE_ENABLED=false`; adding a key does not enable it. A deployment operator must deliberately enable and recreate the API container when ready. Real provider/model availability, billing and video inference have not been verified; real video is not supported. See [PERSONAL_AI.md](PERSONAL_AI.md) for limits, protocol verification and endpoint policy. Historical administrator balance queries are separate from this personal-execution switch. Local payment/SMS flows remain sandbox simulations. The Redis list queue still has no transactional outbox/acknowledgment or crash-recovery lease; a process crash between dequeue and completion can strand work. Bounded queue draining improves backlog throughput without claiming durable exactly-once delivery.
 
 ### Run the persisted-data smoke check
 

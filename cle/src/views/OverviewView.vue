@@ -79,17 +79,17 @@ const money = (value: number | null | undefined) => `¥${Number(value || 0).toFi
     <section v-else-if="summary" class="metric-grid">
       <MetricCard label="实验总数" :value="summary.totalTasks" hint="当前可访问范围" />
       <MetricCard label="完成率" :value="`${summary.successRate.toFixed(1)}%`" :hint="`${summary.completedTasks} 次成功完成`" tone="green" />
-      <MetricCard label="平均置信度变化" :value="`${(summary.averageConfidenceLift * 100).toFixed(1)}%`" hint="模型自评变化，不等于准确率提升" tone="green" />
+      <MetricCard label="平均置信度变化" :value="`${(summary.averageConfidenceLift * 100).toFixed(1)}%`" hint="DEMO 为合成差值，不代表准确率" tone="green" />
       <MetricCard label="失败任务" :value="summary.failedTasks" hint="可按 trace_id 排查" :tone="summary.failedTasks ? 'amber' : 'default'" />
     </section>
 
     <section class="panel">
       <div class="panel-header">
-        <div><h3>最近实验</h3><p>最近五次模型调用与运行状态</p></div>
+        <div><h3>最近实验</h3><p>最近五次平台实验；当前新实验为 DEMO 合成结果</p></div>
         <RouterLink to="/app/comparisons" class="text-arrow">查看全部 <AppIcon name="arrow" :size="16" /></RouterLink>
       </div>
       <div v-if="loading" class="table-skeleton" />
-      <EmptyState v-else-if="!summary?.recentTasks.length" title="还没有实验记录" description="上传一张图片并运行模型后，记录会出现在这里。" icon="spark">
+      <EmptyState v-else-if="!summary?.recentTasks.length" title="还没有实验记录" description="完成一条 DEMO 实验后显示在这里；个人图片识别结果在上传页查看。" icon="spark">
         <RouterLink to="/app/upload" class="button button--ghost button--small">创建第一条实验</RouterLink>
       </EmptyState>
       <div v-else class="data-table-wrap">
@@ -110,23 +110,23 @@ const money = (value: number | null | undefined) => `¥${Number(value || 0).toFi
     </section>
 
     <section v-if="billing" class="home-balance-strip panel">
-      <div><span class="wallet-icon"><AppIcon name="wallet" :size="22" /></span><span><small>我的可用余额</small><strong>{{ money(billing.wallet.balanceCny) }}</strong></span></div>
+      <div><span class="wallet-icon"><AppIcon name="wallet" :size="22" /></span><span><small>平台沙箱余额</small><strong>{{ money(billing.wallet.balanceCny) }}</strong></span></div>
       <div class="home-quota"><span>本月配额 · 已用 {{ money(billing.wallet.monthSpentCny) }}</span><i><b :style="{ width: `${billing.wallet.quotaProgressPercent}%` }" /></i><strong>剩余 {{ money(billing.wallet.remainingQuotaCny) }}</strong></div>
-      <RouterLink to="/app/billing" class="button button--ghost button--small">查看或充值 <AppIcon name="arrow" :size="15" /></RouterLink>
+      <RouterLink to="/app/billing" class="button button--ghost button--small">沙箱账本 <AppIcon name="arrow" :size="15" /></RouterLink>
     </section>
 
-    <details v-if="providerBudgets.length" class="home-provider-section panel"><summary><span><AppIcon name="wallet" :size="18" /> 模型预算与用量</span><span>展开查看 <AppIcon name="chevron" :size="15" /></span></summary>
-      <div class="panel-header"><div><p class="page-kicker">ADMIN · LIVE BUDGET</p><h3>模型 API 预算与余额</h3><p>本地用量和人民币预算每 15 秒更新；可用时同时展示供应商官方余额。</p></div><RouterLink to="/app/billing" class="text-arrow">完整账单 <AppIcon name="arrow" :size="16" /></RouterLink></div>
-      <div class="home-provider-grid"><article v-for="provider in providerBudgets" :key="provider.provider" class="panel"><header><span>{{ provider.provider === 'DEEPSEEK' ? 'DS' : provider.provider === 'KIMI' ? 'K' : 'Q' }}</span><div><strong>{{ provider.displayName }}</strong><small>{{ provider.configuredKeyCount }} keys · round robin</small></div><i :class="{ ready: provider.configuredKeyCount }" /></header><div class="home-provider-values"><span><small>已用</small><b>{{ money(provider.usedCny) }}</b></span><span><small>预算剩余</small><b>{{ money(provider.remainingCny) }}</b></span><span><small>{{ provider.providerReportedBalance != null ? '官方余额' : '月度预算' }}</small><b>{{ money(provider.providerReportedBalance ?? provider.monthlyBudgetCny) }}</b></span></div><div class="provider-progress"><i :style="{ width: `${provider.progressPercent}%` }" /></div></article></div>
+    <details v-if="providerBudgets.length" class="home-provider-section panel"><summary><span><AppIcon name="wallet" :size="18" /> 历史共享配置与本地预算</span><span>展开查看 <AppIcon name="chevron" :size="15" /></span></summary>
+      <div class="panel-header"><div><p class="page-kicker">ADMIN · LEGACY BUDGET</p><h3>历史共享配置的预算记录</h3><p>旧本地账本每 15 秒刷新，与个人 BYOK 用量和账单无关。配置旧共享密钥时仍可能查询旧余额接口；接口返回值需到供应商核对币种。</p></div><RouterLink to="/app/billing" class="text-arrow">平台账本 <AppIcon name="arrow" :size="16" /></RouterLink></div>
+      <div class="home-provider-grid"><article v-for="provider in providerBudgets" :key="provider.provider" class="panel"><header><span>{{ provider.provider === 'DEEPSEEK' ? 'DS' : provider.provider === 'KIMI' ? 'K' : 'Q' }}</span><div><strong>{{ provider.displayName }}</strong><small>历史密钥 {{ provider.configuredKeyCount }} 条 · 个人调用不使用</small></div><i :class="{ ready: provider.configuredKeyCount }" /></header><div class="home-provider-values"><span><small>已用</small><b>{{ money(provider.usedCny) }}</b></span><span><small>预算剩余</small><b>{{ money(provider.remainingCny) }}</b></span><span><small>{{ provider.providerReportedBalance != null ? '旧接口返回值（币种待核对）' : '本地月度预算' }}</small><b>{{ provider.providerReportedBalance != null ? provider.providerReportedBalance : money(provider.monthlyBudgetCny) }}</b></span></div><div class="provider-progress"><i :style="{ width: `${provider.progressPercent}%` }" /></div></article></div>
     </details>
 
     <section class="overview-bottom-grid">
       <article class="panel quick-start">
-        <div class="panel-header"><div><h3>快速开始</h3><p>一条完整评测链路</p></div><span class="step-count">4 steps</span></div>
+        <div class="panel-header"><div><h3>DEMO 实验入门</h3><p>检查媒体、队列与报告链路</p></div><span class="step-count">4 steps</span></div>
         <ol>
-          <li><span>1</span><div><strong>上传真实输入</strong><p>系统校验格式并记录文件指纹</p></div></li>
-          <li><span>2</span><div><strong>选择任务与模型</strong><p>固定任务类型及模型版本</p></div></li>
-          <li><span>3</span><div><strong>运行基线与优化</strong><p>保持输入与模型不变</p></div></li>
+          <li><span>1</span><div><strong>上传练习样本</strong><p>系统校验格式并记录文件指纹</p></div></li>
+          <li><span>2</span><div><strong>选择演示任务</strong><p>当前旧实验仅生成 DEMO 结果</p></div></li>
+          <li><span>3</span><div><strong>运行双路演示</strong><p>预处理成功不证明识别改善</p></div></li>
           <li><span>4</span><div><strong>对比并下载报告</strong><p>保留指标、结果与 trace_id</p></div></li>
         </ol>
       </article>
@@ -134,8 +134,8 @@ const money = (value: number | null | undefined) => `¥${Number(value || 0).toFi
         <span class="note-icon"><AppIcon name="shield" :size="22" /></span>
         <p class="page-kicker">实验提醒</p>
         <h3>界面提升不等于论文结论</h3>
-        <p>真实模型已经接入，但仍需固定人工真值、数据集、退化参数和评测脚本，前后差异才具备研究证据价值。</p>
-        <RouterLink to="/app/docs" class="text-arrow">查看评测规范 <AppIcon name="arrow" :size="16" /></RouterLink>
+        <p>旧实验输出为 DEMO 合成结果，不能用于准确率或论文结论。个人图片识别需自己的视觉模型、部署远程开关和逐次确认；当前仅做模拟协议验证，真实视频暂未开放。</p>
+        <RouterLink to="/app/docs" class="text-arrow">查看使用指南与边界 <AppIcon name="arrow" :size="16" /></RouterLink>
       </article>
     </section>
   </div>
