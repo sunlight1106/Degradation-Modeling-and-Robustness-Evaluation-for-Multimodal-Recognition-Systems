@@ -13,8 +13,13 @@ const provider = ref(''), taskType = ref<PersonalRecognitionTask>('RECEIPT')
 const file = ref<File | null>(null), uploaded = ref<FileView | null>(null), fileInput = ref<HTMLInputElement | null>(null)
 const imageUrl = ref(''), review = ref<RecognitionPreview | null>(null), consent = ref(false), visionConfirmed = ref(false)
 const busy = ref<'upload' | 'preview' | 'execute' | null>(null), loading = ref(false), error = ref('')
-const results = ref<RecognitionResult[]>([]), resultsError = ref(''), resultsLoading = ref(false), showResults = ref(false)
+type SavedRecognitionResult = RecognitionResult & { id: string }
+function isSavedResult(value: RecognitionResult): value is SavedRecognitionResult {
+  return value.persistenceStatus === 'SAVED' && typeof value.id === 'string' && value.id.trim().length > 0
+}
+const results = ref<SavedRecognitionResult[]>([]), resultsError = ref(''), resultsLoading = ref(false), showResults = ref(false)
 const result = ref<RecognitionResult | null>(null)
+const resultSaved = computed(() => result.value !== null && isSavedResult(result.value))
 const requestGuard = createRequestGuard(), loadGuard = createRequestGuard(), historyGuard = createRequestGuard()
 const available = computed(() => settings.value.filter(item => item.configured && item.enabled && item.provider !== 'DEEPSEEK'))
 const remoteEnabled = computed(() => catalog.value.find(item => item.provider === provider.value)?.remoteEnabled === true)
@@ -73,15 +78,17 @@ async function execute() {
     const output = await personalApi.recognize(token, request.signal)
     if (!request.current()) return
     result.value = output
-    results.value = [output, ...results.value.filter(item => item.id !== output.id)].slice(0, 100)
-    toastStore.success('识别结果已保存到你的账户，可在笔记中选择插入')
+    if (isSavedResult(output)) {
+      results.value = [output, ...results.value.filter(item => item.id !== output.id)].slice(0, 100)
+      toastStore.success('识别结果已保存到你的账户，可在笔记中选择插入')
+    }
   } catch (reason) {
     if (request.current()) error.value = reason instanceof ApiClientError ? reason.message : '未能取得结果。请求可能已发送并产生费用；请先刷新个人结果和使用记录，不要重复提交。'
   } finally { if (request.current()) busy.value = null }
 }
 async function loadResults() {
   const request = historyGuard.start(); showResults.value = true; resultsLoading.value = true; resultsError.value = ''
-  try { const rows = await personalApi.recognitionResults(request.signal); if (request.current()) results.value = rows }
+  try { const rows = await personalApi.recognitionResults(request.signal); if (request.current()) results.value = rows.filter(isSavedResult) }
   catch (reason) { if (request.current()) resultsError.value = reason instanceof ApiClientError ? reason.message : '历史结果加载失败' }
   finally { if (request.current()) resultsLoading.value = false }
 }
@@ -103,7 +110,7 @@ onBeforeUnmount(() => { cancel(); loadGuard.cancel(); historyGuard.cancel(); win
       <div class="settings-button-row"><button class="button button--dark" :disabled="!!busy || !file || !provider || !visionConfirmed" @click="prepare">{{ busy === 'upload' ? '上传到平台…' : busy === 'preview' ? '准备预览…' : '上传并预览发送内容' }}</button><button v-if="busy" class="button button--ghost" @click="cancel">停止等待</button></div>
       <p v-if="busy === 'execute'" class="field-hint" role="status">正在调用你的模型。停止等待或离开页面不能撤销供应商已接收的请求；结果可能仍会保存，请稍后刷新。</p>
       <section v-if="review" class="note-outbound-review" aria-label="图片发送前确认"><h4>确认发送这张图片及指令</h4><dl class="settings-facts"><dt>供应商 / 模型</dt><dd>{{ review.provider }} / {{ review.model }}</dd><dt>实际端点</dt><dd>{{ review.endpoint }}</dd><dt>原图</dt><dd>{{ review.fileName }} · {{ review.mime }} · {{ review.sizeBytes.toLocaleString() }} 字节</dd><dt>SHA-256</dt><dd>{{ review.sha256 }}</dd><dt>总发送大小</dt><dd>{{ review.outboundBytes.toLocaleString() }} 字节</dd><dt>有效期</dt><dd>{{ new Date(review.expiresAt).toLocaleTimeString('zh-CN') }}</dd></dl><h5>系统指令</h5><pre>{{ review.systemPrompt }}</pre><h5>用户指令</h5><pre>{{ review.prompt }}</pre><p class="field-hint">上方图片为将发送的原图。更换图片、供应商或任务会使本次预览失效。</p><p v-if="expired" class="inline-alert inline-alert--error">预览已过期，请重新准备。</p><label class="settings-check"><input v-model="consent" type="checkbox" :disabled="expired" /> 我允许将上述图片及完整指令发送到 {{ review.provider }}，并使用我的个人 API 额度。</label><div class="settings-button-row"><button class="button button--dark" :disabled="!consent || expired || !remoteEnabled || !visionConfirmed || !!busy" @click="execute">确认发送并识别</button><button class="button button--ghost" @click="cancel">取消，不发送</button></div></section>
-      <section v-if="result" class="note-outbound-review" aria-label="图片识别结果"><div class="settings-button-row"><h4>{{ result.fileName }} · {{ taskLabel(result.taskType) }}</h4><button class="table-action" @click="result = null">收起</button></div><p class="field-hint">{{ result.provider }} / {{ result.model }} · 结果已保存。请核对原图，模型输出可能不准确。</p><pre>{{ result.result }}</pre><RouterLink to="/app/notes" class="settings-inline-link">前往笔记，选择这个结果插入 →</RouterLink></section>
+      <section v-if="result" class="note-outbound-review" aria-label="图片识别结果"><div class="settings-button-row"><h4>{{ result.fileName }} · {{ taskLabel(result.taskType) }}</h4><button class="table-action" @click="result = null">收起</button></div><p v-if="!resultSaved" class="inline-alert inline-alert--error" role="alert">{{ result.warning || '模型已完成识别，但无法确认结果及用量记录已保存。请先复制下方内容；请求可能已产生费用，请勿重复发送。' }}</p><p class="field-hint">{{ result.provider }} / {{ result.model }} · {{ resultSaved ? '结果已保存。' : '仅在当前页面显示，请手动复制留存。尚未修改任何笔记。' }}请核对原图，模型输出可能不准确。</p><p class="field-hint">已报告 Tokens：{{ result.inputTokens ?? '未提供' }} / {{ result.outputTokens ?? '未提供' }}</p><pre>{{ result.result }}</pre><RouterLink v-if="resultSaved" to="/app/notes" class="settings-inline-link">前往笔记，选择这个结果插入 →</RouterLink></section>
       <div class="settings-button-row"><button class="button button--ghost" :disabled="resultsLoading" @click="loadResults">{{ resultsLoading ? '加载中…' : '查看 / 刷新我的识别结果' }}</button><button v-if="showResults" class="table-action" @click="showResults = false">收起历史</button></div><p v-if="resultsError" class="inline-alert inline-alert--error" role="alert">{{ resultsError }}</p>
       <div v-if="showResults" class="recognition-history"><p v-if="!resultsLoading && !results.length && !resultsError" class="settings-empty">还没有个人图片识别结果。</p><details v-for="item in results" :key="item.id" class="note-outbound-review"><summary>{{ item.fileName }} · {{ taskLabel(item.taskType) }} · {{ new Date(item.createdAt).toLocaleString('zh-CN') }}</summary><p class="field-hint">{{ item.provider }} / {{ item.model }} · 已报告 Tokens：{{ item.inputTokens ?? '未提供' }} / {{ item.outputTokens ?? '未提供' }}</p><pre>{{ item.result }}</pre></details></div>
     </div>

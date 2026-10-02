@@ -21,7 +21,7 @@ public class PersonalAiService {
             + "不得编造实验、数值或引用；缺少证据时明确标注。输出 Markdown 文本，不输出 HTML、外部图片或可执行内容。";
     private final CurrentUserService currentUser;
     private final PersonalAiSettingRepository settings;
-    private final PersonalAiUsageRepository usage;
+    private final PersonalAiPersistenceService persistence;
     private final SecretEncryptionService encryption;
     private final PersonalAiEndpointPolicy endpoints;
     private final PersonalAiTransport transport;
@@ -33,11 +33,11 @@ public class PersonalAiService {
     private record Pending(Long owner, String settingId, long revision, AiProvider provider, String model,
                            String action, PersonalAiTransport.Payload payload, List<String> selectedTaskIds, Instant expiresAt) {}
     public PersonalAiService(CurrentUserService currentUser, PersonalAiSettingRepository settings,
-                             PersonalAiUsageRepository usage, SecretEncryptionService encryption,
+                             PersonalAiPersistenceService persistence, SecretEncryptionService encryption,
                              PersonalAiEndpointPolicy endpoints, PersonalAiTransport transport,
                              PersonalAiRateLimiter limits, NoteExperimentSourceService sources,
                              @Value("${app.personal-ai.remote-enabled:false}") boolean remoteEnabled) {
-        this.currentUser = currentUser; this.settings = settings; this.usage = usage; this.encryption = encryption;
+        this.currentUser = currentUser; this.settings = settings; this.persistence = persistence; this.encryption = encryption;
         this.endpoints = endpoints; this.transport = transport; this.limits = limits; this.sources = sources;
         this.remoteEnabled = remoteEnabled;
     }
@@ -92,23 +92,33 @@ public class PersonalAiService {
         // Re-authorize selected resources at execution without changing the approved immutable payload.
         sources.buildContext(approved.selectedTaskIds());
         try (PersonalAiRateLimiter.Permit ignored = limits.acquire(owner)) {
+            String key = encryption.decrypt(setting.getEncryptedKey());
+            PersonalAiTransport.Completion result;
             try {
-                String key = encryption.decrypt(setting.getEncryptedKey());
-                PersonalAiTransport.Completion result = transport.execute(approved.provider(), approved.payload(), key);
-                usage.save(new PersonalAiUsageEntity(owner, approved.provider(), approved.model(), approved.action(),
-                        "SUCCEEDED", result.inputTokens(), result.outputTokens(), null));
-                return new ResultView(approved.action(), "PERSONAL_AI:" + approved.provider(), result.text(), items(approved.action(), result.text()),
-                        "由你的个人供应商密钥调用生成。费用由供应商计收；平台未估算费用，也未扣除平台钱包。请核对后再应用。",
-                        MDC.get("traceId"), result.inputTokens(), result.outputTokens());
+                result = transport.execute(approved.provider(), approved.payload(), key);
             } catch (BusinessException exception) {
-                usage.save(new PersonalAiUsageEntity(owner, approved.provider(), approved.model(), approved.action(), "FAILED", PersonalAiUpstreamFailure.input(exception), PersonalAiUpstreamFailure.output(exception), exception.getCode()));
-                throw exception;
+                throw persistence.recordFailure(new PersonalAiUsageEntity(owner, approved.provider(), approved.model(), approved.action(),
+                        "FAILED", PersonalAiUpstreamFailure.input(exception), PersonalAiUpstreamFailure.output(exception), exception.getCode()), exception);
             } catch (Exception exception) {
-                usage.save(new PersonalAiUsageEntity(owner, approved.provider(), approved.model(), approved.action(), "FAILED", null, null, "PERSONAL_AI_UPSTREAM_FAILED"));
-                throw PersonalAiEndpointPolicy.unavailable();
+                var failure = PersonalAiEndpointPolicy.unavailable();
+                throw persistence.recordFailure(new PersonalAiUsageEntity(owner, approved.provider(), approved.model(), approved.action(),
+                        "FAILED", null, null, failure.getCode()), failure);
             }
+            // The provider call is already complete. A local write failure must never be treated as an upstream failure.
+            String persistenceStatus = "SAVED", warning = null;
+            try {
+                persistence.recordUsage(new PersonalAiUsageEntity(owner, approved.provider(), approved.model(), approved.action(),
+                        "SUCCEEDED", result.inputTokens(), result.outputTokens(), null));
+            } catch (RuntimeException persistenceFailure) {
+                persistenceStatus = "UNCONFIRMED";
+                warning = PersonalAiPersistenceService.USAGE_WARNING;
+            }
+            return new ResultView(approved.action(), "PERSONAL_AI:" + approved.provider(), result.text(), items(approved.action(), result.text()),
+                    "由你的个人供应商密钥调用生成。费用由供应商计收；平台未估算费用，也未扣除平台钱包。请核对后再应用。",
+                    MDC.get("traceId"), result.inputTokens(), result.outputTokens(), persistenceStatus, warning);
         }
     }
+
     private PersonalAiSettingEntity configured(Long owner, AiProvider provider) {
         if (provider == null) throw invalid("PERSONAL_AI_CONFIG_REQUIRED", "请选择并配置自己的供应商");
         return settings.findByOwnerIdAndProvider(owner, provider).filter(s -> s.isEnabled() && s.getEncryptedKey() != null && !s.getEncryptedKey().isBlank())

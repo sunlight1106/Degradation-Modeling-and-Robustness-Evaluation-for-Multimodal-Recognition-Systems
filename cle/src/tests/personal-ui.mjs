@@ -8,6 +8,7 @@ import SettingsView from '../views/SettingsView.vue'
 import NoteEditorView from '../views/NoteEditorView.vue'
 import { themeStore } from '../stores/theme.ts'
 import { authStore } from '../stores/auth.ts'
+import { toastStore } from '../stores/toast.ts'
 import { tokenStorage, request } from '../api/client.ts'
 
 const passed = []
@@ -21,23 +22,30 @@ const check = async (el, value) => { el.checked = value; el.dispatchEvent(new Ev
 const providers = [{ provider:'OPENAI', displayName:'OpenAI', protocol:'OPENAI_CHAT', baseUrls:['https://api.openai.com/v1'], customEndpointAllowed:false, remoteEnabled:true },{ provider:'GEMINI', displayName:'Gemini', protocol:'GEMINI', baseUrls:['https://generativelanguage.googleapis.com/v1beta'], customEndpointAllowed:false, remoteEnabled:true }]
 const settings = [{provider:'OPENAI', model:'synthetic-model', baseUrl:'https://api.openai.com/v1', configured:true, enabled:true, revision:1}]
 let pendingPreview, pendingExecute, pendingRecognition, executeCalls = 0, saveCalls = 0, recognitionCalls = 0, logoutCalls = 0
+const aiResult = {action:'summarize',engine:'PERSONAL_AI:OPENAI',result:'synthetic result',items:[],inputTokens:5,outputTokens:4,persistenceStatus:'SAVED',warning:null}
+const recognitionResult = {id:'recognition-1',provider:'OPENAI',model:'synthetic-model',taskType:'RECEIPT',fileId:'own-file',fileName:'synthetic.png',result:'synthetic recognized result',inputTokens:10,outputTokens:7,createdAt:'2026-10-02T11:00:00Z',persistenceStatus:'SAVED',warning:null}
+let recognitionHistory = []
+const requestPaths = [], successMessages = []
+const originalSuccess = toastStore.success
+toastStore.success = message => { successMessages.push(message); originalSuccess(message) }
 const envelope = data => new Response(JSON.stringify({success:true,data}), {status:200,headers:{'Content-Type':'application/json'}})
 window.fetch = async (url, init = {}) => {
   const path = String(url)
+  requestPaths.push(path)
   if (path.endsWith('/account/usage')) return envelope({ai:{total:999,succeeded:990,failed:9,knownInputTokens:3000,knownOutputTokens:1000,unknownUsageCalls:3},experiments:{total:11,completed:10,failed:1},files:{count:2,bytes:2048},noteCount:7,recognitionCount:4})
   if (path.endsWith('/personal-ai/usage')) return envelope([{id:'one-recent-call',provider:'OPENAI',model:'synthetic',action:'summarize',status:'SUCCEEDED',inputTokens:5,outputTokens:4,createdAt:'2026-10-02T11:00:00Z'}])
   if (path.endsWith('/account/logout')) { logoutCalls++; return envelope(null) }
   if (path.endsWith('/files') && init.method === 'POST') return envelope({id:'own-file',originalName:'synthetic.png',sha256:'synthetic-hash',scanStatus:'CLEAN'})
-  if (path.endsWith('/recognition/results')) return envelope([])
+  if (path.endsWith('/recognition/results')) return envelope(recognitionHistory)
   if (path.endsWith('/recognition/preview')) return envelope({previewToken:'synthetic-image-once',expiresAt:new Date(Date.now()+300000).toISOString(),provider:'OPENAI',model:'synthetic-model',endpoint:'https://api.openai.com/v1/chat/completions',fileId:'own-file',fileName:'synthetic.png',sha256:'synthetic-hash',mime:'image/png',sizeBytes:3,taskType:'RECEIPT',systemPrompt:'Image system prompt',prompt:'Exact image user prompt',outboundBytes:200})
-  if (path.endsWith('/recognition/execute')) { recognitionCalls++; return new Promise(resolve=>{ pendingRecognition=()=>resolve(envelope({id:'recognition-1',provider:'OPENAI',model:'synthetic-model',taskType:'RECEIPT',fileName:'synthetic.png',result:'synthetic recognized result',createdAt:'2026-10-02T11:00:00Z'})) }) }
+  if (path.endsWith('/recognition/execute')) { recognitionCalls++; return new Promise(resolve=>{ pendingRecognition=(overrides={})=>resolve(envelope({...recognitionResult,...overrides})) }) }
   if (path.endsWith('/providers')) return envelope(providers)
   if (path.endsWith('/settings')) return envelope(settings)
   if (path.endsWith('/settings/OPENAI') && init.method === 'PUT') { saveCalls++; return envelope(settings[0]) }
   if (path.endsWith('/sources/experiments')) return envelope([{taskId:'own-1', title:'我的实验', modelName:'Demo', status:'COMPLETED',createdAt:'2026-10-02T11:00:00Z'}])
   if (path.endsWith('/sources/experiments/preview')) return new Promise(resolve => { pendingPreview = () => resolve(envelope({markdown:'synthetic source',sourceIds:['own-1']})) })
   if (path.endsWith('/personal-ai/preview')) return envelope({previewToken:'synthetic-once',expiresAt:new Date(Date.now()+300000).toISOString(),provider:'OPENAI',model:'synthetic-model',endpoint:'https://api.openai.com/v1/chat/completions',action:'summarize',context:'EXACT PRIVATE CONTEXT',systemPrompt:'synthetic prompt',outboundBytes:100})
-  if (path.endsWith('/personal-ai/execute')) { executeCalls++; return new Promise(resolve => { pendingExecute = () => resolve(envelope({action:'summarize',engine:'PERSONAL_AI:OPENAI',result:'synthetic result',items:[]})) }) }
+  if (path.endsWith('/personal-ai/execute')) { executeCalls++; return new Promise(resolve => { pendingExecute = (overrides={}) => resolve(envelope({...aiResult,...overrides})) }) }
   throw new Error(`Unexpected request ${path}`)
 }
 const router = createRouter({history:createMemoryHistory(),routes:[{path:'/:pathMatch(.*)*',component:{template:'<div />'}}]})
@@ -76,6 +84,34 @@ try {
   await check(fixture.querySelector('[aria-label="发送前确认"] input[type=checkbox]'),true)
   await click('确认发送并生成'); await wait(() => executeCalls === 2); app.unmount(); pendingExecute(); await wait()
   assert(fixture.children.length === 0, 'Navigation unmount discards pending execution output')
+
+  const applied = []
+  app = createApp({render:() => h(NotePersonalTools,{...props,onAppend:text=>applied.push(text),onReplace:text=>applied.push(text),onTags:items=>applied.push(items)})}).use(router); app.mount(fixture)
+  await wait(() => fixture.querySelector('select')?.options.length === 2)
+  await setValue(fixture.querySelector('select'),'OPENAI')
+  const completeAi = async overrides => {
+    await click('摘要'); await wait(() => fixture.querySelector('[aria-label="发送前确认"]'))
+    await check(fixture.querySelector('[aria-label="发送前确认"] input[type=checkbox]'),true)
+    pendingExecute = null
+    await click('确认发送并生成'); await wait(() => pendingExecute)
+    pendingExecute(overrides); await wait(() => fixture.querySelector('[aria-label="生成结果预览"]'))
+    return fixture.querySelector('[aria-label="生成结果预览"]')
+  }
+  const savedAi = await completeAi({})
+  assert(!savedAi.querySelector('[role=alert]') && savedAi.textContent.includes('尚未修改笔记'), 'Saved AI usage still leaves generated text unapplied without a persistence warning')
+  const successesBeforeAi = successMessages.length
+  const unconfirmedAi = await completeAi({persistenceStatus:'UNCONFIRMED',warning:'无法确认本次用量记录已保存。请勿重复发送。',result:'completed text retained for manual copy',inputTokens:0,outputTokens:7})
+  assert(unconfirmedAi.querySelector('[role=alert]')?.textContent.includes('无法确认本次用量记录已保存'), 'Unconfirmed AI usage displays a prominent persistence warning')
+  assert(unconfirmedAi.querySelector('pre')?.textContent === 'completed text retained for manual copy' && unconfirmedAi.textContent.includes('已报告 Tokens：0 / 7'), 'Unconfirmed AI preserves completed output and known token counts including zero')
+  assert(unconfirmedAi.textContent.includes('尚未修改笔记') && applied.length === 0 && props.body === 'changed' && successMessages.length === successesBeforeAi, 'Unconfirmed AI does not mutate the notebook or announce success')
+  const requestsAfterAi = requestPaths.length, callsAfterAi = executeCalls
+  await new Promise(resolve => setTimeout(resolve,30)); await nextTick()
+  assert(requestPaths.length === requestsAfterAi && executeCalls === callsAfterAi && !fixture.querySelector('[aria-label="发送前确认"]'), 'Unconfirmed AI consumes its preview without any automatic extra request')
+  await click('插入到文末')
+  assert(applied.length === 1 && applied[0].includes('completed text retained for manual copy') && executeCalls === callsAfterAi, 'Unconfirmed AI remains manually applicable without replaying the provider request')
+  const fallbackAi = await completeAi({persistenceStatus:'UNCONFIRMED',warning:null})
+  assert(fallbackAi.querySelector('[role=alert]')?.textContent.includes('无法确认用量记录已保存'), 'Unconfirmed AI has a fallback warning when the server omits warning text')
+  app.unmount()
 
   app = createApp(PersonalAiSettings); app.mount(fixture)
   await wait(() => fixture.querySelector('input[type=password]'))
@@ -116,6 +152,36 @@ try {
   assert(recognitionCalls===1, 'Repeated recognition confirmation executes once')
   await click('停止等待'); pendingRecognition(); await wait()
   assert(!fixture.querySelector('[aria-label="图片识别结果"]'), 'Canceled image recognition discards late result')
+  await click('查看 / 刷新我的识别结果'); await wait(() => fixture.querySelector('.recognition-history'))
+  const completeRecognition = async overrides => {
+    await click('上传并预览发送内容'); await wait(()=>fixture.querySelector('[aria-label="图片发送前确认"]'))
+    await check(fixture.querySelector('[aria-label="图片发送前确认"] input'),true)
+    pendingRecognition = null
+    await click('确认发送并识别'); await wait(()=>pendingRecognition)
+    pendingRecognition(overrides); await wait(()=>fixture.querySelector('[aria-label="图片识别结果"]'))
+    return fixture.querySelector('[aria-label="图片识别结果"]')
+  }
+  const savedRecognition = await completeRecognition({})
+  assert(!savedRecognition.querySelector('[role=alert]') && savedRecognition.querySelector('a') && savedRecognition.textContent.includes('结果已保存。') && fixture.querySelectorAll('.recognition-history details').length === 1, 'Confirmed saved recognition enters history and offers notebook insertion')
+  assert(successMessages.at(-1) === '识别结果已保存到你的账户，可在笔记中选择插入', 'Confirmed saved recognition announces successful persistence')
+  const successesBeforeRecognition = successMessages.length
+  const unconfirmedRecognition = await completeRecognition({id:null,persistenceStatus:'UNCONFIRMED',warning:'识别已完成，但无法确认结果及用量记录已保存。请勿重复发送。',result:'completed recognition retained for manual copy',inputTokens:0,outputTokens:7})
+  assert(unconfirmedRecognition.querySelector('[role=alert]')?.textContent.includes('无法确认结果及用量记录已保存'), 'Unconfirmed recognition displays a prominent persistence warning')
+  assert(unconfirmedRecognition.querySelector('pre')?.textContent === 'completed recognition retained for manual copy' && unconfirmedRecognition.textContent.includes('已报告 Tokens：0 / 7'), 'Unconfirmed recognition preserves completed output and known token counts including zero')
+  assert(!unconfirmedRecognition.querySelector('a') && !unconfirmedRecognition.textContent.includes('结果已保存。') && unconfirmedRecognition.textContent.includes('请手动复制留存') && unconfirmedRecognition.textContent.includes('尚未修改任何笔记'), 'Unconfirmed recognition offers manual copy without a saved claim or notebook selection link')
+  assert(fixture.querySelectorAll('.recognition-history details').length === 1 && !fixture.querySelector('.recognition-history').textContent.includes('completed recognition retained') && successMessages.length === successesBeforeRecognition, 'Unconfirmed recognition is absent from saved history and emits no success toast')
+  const requestsAfterRecognition = requestPaths.length, callsAfterRecognition = recognitionCalls
+  await new Promise(resolve => setTimeout(resolve,30)); await nextTick()
+  assert(requestPaths.length === requestsAfterRecognition && recognitionCalls === callsAfterRecognition && !fixture.querySelector('[aria-label="图片发送前确认"]'), 'Unconfirmed recognition consumes its preview without any automatic extra request')
+  for (const overrides of [{id:'missing-status',persistenceStatus:undefined},{id:null,persistenceStatus:'SAVED'}]) {
+    const incompleteRecognition = await completeRecognition({...overrides,warning:null,result:'unverified recognition'})
+    assert(incompleteRecognition.querySelector('[role=alert]')?.textContent.includes('无法确认结果及用量记录已保存') && !incompleteRecognition.querySelector('a') && !incompleteRecognition.textContent.includes('结果已保存。'), `Recognition fails safely with ${overrides.id ? 'missing status' : 'missing saved ID'}`)
+    assert(fixture.querySelectorAll('.recognition-history details').length === 1 && successMessages.length === successesBeforeRecognition, 'Incomplete persistence metadata cannot enter saved history or announce success')
+  }
+  recognitionHistory = [recognitionResult,{...recognitionResult,id:null,persistenceStatus:'UNCONFIRMED'},{...recognitionResult,id:'legacy',persistenceStatus:undefined}]
+  await click('查看 / 刷新我的识别结果'); await wait()
+  assert(fixture.querySelectorAll('.recognition-history details').length === 1, 'History refresh only includes records with confirmed persistence and an ID')
+  recognitionHistory = []
   await click('上传并预览发送内容'); await wait(()=>fixture.querySelector('[aria-label="图片发送前确认"]'))
   await setValue(fixture.querySelectorAll('select')[1],'LICENSE_PLATE')
   assert(!fixture.querySelector('[aria-label="图片发送前确认"]'), 'Changing recognition task invalidates preview and consent')

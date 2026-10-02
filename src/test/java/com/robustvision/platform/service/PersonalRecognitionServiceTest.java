@@ -18,6 +18,8 @@ class PersonalRecognitionServiceTest {
     PersonalAiSettingRepository settings=mock(PersonalAiSettingRepository.class);
     PersonalRecognitionResultRepository results=mock(PersonalRecognitionResultRepository.class);
     PersonalAiUsageRepository usage=mock(PersonalAiUsageRepository.class);
+    org.springframework.transaction.PlatformTransactionManager transactions=mock(org.springframework.transaction.PlatformTransactionManager.class);
+    PersonalAiPersistenceService persistence=new PersonalAiPersistenceService(usage,results,transactions);
     SecretEncryptionService encryption=mock(SecretEncryptionService.class);
     PersonalAiEndpointPolicy endpoints=new PersonalAiEndpointPolicy("");
     PersonalAiTransport transport=mock(PersonalAiTransport.class);
@@ -42,13 +44,15 @@ class PersonalRecognitionServiceTest {
         when(transport.execute(any(),any(),eq("synthetic-own-key"))).thenReturn(new PersonalAiTransport.Completion("商户：示例，金额未知",10,5));
         when(results.save(any())).thenAnswer(invocation->invocation.getArgument(0));
     }
-    private PersonalRecognitionService service(boolean enabled){return new PersonalRecognitionService(current,files,fileService,settings,results,usage,encryption,endpoints,transport,new PersonalAiRateLimiter(),enabled);}
+    private PersonalRecognitionService service(boolean enabled){return new PersonalRecognitionService(current,files,fileService,settings,results,persistence,encryption,endpoints,transport,new PersonalAiRateLimiter(),enabled);}
     @Test void approvedOwnImageUsesOnlyOwnKeyPersistsResultAndCannotReplay() {
         var service=service(true);var preview=service.preview(AiProvider.OPENAI,fileId,TaskType.RECEIPT);
         assertThat(preview.fileId()).isEqualTo(fileId);assertThat(preview.outboundBytes()).isPositive();
         verify(transport,never()).execute(any(),any(),anyString());
         var result=service.execute(preview.previewToken(),true);
         assertThat(result.result()).contains("金额未知");assertThat(result.inputTokens()).isEqualTo(10);
+        assertThat(result.persistenceStatus()).isEqualTo("SAVED");assertThat(result.warning()).isNull();
+        verify(transactions).commit(any());
         verify(results).save(argThat(r->r.getOwnerId().equals(1L)&&r.getFileId().equals(fileId)));
         assertThatThrownBy(()->service.execute(preview.previewToken(),true)).isInstanceOf(BusinessException.class);
         verify(transport,times(1)).execute(any(),any(),eq("synthetic-own-key"));
@@ -84,6 +88,59 @@ class PersonalRecognitionServiceTest {
         assertThatThrownBy(()->service.execute(approved.previewToken(),true)).isInstanceOf(BusinessException.class).hasMessageContaining("已更改");
         verify(transport,never()).execute(any(),any(),anyString());
     }
+    @Test void completedRecognitionSurvivesUsageWriteFailureWithoutFalseSavedClaimOrReplay() {
+        when(usage.save(any())).thenThrow(new org.springframework.dao.DataAccessResourceFailureException("synthetic-db-failure"));
+        var service=service(true); var preview=service.preview(AiProvider.OPENAI,fileId,TaskType.RECEIPT);
+        var result=service.execute(preview.previewToken(),true);
+        assertThat(result.result()).contains("金额未知");
+        assertThat(result.inputTokens()).isEqualTo(10L);
+        assertThat(result.outputTokens()).isEqualTo(5L);
+        assertThat(result.id()).isNull();
+        assertThat(result.persistenceStatus()).isEqualTo("UNCONFIRMED");
+        assertThat(result.warning()).contains("未能确认", "不要重复发送").doesNotContain("synthetic-db-failure");
+        verify(transactions).rollback(any());
+        verify(usage,times(1)).save(any());
+        verify(transport,times(1)).execute(any(),any(),any());
+        assertThatThrownBy(()->service.execute(preview.previewToken(),true)).isInstanceOf(BusinessException.class);
+    }
+
+    @Test void resultWriteFailureRetainsContentWithoutAttemptingUsageOrReplay() {
+        when(results.save(any())).thenThrow(new org.springframework.dao.DataAccessResourceFailureException("synthetic-own-key"));
+        var service=service(true); var preview=service.preview(AiProvider.OPENAI,fileId,TaskType.RECEIPT);
+        var result=service.execute(preview.previewToken(),true);
+        assertThat(result.result()).contains("金额未知");
+        assertThat(result.persistenceStatus()).isEqualTo("UNCONFIRMED");
+        assertThat(result.id()).isNull();
+        assertThat(result.warning()).doesNotContain("synthetic-own-key");
+        verify(usage,never()).save(any());
+        verify(transactions).rollback(any());
+        verify(transport).execute(any(),any(),any());
+    }
+    @Test void commitAcknowledgementFailureNeverReturnsAnUnconfirmedIdOrFalseSavedStatus() {
+        doThrow(new org.springframework.transaction.TransactionSystemException("synthetic-own-key")).when(transactions).commit(any());
+        var service=service(true); var preview=service.preview(AiProvider.OPENAI,fileId,TaskType.RECEIPT);
+        var result=service.execute(preview.previewToken(),true);
+        assertThat(result.id()).isNull();
+        assertThat(result.persistenceStatus()).isEqualTo("UNCONFIRMED");
+        assertThat(result.inputTokens()).isEqualTo(10L);
+        assertThat(result.warning()).doesNotContain("synthetic-own-key");
+        verify(usage,times(1)).save(argThat(row -> row.getStatus().equals("SUCCEEDED")));
+        verify(transport).execute(any(),any(),any());
+    }
+    @Test void providerFailureAndFailedUsageSaveDoNotMaskKnownCountersOrRepeatWrites() {
+        when(transport.execute(any(),any(),anyString())).thenThrow(new PersonalAiUpstreamFailure(80L,1600L));
+        when(usage.save(any())).thenThrow(new org.springframework.dao.DataAccessResourceFailureException("synthetic-own-key"));
+        var service=service(true); var preview=service.preview(AiProvider.OPENAI,fileId,TaskType.RECEIPT);
+        assertThatThrownBy(()->service.execute(preview.previewToken(),true))
+                .isInstanceOfSatisfying(BusinessException.class, failure -> {
+                    assertThat(failure.getCode()).isEqualTo("PERSONAL_AI_USAGE_UNCONFIRMED");
+                    assertThat(failure.getMessage()).contains("80 / 1600", "不要重复发送").doesNotContain("synthetic-own-key");
+                });
+        verify(usage,times(1)).save(any());
+        verify(results,never()).save(any());
+        verify(transport).execute(any(),any(),any());
+    }
+
     @Test void failedRecognitionPersistsReportedUsageWithoutStoringUnusableOutput() {
         when(transport.execute(any(),any(),anyString())).thenThrow(new PersonalAiUpstreamFailure(80L,1600L));
         var service=service(true);var preview=service.preview(AiProvider.OPENAI,fileId,TaskType.RECEIPT);

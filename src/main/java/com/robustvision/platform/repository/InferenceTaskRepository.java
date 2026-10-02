@@ -1,14 +1,21 @@
 package com.robustvision.platform.repository;
 
 import com.robustvision.platform.domain.InferenceTaskEntity;
+import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface InferenceTaskRepository extends JpaRepository<InferenceTaskEntity, String> {
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select t from InferenceTaskEntity t where t.id = :id")
+    Optional<InferenceTaskEntity> findByIdForUpdate(@Param("id") String id);
+
     boolean existsByIdAndRequestedByIdAndInputFileOwnerId(String id, Long requestedById, Long ownerId);
     @EntityGraph(attributePaths = {"inputFile.owner", "outputFile.owner", "model", "requestedBy"})
     List<InferenceTaskEntity> findAllByOrderByCreatedAtDesc();

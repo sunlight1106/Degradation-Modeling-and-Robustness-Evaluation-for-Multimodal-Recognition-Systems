@@ -86,5 +86,5 @@ public class PersonalAiEndpointPolicy {
     static BusinessException invalid() { return new BusinessException(HttpStatus.BAD_REQUEST,
             "PERSONAL_AI_ENDPOINT_REJECTED", "供应商地址不安全或不在部署允许列表中"); }
     static BusinessException unavailable() { return new BusinessException(HttpStatus.BAD_GATEWAY,
-            "PERSONAL_AI_UPSTREAM_FAILED", "供应商请求未完成，请检查个人配置后重新预览；未使用其他密钥或本地降级"); }
+            "PERSONAL_AI_UPSTREAM_FAILED", "未取得供应商的完整可用结果；请求可能已发送并产生费用。请先核对供应商记录，不要重复发送；未使用其他密钥或本地降级"); }
 }

@@ -38,6 +38,12 @@ public class InferenceController {
         return ApiResponse.ok(inferenceService.create(request));
     }
 
+    @PostMapping("/{id}/recover")
+    @PreAuthorize("hasAuthority('experiment:run')")
+    public ApiResponse<ApiDtos.InferenceView> recover(@PathVariable String id) {
+        return ApiResponse.ok(inferenceService.recoverPendingTask(id));
+    }
+
     @GetMapping
     @PreAuthorize("hasAuthority('experiment:read') or hasAuthority('experiment:read:any')")
     public ApiResponse<List<ApiDtos.InferenceView>> list() {

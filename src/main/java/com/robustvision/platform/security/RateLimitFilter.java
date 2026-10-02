@@ -131,6 +131,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
         boolean mutation = !Set.of("GET", "HEAD", "OPTIONS").contains(request.getMethod());
         if (mutation && (path.contains("/auth/") || path.startsWith("/api/v1/account/"))) return "auth";
         if ("POST".equals(request.getMethod()) && (path.equals("/api/v1/inference/tasks")
+                || path.matches("/api/v1/inference/tasks/[^/]+/recover")
                 || path.equals("/api/v1/personal-ai/execute") || path.equals("/api/v1/personal-ai/recognition/execute"))) return "inference";
         if ("POST".equals(request.getMethod()) && path.equals("/api/v1/files")) return "files";
         return "general";

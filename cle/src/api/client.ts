@@ -167,7 +167,8 @@ export const api = {
   },
   models: () => request<ModelView[]>('/public/models'),
   modelRuntime: () => request<ModelRuntimeView>('/models/runtime'),
-  tasks: () => request<InferenceView[]>('/inference/tasks'),
+  tasks: (signal?: AbortSignal) => request<InferenceView[]>('/inference/tasks', { signal }),
+  recoverTask: (id: string, signal?: AbortSignal) => request<InferenceView>(`/inference/tasks/${encodeURIComponent(id)}/recover`, { method: 'POST', signal }),
   task: (id: string) => request<InferenceView>(`/inference/tasks/${id}`),
   run: (payload: { fileId: string; modelId: number; taskType: TaskType; enhancementEnabled: boolean }) =>
     request<InferenceView>('/inference/tasks', { method: 'POST', body: JSON.stringify(payload) }),

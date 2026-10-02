@@ -27,8 +27,9 @@ public final class PersonalAiDtos {
     public record ExecuteRequest(@NotBlank @Size(max = 100) String previewToken, @AssertTrue boolean confirmed) {
         @Override public String toString() { return "ExecuteRequest[REDACTED]"; }
     }
+    /** persistenceStatus concerns usage metadata; generated text is never automatically applied to a notebook. */
     public record ResultView(String action, String engine, String result, List<String> items, String note,
-                             String traceId, Long inputTokens, Long outputTokens) {}
+                             String traceId, Long inputTokens, Long outputTokens, String persistenceStatus, String warning) {}
     public record UsageView(String id, AiProvider provider, String model, String action, String status,
                             Long inputTokens, Long outputTokens, String errorCode, Instant createdAt) {}
 }

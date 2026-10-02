@@ -18,6 +18,8 @@ class PersonalAiServiceTest {
     private final CurrentUserService users = mock(CurrentUserService.class);
     private final PersonalAiSettingRepository settings = mock(PersonalAiSettingRepository.class);
     private final PersonalAiUsageRepository usage = mock(PersonalAiUsageRepository.class);
+    private final org.springframework.transaction.PlatformTransactionManager transactions = mock(org.springframework.transaction.PlatformTransactionManager.class);
+    private final PersonalAiPersistenceService persistence = new PersonalAiPersistenceService(usage, mock(PersonalRecognitionResultRepository.class), transactions);
     private final SecretEncryptionService encryption = new SecretEncryptionService("synthetic-test-only-master-key-at-least-32-bytes");
     private final PersonalAiEndpointPolicy policy = new PersonalAiEndpointPolicy("");
     private final PersonalAiTransport transport = spy(new PersonalAiTransport(new ObjectMapper(), policy));
@@ -34,7 +36,7 @@ class PersonalAiServiceTest {
         when(settings.findByOwnerIdAndProvider(22L, AiProvider.OPENAI)).thenReturn(Optional.empty());
         when(sources.buildContext(anyList())).thenReturn("");
         doReturn(new PersonalAiTransport.Completion("mock result", 10, 4)).when(transport).execute(any(), any(), anyString());
-        service = new PersonalAiService(users, settings, usage, encryption, policy, transport, new PersonalAiRateLimiter(), sources, true);
+        service = new PersonalAiService(users, settings, persistence, encryption, policy, transport, new PersonalAiRateLimiter(), sources, true);
     }
     private PreviewRequest request() { return new PreviewRequest(AiProvider.OPENAI, "draft", "title", "approved body", List.of()); }
     @Test void previewIsExactImmutableSingleUseAndOwnerBoundEvenForAdmin() throws Exception {
@@ -45,6 +47,7 @@ class PersonalAiServiceTest {
         assertThatThrownBy(() -> service.execute(new ExecuteRequest(preview.previewToken(), true))).isInstanceOf(BusinessException.class);
         when(users.requireCurrent()).thenReturn(a);
         var result = service.execute(new ExecuteRequest(preview.previewToken(), true));
+        assertThat(result.persistenceStatus()).isEqualTo("SAVED"); assertThat(result.warning()).isNull();
         assertThat(result.engine()).isEqualTo("PERSONAL_AI:OPENAI"); assertThat(result.result()).isEqualTo("mock result");
         var payload = ArgumentCaptor.forClass(PersonalAiTransport.Payload.class);
         verify(transport).execute(eq(AiProvider.OPENAI), payload.capture(), eq(KEY));
@@ -68,7 +71,7 @@ class PersonalAiServiceTest {
         var expired = service.preview(request());
         ReflectionTestUtils.setField(service, "clock", Clock.offset(Clock.systemUTC(), Duration.ofMinutes(6)));
         assertThatThrownBy(() -> service.execute(new ExecuteRequest(expired.previewToken(), true))).isInstanceOf(BusinessException.class);
-        var disabled = new PersonalAiService(users, settings, usage, encryption, policy, transport, new PersonalAiRateLimiter(), sources, false);
+        var disabled = new PersonalAiService(users, settings, persistence, encryption, policy, transport, new PersonalAiRateLimiter(), sources, false);
         var disabledPreview = disabled.preview(request());
         assertThatThrownBy(() -> disabled.execute(new ExecuteRequest(disabledPreview.previewToken(), true))).isInstanceOf(BusinessException.class).hasMessageContaining("尚未启用");
         verify(transport, never()).execute(any(), any(), any());
@@ -88,6 +91,52 @@ class PersonalAiServiceTest {
         var preview = service.preview(req);
         assertThatThrownBy(() -> service.execute(new ExecuteRequest(preview.previewToken(), true))).isInstanceOf(BusinessException.class);
         verify(transport, never()).execute(any(), any(), any());
+    }
+
+    @Test void completedTextSurvivesUsageWriteFailureWithoutRepeatingProviderCall() {
+        when(usage.save(any())).thenThrow(new org.springframework.dao.DataAccessResourceFailureException("synthetic-db-failure"));
+        var preview = service.preview(request());
+        var result = service.execute(new ExecuteRequest(preview.previewToken(), true));
+        assertThat(result.result()).isEqualTo("mock result");
+        assertThat(result.inputTokens()).isEqualTo(10L);
+        assertThat(result.outputTokens()).isEqualTo(4L);
+        assertThat(result.persistenceStatus()).isEqualTo("UNCONFIRMED");
+        assertThat(result.warning()).contains("用量记录", "不要重复发送").doesNotContain("synthetic-db-failure", KEY);
+        verify(usage, times(1)).save(any());
+        verify(transport, times(1)).execute(any(), any(), any());
+        assertThatThrownBy(() -> service.execute(new ExecuteRequest(preview.previewToken(), true))).isInstanceOf(BusinessException.class);
+    }
+
+    @Test void usageCommitFailurePreservesCompletionAndIsNotLoggedAsProviderFailure() {
+        doThrow(new org.springframework.transaction.TransactionSystemException("synthetic-commit-failure " + KEY)).when(transactions).commit(any());
+        var preview = service.preview(request());
+        var result = service.execute(new ExecuteRequest(preview.previewToken(), true));
+        assertThat(result.result()).isEqualTo("mock result");
+        assertThat(result.persistenceStatus()).isEqualTo("UNCONFIRMED");
+        assertThat(result.warning()).doesNotContain(KEY, "synthetic-commit-failure");
+        verify(usage).save(argThat(row -> row.getStatus().equals("SUCCEEDED") && row.getInputTokens().equals(10L)));
+        verify(transport).execute(any(), any(), any());
+    }
+    @Test void failedProviderResponseWithFailedAccountingRetainsKnownTokensAndNoDatabaseDetails() {
+        doThrow(new PersonalAiUpstreamFailure(100L, 1600L)).when(transport).execute(any(), any(), any());
+        when(usage.save(any())).thenThrow(new org.springframework.dao.DataAccessResourceFailureException("synthetic " + KEY));
+        var preview = service.preview(request());
+        assertThatThrownBy(() -> service.execute(new ExecuteRequest(preview.previewToken(), true)))
+                .isInstanceOfSatisfying(BusinessException.class, failure -> {
+                    assertThat(failure.getCode()).isEqualTo("PERSONAL_AI_USAGE_UNCONFIRMED");
+                    assertThat(failure.getMessage()).contains("100 / 1600", "可能已产生费用", "不要重复发送").doesNotContain(KEY);
+                });
+        verify(usage, times(1)).save(any());
+        verify(transport, times(1)).execute(any(), any(), any());
+    }
+    @Test void unknownNetworkOutcomeWithFailedAccountingDoesNotBecomeZeroUsage() {
+        doThrow(PersonalAiEndpointPolicy.unavailable()).when(transport).execute(any(), any(), any());
+        when(usage.save(any())).thenThrow(new org.springframework.dao.DataAccessResourceFailureException("synthetic"));
+        var preview = service.preview(request());
+        assertThatThrownBy(() -> service.execute(new ExecuteRequest(preview.previewToken(), true)))
+                .isInstanceOf(BusinessException.class).hasMessageContaining("未知 / 未知").hasMessageContaining("不要重复发送");
+        verify(usage, times(1)).save(any());
+        verify(transport, times(1)).execute(any(), any(), any());
     }
 
     @Test void upstreamFailureRecordsOnlySanitizedMetadataAndNeverUsesFallback() {

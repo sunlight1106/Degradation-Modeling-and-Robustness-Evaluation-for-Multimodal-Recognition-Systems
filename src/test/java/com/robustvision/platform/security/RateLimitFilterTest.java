@@ -41,6 +41,21 @@ class RateLimitFilterTest {
         var response = new MockHttpServletResponse(); filter.doFilter(request("203.0.113.8", null), response, (r,s) -> {});
         assertThat(response.getStatus()).isEqualTo(200); assertThat(response.getHeader("X-RateLimit-Remaining")).isEqualTo("1");
     }
+    @Test void recoverySharesInferenceMutationBudgetAndReadPollingDoesNotConsumeIt() throws Exception {
+        var filter = filter("");
+        for (int i = 0; i < 5; i++) {
+            var request = request("203.0.113.9", null);
+            request.setRequestURI(i % 2 == 0 ? "/api/v1/inference/tasks/example/recover" : "/api/v1/inference/tasks");
+            var response = new MockHttpServletResponse(); filter.doFilter(request, response, (r, s) -> {});
+            assertThat(response.getStatus()).isEqualTo(200);
+        }
+        var poll = request("203.0.113.9", null); poll.setMethod("GET"); poll.setRequestURI("/api/v1/inference/tasks/example");
+        var read = new MockHttpServletResponse(); filter.doFilter(poll, read, (r, s) -> {});
+        assertThat(read.getStatus()).isEqualTo(200);
+        var retry = request("203.0.113.9", null); retry.setRequestURI("/api/v1/inference/tasks/example/recover");
+        var limited = new MockHttpServletResponse(); filter.doFilter(retry, limited, (r, s) -> {});
+        assertThat(limited.getStatus()).isEqualTo(429);
+    }
     @Test void onlyExplicitTrustedProxyAllowsForwardedSourceAndStopsAtFirstUntrustedHop() {
         var filter = filter("10.0.0.2,10.0.0.3");
         assertThat(filter.sourceAddress(request("10.0.0.2", "198.51.100.1"))).isEqualTo("198.51.100.1");

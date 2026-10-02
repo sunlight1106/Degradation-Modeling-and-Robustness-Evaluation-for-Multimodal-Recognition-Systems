@@ -41,6 +41,9 @@ export interface PersonalAiPreview {
 }
 export interface PersonalAiResult extends Omit<NoteAssistResponse, 'action'> {
   action: PersonalAiAction
+  // This confirms usage metadata only; generated content still requires manual application.
+  persistenceStatus: 'SAVED' | 'UNCONFIRMED'
+  warning: string | null
   inputTokens?: number | null
   outputTokens?: number | null
 }
@@ -82,7 +85,9 @@ export interface RecognitionPreview {
   outboundBytes: number
 }
 export interface RecognitionResult {
-  id: string
+  id: string | null
+  persistenceStatus: 'SAVED' | 'UNCONFIRMED'
+  warning: string | null
   provider: string
   model: string
   taskType: PersonalRecognitionTask

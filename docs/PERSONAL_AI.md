@@ -57,6 +57,18 @@ Image preview building reserves one per-owner and at most two global build slots
 
 Usage is nullable when the provider does not report valid counters or a network outcome is unknown. Reported usage is retained even for truncated/refused/unusable responses; Gemini thought tokens and Anthropic cache input tokens are included when reported. A failed call does not imply zero cost. Provider pricing categories may differ, so these counts are not a monetary bill. `/api/v1/account/usage` reports owner-only all-time counts and known tokens; `/usage` is the latest-100 history.
 
+## Completion persistence and partial outcomes
+
+Provider I/O runs before short database transactions. Recognition output and its successful-usage row commit together; a rejected write rolls back both. Text completion records only usage metadata and never silently saves or changes the notebook. No database failure triggers another provider request or a second failed-usage write.
+
+Completion responses include `persistenceStatus` (`SAVED` or `UNCONFIRMED`) and nullable `warning`. `SAVED` means the usage transaction committed; for recognition it also means the result committed. An `UNCONFIRMED` response still returns the completed content and reported token counters, but a recognition result has no exposed ID and must not enter the saved-result history or offer a notebook source link. The UI displays a prominent warning and lets the user retain the text manually. A lost commit acknowledgement can mean the rows did save, so refresh history rather than assuming either outcome. Clients must inspect this status even when the HTTP response contains a completed result.
+
+If provider output was unusable or the network outcome was unknown and saving its failure metadata also fails, the API returns `PERSONAL_AI_USAGE_UNCONFIRMED`, keeps known token counters in the sanitized error message, and explicitly warns against resending. Unknown counters remain unknown. Provider charges may still apply; the platform's usage totals may be incomplete until reconciled with the provider. The one-use preview stays consumed in every case.
+
+There is no automatic paid-call replay or durable provider-attempt/reconciliation table. A process crash or lost HTTP response can still prevent delivery of generated content. Refresh saved history and check the provider's records before deciding whether to authorize a new request.
+
+`PersonalAiPersistenceIntegrationTest` runs the same six synthetic-only transaction cases on H2 by default and on a fresh, randomly named MySQL schema when `MYSQL_TEST_URL` is supplied: successful atomic writes, result/usage write rollback, commit-time constraint rollback, lost commit acknowledgement, and retained text/token counts. The test never calls a provider or adopts the database named by the supplied URL.
+
 ## Deployment and state
 
 Compose forwards `PERSONAL_AI_REMOTE_ENABLED` and `PERSONAL_AI_ALLOWED_BASE_URLS` to API/worker with safe false/empty defaults. Editing an env file alone does not alter a running container; recreate it through the normal operator workflow. This implementation's previews and fine-grained AI concurrency limits are process-local. Use a single API replica or sticky routing for preview/execute, plus shared gateway quotas before scaling. Restarting an API invalidates its unconsumed previews safely. Existing sessionless JWTs require fresh login after the session migration. No live deployment or real API configuration was changed during development.

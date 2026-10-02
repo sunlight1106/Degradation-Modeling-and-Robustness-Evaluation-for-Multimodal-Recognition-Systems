@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { api, ApiClientError } from '@/api/client'
 import { personalApi } from '@/api/personal'
-import type { NoteAssistAction } from '@/types/api'
+import type { NoteAssistAction, NoteAssistResponse } from '@/types/api'
 import type { ExperimentPreview, ExperimentSource, PersonalAiAction, PersonalAiPreview, PersonalAiProvider, PersonalAiResult, PersonalAiSetting } from '@/types/personal'
 import { toastStore } from '@/stores/toast'
 import { createRequestGuard, isPreviewExpired } from '@/lib/requestGuard'
@@ -19,7 +19,12 @@ const settings = ref<PersonalAiSetting[]>([]), settingsLoading = ref(false), set
 const mode = ref('LOCAL_RULES'), includeSources = ref(false)
 const busyAction = ref<PersonalAiAction | null>(null), phase = ref<'preview' | 'execute' | 'local' | null>(null)
 const aiError = ref(''), review = ref<PersonalAiPreview | null>(null), consent = ref(false)
-const result = ref<PersonalAiResult | null>(null)
+const result = ref<PersonalAiResult | NoteAssistResponse | null>(null)
+const persistenceWarning = computed(() => {
+  const output = result.value
+  if (!output || output.engine === 'LOCAL_RULES' || ('persistenceStatus' in output && output.persistenceStatus === 'SAVED')) return ''
+  return ('warning' in output && output.warning) || '模型已完成生成，但无法确认用量记录已保存。请复制保留结果，或手动应用到编辑区；请求可能已产生费用，请勿重复发送。'
+})
 const sourceGuard = createRequestGuard(), listGuard = createRequestGuard(), aiGuard = createRequestGuard(), settingGuard = createRequestGuard()
 const now = ref(Date.now())
 const clock = window.setInterval(() => { now.value = Date.now() }, 1000)
@@ -146,7 +151,7 @@ onBeforeUnmount(() => { cancelAi(); cancelSource(); listGuard.cancel(); settingG
         <label class="settings-check"><input v-model="consent" type="checkbox" :disabled="expired" /> 我确认将以上内容发送到 {{ review.provider }}，并使用我的 API 密钥及供应商额度。</label>
         <div class="settings-button-row"><button class="button button--dark" :disabled="!remoteEnabled || !consent || expired || !!busyAction || disabled" @click="execute">确认发送并生成</button><button class="button button--ghost" @click="cancelAi">取消，不发送</button></div>
       </section>
-      <section v-if="result" class="note-outbound-review" aria-label="生成结果预览"><div class="settings-button-row"><h4>{{ actionLabel(result.action) }} · {{ result.engine === 'LOCAL_RULES' ? '本地规则算法' : result.engine.replace('PERSONAL_AI:', '个人模型 ') }}</h4><button class="table-action" @click="result = null">关闭</button></div><p class="field-hint">尚未修改笔记。模型输出可能出错，请核对实验事实后应用。</p><ul v-if="result.action === 'tags'"><li v-for="(item, i) in result.items" :key="i">{{ item }}</li></ul><pre v-else>{{ result.result }}</pre><p v-if="result.note" class="field-hint">{{ result.note }}</p><button class="button button--dark" :disabled="disabled" @click="applyResult">{{ result.action === 'tidy' ? '用此结果替换正文' : result.action === 'tags' ? '合并标签' : '插入到文末' }}</button></section>
+      <section v-if="result" class="note-outbound-review" aria-label="生成结果预览"><div class="settings-button-row"><h4>{{ actionLabel(result.action) }} · {{ result.engine === 'LOCAL_RULES' ? '本地规则算法' : result.engine.replace('PERSONAL_AI:', '个人模型 ') }}</h4><button class="table-action" @click="result = null">关闭</button></div><p v-if="persistenceWarning" class="inline-alert inline-alert--error" role="alert">{{ persistenceWarning }}</p><p class="field-hint">尚未修改笔记。模型输出可能出错，请核对实验事实后应用。</p><p v-if="'inputTokens' in result || 'outputTokens' in result" class="field-hint">已报告 Tokens：{{ 'inputTokens' in result ? result.inputTokens ?? '未提供' : '未提供' }} / {{ 'outputTokens' in result ? result.outputTokens ?? '未提供' : '未提供' }}</p><ul v-if="result.action === 'tags'"><li v-for="(item, i) in result.items" :key="i">{{ item }}</li></ul><pre v-else>{{ result.result }}</pre><p v-if="result.note" class="field-hint">{{ result.note }}</p><button class="button button--dark" :disabled="disabled" @click="applyResult">{{ result.action === 'tidy' ? '用此结果替换正文' : result.action === 'tags' ? '合并标签' : '插入到文末' }}</button></section>
     </div>
   </section>
 </template>

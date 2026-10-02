@@ -18,7 +18,7 @@ public class PersonalRecognitionService {
     private final FileService fileService;
     private final PersonalAiSettingRepository settings;
     private final PersonalRecognitionResultRepository results;
-    private final PersonalAiUsageRepository usage;
+    private final PersonalAiPersistenceService persistence;
     private final SecretEncryptionService encryption;
     private final PersonalAiEndpointPolicy endpoints;
     private final PersonalAiTransport transport;
@@ -29,11 +29,11 @@ public class PersonalRecognitionService {
     private record Pending(Long owner,String settingId,long revision,AiProvider provider,String model,String fileId,
             String fileName,String hash,TaskType task,PersonalAiTransport.Payload payload,Instant expires) {}
     public PersonalRecognitionService(CurrentUserService current,FileAssetRepository files,FileService fileService,
-            PersonalAiSettingRepository settings,PersonalRecognitionResultRepository results,PersonalAiUsageRepository usage,
+            PersonalAiSettingRepository settings,PersonalRecognitionResultRepository results,PersonalAiPersistenceService persistence,
             SecretEncryptionService encryption,PersonalAiEndpointPolicy endpoints,PersonalAiTransport transport,
             PersonalAiRateLimiter limits,@Value("${app.personal-ai.remote-enabled:false}") boolean remoteEnabled) {
         this.current=current;this.files=files;this.fileService=fileService;this.settings=settings;this.results=results;
-        this.usage=usage;this.encryption=encryption;this.endpoints=endpoints;this.transport=transport;this.limits=limits;this.remoteEnabled=remoteEnabled;
+        this.persistence=persistence;this.encryption=encryption;this.endpoints=endpoints;this.transport=transport;this.limits=limits;this.remoteEnabled=remoteEnabled;
     }
     public Preview preview(AiProvider provider,String fileId,TaskType task) {
         Long owner=current.requireCurrent().getId(); limits.preview(owner);
@@ -84,20 +84,32 @@ public class PersonalRecognitionService {
         endpoints.validateBase(approved.provider(),setting.getBaseUrl());
         String action=approved.task()==TaskType.RECEIPT?"recognize_receipt":"recognize_plate";
         try(var permit=limits.acquire(owner)) {
+            String key=encryption.decrypt(setting.getEncryptedKey());
+            PersonalAiTransport.Completion completed;
             try {
-                var completed=transport.execute(approved.provider(),approved.payload(),encryption.decrypt(setting.getEncryptedKey()));
-                var result=results.save(new PersonalRecognitionResultEntity(owner,approved.fileId(),approved.fileName(),
-                        approved.provider(),approved.model(),approved.task(),completed.text(),completed.inputTokens(),completed.outputTokens()));
-                usage.save(new PersonalAiUsageEntity(owner,approved.provider(),approved.model(),action,"SUCCEEDED",completed.inputTokens(),completed.outputTokens(),null));
-                return view(result);
+                completed=transport.execute(approved.provider(),approved.payload(),key);
             } catch(BusinessException exception) {
-                usage.save(new PersonalAiUsageEntity(owner,approved.provider(),approved.model(),action,"FAILED",PersonalAiUpstreamFailure.input(exception),PersonalAiUpstreamFailure.output(exception),exception.getCode())); throw exception;
+                throw persistence.recordFailure(new PersonalAiUsageEntity(owner,approved.provider(),approved.model(),action,"FAILED",
+                        PersonalAiUpstreamFailure.input(exception),PersonalAiUpstreamFailure.output(exception),exception.getCode()),exception);
             } catch(Exception exception) {
-                usage.save(new PersonalAiUsageEntity(owner,approved.provider(),approved.model(),action,"FAILED",null,null,"PERSONAL_AI_UPSTREAM_FAILED"));
-                throw PersonalAiEndpointPolicy.unavailable();
+                var failure=PersonalAiEndpointPolicy.unavailable();
+                throw persistence.recordFailure(new PersonalAiUsageEntity(owner,approved.provider(),approved.model(),action,"FAILED",
+                        null,null,failure.getCode()),failure);
+            }
+            var result=new PersonalRecognitionResultEntity(owner,approved.fileId(),approved.fileName(),
+                    approved.provider(),approved.model(),approved.task(),completed.text(),completed.inputTokens(),completed.outputTokens());
+            try {
+                return view(persistence.recordRecognition(result,new PersonalAiUsageEntity(owner,approved.provider(),approved.model(),action,
+                        "SUCCEEDED",completed.inputTokens(),completed.outputTokens(),null)));
+            } catch(RuntimeException persistenceFailure) {
+                // A commit acknowledgement can be lost. Do not claim saved or not saved, or publish an unconfirmed result ID.
+                return new Result(null,result.getProvider(),result.getModel(),result.getTaskType(),result.getFileId(),result.getFileName(),
+                        completed.text(),completed.inputTokens(),completed.outputTokens(),result.getCreatedAt(),"UNCONFIRMED",
+                        PersonalAiPersistenceService.RECOGNITION_WARNING);
             }
         }
     }
+
     public List<Result> list() { return results.findTop100ByOwnerIdOrderByCreatedAtDesc(current.requireCurrent().getId()).stream().map(this::view).toList(); }
     private FileAssetEntity ownFile(String id,Long owner) {
         // Use an owner-scoped predicate before loading, without admin's global file permissions.
@@ -116,9 +128,9 @@ public class PersonalRecognitionService {
     @org.springframework.scheduling.annotation.Scheduled(fixedDelay = 30000)
     public void purgeExpiredPreviews(){ synchronized(pending){prune();} }
     private void prune(){pending.entrySet().removeIf(e->!e.getValue().expires().isAfter(Instant.now()));}
-    private Result view(PersonalRecognitionResultEntity r){return new Result(r.getId(),r.getProvider(),r.getModel(),r.getTaskType(),r.getFileId(),r.getFileName(),r.getResultText(),r.getInputTokens(),r.getOutputTokens(),r.getCreatedAt());}
+    private Result view(PersonalRecognitionResultEntity r){return new Result(r.getId(),r.getProvider(),r.getModel(),r.getTaskType(),r.getFileId(),r.getFileName(),r.getResultText(),r.getInputTokens(),r.getOutputTokens(),r.getCreatedAt(),"SAVED",null);}
     private static BusinessException invalid(String message){return new BusinessException(HttpStatus.BAD_REQUEST,"RECOGNITION_REQUEST_INVALID",message);}
     public record Preview(String previewToken,Instant expiresAt,AiProvider provider,String model,String endpoint,String fileId,String fileName,
             String sha256,String mime,long sizeBytes,TaskType taskType,String systemPrompt,String prompt,int outboundBytes){}
-    public record Result(String id,AiProvider provider,String model,TaskType taskType,String fileId,String fileName,String result,Long inputTokens,Long outputTokens,Instant createdAt){}
+    public record Result(String id,AiProvider provider,String model,TaskType taskType,String fileId,String fileName,String result,Long inputTokens,Long outputTokens,Instant createdAt,String persistenceStatus,String warning){}
 }
