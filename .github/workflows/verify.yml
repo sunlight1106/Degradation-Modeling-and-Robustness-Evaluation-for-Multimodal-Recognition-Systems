@@ -43,7 +43,7 @@ jobs:
           distribution: temurin
           java-version: '17'
           cache: maven
-      - run: ./mvnw -B -Dtest=MySqlSchemaMigrationTest,BillingConcurrencyIntegrationTest test
+      - run: ./mvnw -B -Dtest=MySqlSchemaMigrationTest,BillingConcurrencyIntegrationTest,NoteReferenceBatchQueryTest test
         env:
           MYSQL_TEST_URL: jdbc:mysql://127.0.0.1:3306/?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
           MYSQL_TEST_USERNAME: root

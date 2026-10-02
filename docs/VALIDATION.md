@@ -68,3 +68,15 @@ The final packaged application was tested with actual MySQL, Redis AOF, mandator
 There is no claim that browser rendering, MinIO/S3 or Docker runtime passed. The last two are blocked/unavailable as described above. Real external model inference remains intentionally untested with no keys configured.
 
 Artifacts/scripts: `scripts/local/verify-stack.py`, `scripts/local/start-stack.sh`, `scripts/performance/startup_benchmark.py`, the HTTP benchmark and guarded SQL fixture. Evidence excludes authentication tokens, passwords and database files.
+
+
+## Follow-on note-reference optimization (base 1e9eaf9)
+
+- Production scope: bounded scalar reference/target queries for note detail and shared-note reads. No schema, API or permission changes.
+- Final Maven verify in an isolated source copy: 49 tests, 43 passed, zero failures/errors, six intentional skips. The live runtime JAR was not overwritten.
+- Actual MySQL 8.4.6: all eight `NoteReferenceBatchQueryTest` methods passed, no skips. Coverage includes exact baseline DTO equality, missing/deleted targets, labels/order, 501-reference boundary, fresh state, note ownership, same-transaction add/remove responses, share-token revocation/expiry, and case-insensitive UUID matching.
+- 500-reference service/JDBC benchmark: 667 → 4 SQL statements, 1,333 → 0 entity loads; median 104.116 → 20.976 ms, p95 191.450 → 33.839 ms. Five warmups and 15 alternating samples; full results must match. These are not HTTP or production-throughput numbers.
+- Independent static review found no actionable defect. The MySQL CI job now includes the new correctness suite; timing remains opt-in.
+- No deployment, runtime restart, new credentials or destructive application-data migration was performed. Earlier component/runtime caveats remain applicable.
+
+Method and reproduction commands: [PERFORMANCE.md](PERFORMANCE.md#follow-on-note-reference-batch-actual-mysql-2026-10-02).
