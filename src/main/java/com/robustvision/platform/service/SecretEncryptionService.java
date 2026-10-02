@@ -18,7 +18,12 @@ public class SecretEncryptionService {
     private final SecretKeySpec key;
     private final SecureRandom random = new SecureRandom();
 
-    public SecretEncryptionService(@Value("${app.credentials.master-key:development-credential-master-key-change-me}") String masterKey) {
+    public SecretEncryptionService(@Value("${app.credentials.master-key:}") String masterKey) {
+        if (masterKey == null || masterKey.getBytes(StandardCharsets.UTF_8).length < 32
+                || masterKey.equals("development-credential-master-key-change-me")
+                || masterKey.equals("change-me") || masterKey.isBlank()) {
+            throw new IllegalStateException("必须配置至少 32 字节的独立凭据加密主密钥");
+        }
         try {
             byte[] digest = MessageDigest.getInstance("SHA-256").digest(masterKey.getBytes(StandardCharsets.UTF_8));
             this.key = new SecretKeySpec(digest, "AES");
@@ -48,7 +53,7 @@ public class SecretEncryptionService {
             cipher.init(Cipher.DECRYPT_MODE, key, new GCMParameterSpec(128, iv));
             return new String(cipher.doFinal(encrypted), StandardCharsets.UTF_8);
         } catch (Exception exception) {
-            throw new BusinessException(HttpStatus.SERVICE_UNAVAILABLE, "CREDENTIAL_DECRYPT_FAILED", "模型密钥无法解密，请由管理员重新录入");
+            throw new BusinessException(HttpStatus.SERVICE_UNAVAILABLE, "CREDENTIAL_DECRYPT_FAILED", "凭据无法解密，请检查部署加密配置或重新录入自己的密钥");
         }
     }
 }

@@ -17,6 +17,7 @@ import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class JwtService {
@@ -33,16 +34,25 @@ public class JwtService {
         if (secret == null || secret.getBytes(StandardCharsets.UTF_8).length < 32) {
             throw new IllegalArgumentException("JWT secret must contain at least 32 bytes");
         }
+        if (expirationMinutes <= 0) {
+            throw new IllegalArgumentException("JWT expiration must be a positive number of minutes");
+        }
         this.objectMapper = objectMapper;
         this.secret = secret.getBytes(StandardCharsets.UTF_8);
         this.expirationMinutes = expirationMinutes;
     }
 
+    public record ValidToken(String subject, String sessionId) {}
+
     public String createToken(UserDetails userDetails) {
-        Instant now = Instant.now();
+        return createToken(userDetails, UUID.randomUUID().toString(), Instant.now());
+    }
+
+    public String createToken(UserDetails userDetails, String sessionId, Instant now) {
         Map<String, Object> header = Map.of("alg", "HS256", "typ", "JWT");
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("sub", userDetails.getUsername());
+        payload.put("jti", sessionId);
         payload.put("iat", now.getEpochSecond());
         payload.put("exp", expiresAt(now).getEpochSecond());
         payload.put("authorities", userDetails.getAuthorities().stream().map(Object::toString).toList());
@@ -57,16 +67,26 @@ public class JwtService {
     }
 
     public Optional<String> validSubject(String token) {
+        return validToken(token).map(ValidToken::subject);
+    }
+
+    public Optional<ValidToken> validToken(String token) {
         try {
-            String[] parts = token.split("\\.");
+            if (token == null || token.length() > 8192) return Optional.empty();
+            String[] parts = token.split("\\.", -1);
             if (parts.length != 3) return Optional.empty();
             byte[] expected = sign(parts[0] + "." + parts[1]);
             byte[] actual = DECODER.decode(parts[2]);
             if (!MessageDigest.isEqual(expected, actual)) return Optional.empty();
+            JsonNode header = objectMapper.readTree(DECODER.decode(parts[0]));
+            if (!"HS256".equals(header.path("alg").asText()) || !"JWT".equals(header.path("typ").asText())) return Optional.empty();
             JsonNode claims = objectMapper.readTree(DECODER.decode(parts[1]));
-            if (!claims.hasNonNull("sub") || !claims.hasNonNull("exp")) return Optional.empty();
+            if (!claims.path("sub").isTextual() || claims.path("sub").asText().isBlank()
+                    || !claims.path("jti").isTextual() || !claims.path("exp").isIntegralNumber()) return Optional.empty();
+            String sessionId = claims.get("jti").asText();
+            if (!UUID.fromString(sessionId).toString().equals(sessionId)) return Optional.empty();
             if (Instant.now().getEpochSecond() >= claims.get("exp").asLong()) return Optional.empty();
-            return Optional.of(claims.get("sub").asText());
+            return Optional.of(new ValidToken(claims.get("sub").asText(), sessionId));
         } catch (Exception ignored) {
             return Optional.empty();
         }

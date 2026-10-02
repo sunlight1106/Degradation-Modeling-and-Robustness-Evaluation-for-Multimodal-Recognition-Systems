@@ -5,6 +5,8 @@ import AppLogo from './AppLogo.vue'
 import AppIcon from './AppIcon.vue'
 import { authStore } from '@/stores/auth'
 import { themeStore } from '@/stores/theme'
+import { toastStore } from '@/stores/toast'
+import { ApiClientError } from '@/api/client'
 
 interface NavItem {
   label: string
@@ -22,8 +24,9 @@ const isMobile = ref(mobileQuery.matches)
 const sidebar = ref<HTMLElement | null>(null)
 const menuButton = ref<HTMLButtonElement | null>(null)
 function syncViewport() { isMobile.value = mobileQuery.matches; if (!isMobile.value) mobileOpen.value = false }
-onMounted(() => mobileQuery.addEventListener('change', syncViewport))
-onBeforeUnmount(() => mobileQuery.removeEventListener('change', syncViewport))
+function handleSessionExpired() { void router.replace('/login') }
+onMounted(() => { mobileQuery.addEventListener('change', syncViewport); window.addEventListener('personal-platform:session-expired', handleSessionExpired) })
+onBeforeUnmount(() => { mobileQuery.removeEventListener('change', syncViewport); window.removeEventListener('personal-platform:session-expired', handleSessionExpired) })
 watch(mobileOpen, async open => {
   await nextTick()
   if (open) sidebar.value?.querySelector<HTMLElement>('a, button')?.focus()
@@ -44,6 +47,7 @@ watch(() => route.fullPath, () => { mobileOpen.value = false })
 const mainItems: NavItem[] = [
   { label: '工作台', to: '/app/home', icon: 'home', permission: 'dashboard:read' },
   { label: '知识库', to: '/app/knowledge', icon: 'book', permission: 'knowledge:read' },
+  { label: '背单词', to: '/app/vocabulary', icon: 'book' },
   { label: '我的笔记', to: '/app/notes', icon: 'note', permission: 'note:read' },
   { label: '实验台', to: '/app/upload', icon: 'spark', permission: 'experiment:run' },
   { label: '模型中心', to: '/app/models', icon: 'model', permission: 'model:read' },
@@ -72,7 +76,7 @@ function visible(items: NavItem[]) {
 }
 
 const navGroups = computed(() => [
-  { label: '探索与创作', items: visible(mainItems.filter(item => ['/app/home', '/app/knowledge', '/app/notes'].includes(item.to))) },
+  { label: '探索与创作', items: visible(mainItems.filter(item => ['/app/home', '/app/knowledge', '/app/vocabulary', '/app/notes'].includes(item.to))) },
   { label: '识别与评测', items: visible(mainItems.filter(item => ['/app/upload', '/app/models', '/app/images', '/app/comparisons'].includes(item.to))) },
   { label: '记录与账户', items: visible(mainItems.filter(item => ['/app/logs', '/app/downloads', '/app/billing', '/app/mail'].includes(item.to))) },
 ])
@@ -83,9 +87,16 @@ const title = computed(() => {
 
 const initials = computed(() => authStore.state.user?.displayName?.slice(0, 1).toUpperCase() || 'U')
 
-function logout() {
-  authStore.logout()
-  router.push('/')
+const loggingOut = ref(false)
+async function logout() {
+  if (loggingOut.value) return
+  loggingOut.value = true
+  try { await authStore.logout(); await router.push('/') }
+  catch (reason) {
+    if (reason instanceof ApiClientError && reason.code === 'SESSION_CHANGED') return
+    if (reason instanceof ApiClientError && reason.status === 401 && !authStore.state.user) await router.push('/login')
+    else toastStore.error('退出失败，会话尚未确认撤销。请重试。')
+  } finally { loggingOut.value = false }
 }
 </script>
 
@@ -125,7 +136,7 @@ function logout() {
           <strong>{{ authStore.state.user?.displayName }}</strong>
           <span>@{{ authStore.state.user?.username }} · {{ authStore.state.user?.roleName }}</span>
         </div>
-        <button class="icon-button" title="退出登录" @click="logout"><AppIcon name="logout" :size="19" /></button>
+        <button class="icon-button" title="退出登录" :disabled="loggingOut" @click="logout"><AppIcon name="logout" :size="19" /></button>
       </div>
     </aside>
 
@@ -147,7 +158,7 @@ function logout() {
 
         </div>
       </header>
-      <div id="workspace-content" class="app-content" tabindex="-1"><RouterView /></div>
+      <div id="workspace-content" class="app-content" tabindex="-1"><RouterView v-if="authStore.state.user" :key="authStore.state.user.id" /></div>
     </main>
   </div>
 </template>

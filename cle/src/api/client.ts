@@ -45,30 +45,87 @@ export class ApiClientError extends Error {
   }
 }
 
-export const tokenStorage = {
-  get: () => {
-    const current = localStorage.getItem(TOKEN_KEY)
-    if (current) return current
-    const legacy = localStorage.getItem(LEGACY_TOKEN_KEY)
-    if (legacy) { localStorage.setItem(TOKEN_KEY, legacy); localStorage.removeItem(LEGACY_TOKEN_KEY) }
-    return legacy
-  },
-  set: (token: string) => { localStorage.setItem(TOKEN_KEY, token); localStorage.removeItem(LEGACY_TOKEN_KEY) },
-  clear: () => { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(LEGACY_TOKEN_KEY) },
+// A tab is bound to the identity it loaded or explicitly logged into. It must never
+// silently borrow a different account token written by another tab.
+function readStoredToken(): string | null {
+  const current = localStorage.getItem(TOKEN_KEY)
+  if (current) return current
+  const legacy = localStorage.getItem(LEGACY_TOKEN_KEY)
+  if (legacy) { localStorage.setItem(TOKEN_KEY, legacy); localStorage.removeItem(LEGACY_TOKEN_KEY) }
+  return legacy
 }
+let boundToken = readStoredToken()
+let authGeneration = 0
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+function sessionChangedError() {
+  return new ApiClientError('SESSION_CHANGED', '登录账户已在其他页面更改。为保护当前内容，请重新登录后继续。', 401)
+}
+function invalidateChangedSession() {
+  boundToken = null
+  authGeneration++
+  // The listener clears private UI only; tokenStorage.clear is compare-and-clear
+  // and cannot delete the new account's token from another tab.
+  window.dispatchEvent(new Event('personal-platform:session-expired'))
+}
+export const tokenStorage = {
+  get: () => boundToken,
+  generation: () => authGeneration,
+  set: (token: string) => {
+    localStorage.setItem(TOKEN_KEY, token)
+    localStorage.removeItem(LEGACY_TOKEN_KEY)
+    boundToken = token
+    authGeneration++
+  },
+  clear: () => {
+    if (boundToken !== null && readStoredToken() === boundToken) {
+      localStorage.removeItem(TOKEN_KEY)
+      localStorage.removeItem(LEGACY_TOKEN_KEY)
+    }
+    boundToken = null
+    authGeneration++
+  },
+}
+window.addEventListener('storage', event => {
+  if (event.key !== null && event.key !== TOKEN_KEY && event.key !== LEGACY_TOKEN_KEY) return
+  if (readStoredToken() !== boundToken) invalidateChangedSession()
+})
+interface RequestSession { token: string | null; generation: number; anonymous: boolean }
+function captureSession(anonymous = false): RequestSession {
+  if (!anonymous && readStoredToken() !== boundToken) {
+    invalidateChangedSession()
+    throw sessionChangedError()
+  }
+  return { token: anonymous ? null : boundToken, generation: authGeneration, anonymous }
+}
+function assertSession(session: RequestSession) {
+  if (session.generation !== authGeneration) throw sessionChangedError()
+  if (!session.anonymous && readStoredToken() !== session.token) {
+    invalidateChangedSession()
+    throw sessionChangedError()
+  }
+}
+function expireSession(session: RequestSession) {
+  // A delayed 401 for A must not clear a newer login for B, even in the same tab.
+  if (!session.anonymous && session.token !== null && session.generation === authGeneration
+      && boundToken === session.token && readStoredToken() === session.token) {
+    tokenStorage.clear()
+    window.dispatchEvent(new Event('personal-platform:session-expired'))
+  }
+}
+export async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const session = captureSession(path === '/auth/login' || path === '/auth/register' || path.startsWith('/public/'))
   const headers = new Headers(init.headers)
-  const token = tokenStorage.get()
-  if (token) headers.set('Authorization', `Bearer ${token}`)
+  headers.delete('Authorization')
+  if (session.token) headers.set('Authorization', `Bearer ${session.token}`)
   if (init.body && !(init.body instanceof FormData)) headers.set('Content-Type', 'application/json')
   const response = await fetch(`${API_BASE}${path}`, { ...init, headers })
   const contentType = response.headers.get('content-type') || ''
   const envelope = contentType.includes('application/json')
     ? await response.json() as ApiEnvelope<T>
     : null
+  assertSession(session)
   if (!response.ok || !envelope?.success) {
-    if (response.status === 401) tokenStorage.clear()
+    if (response.status === 401) expireSession(session)
     throw new ApiClientError(
       envelope?.error?.code || 'REQUEST_FAILED',
       envelope?.error?.message || `请求失败 (${response.status})`,
@@ -80,12 +137,18 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 }
 
 async function fetchBlob(path: string): Promise<Blob> {
+  const session = captureSession()
   const headers = new Headers()
-  const token = tokenStorage.get()
-  if (token) headers.set('Authorization', `Bearer ${token}`)
+  if (session.token) headers.set('Authorization', `Bearer ${session.token}`)
   const response = await fetch(path.startsWith('/api/') ? path : `${API_BASE}${path}`, { headers })
-  if (!response.ok) throw new ApiClientError('DOWNLOAD_FAILED', `下载失败 (${response.status})`, response.status)
-  return response.blob()
+  assertSession(session)
+  if (!response.ok) {
+    if (response.status === 401) expireSession(session)
+    throw new ApiClientError('DOWNLOAD_FAILED', `下载失败 (${response.status})`, response.status)
+  }
+  const blob = await response.blob()
+  assertSession(session)
+  return blob
 }
 
 export const api = {
@@ -97,10 +160,10 @@ export const api = {
   me: () => request<UserView>('/auth/me'),
   dashboard: () => request<DashboardSummary>('/dashboard/summary'),
   files: () => request<FileView[]>('/files'),
-  upload: (file: File) => {
+  upload: (file: File, signal?: AbortSignal) => {
     const body = new FormData()
     body.append('file', file)
-    return request<FileView>('/files', { method: 'POST', body })
+    return request<FileView>('/files', { method: 'POST', body, signal })
   },
   models: () => request<ModelView[]>('/public/models'),
   modelRuntime: () => request<ModelRuntimeView>('/models/runtime'),
@@ -211,8 +274,8 @@ export const api = {
     request<NoteView>(`/notes/${encodeURIComponent(id)}/references/${referenceId}`, { method: 'DELETE' }),
   assistNote: (id: string, payload: { action: NoteAssistAction }) =>
     request<NoteAssistResponse>(`/notes/${encodeURIComponent(id)}/assist`, { method: 'POST', body: JSON.stringify(payload) }),
-  assistDraft: (payload: { action: NoteAssistAction; body: string; title?: string }) =>
-    request<NoteAssistResponse>('/notes/assist', { method: 'POST', body: JSON.stringify(payload) }),
+  assistDraft: (payload: { action: NoteAssistAction; body: string; title?: string }, signal?: AbortSignal) =>
+    request<NoteAssistResponse>('/notes/assist', { method: 'POST', body: JSON.stringify(payload), signal }),
   exportNote: (id: string, format: NoteExportFormat, filename: string) =>
     api.download(`/notes/${encodeURIComponent(id)}/export?format=${format}`, filename),
   createNoteShare: (id: string, payload: { label?: string; expiresInDays?: number } = {}) =>

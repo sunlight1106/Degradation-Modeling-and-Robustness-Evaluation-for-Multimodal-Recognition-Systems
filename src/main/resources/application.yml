@@ -94,12 +94,17 @@ app:
   rate-limit:
     enabled: ${RATE_LIMIT_ENABLED:true}
     general-per-minute: ${RATE_LIMIT_GENERAL:120}
+    auth-per-minute: ${RATE_LIMIT_AUTH:10}
+    trusted-proxies: ${RATE_LIMIT_TRUSTED_PROXIES:}
     upload-per-minute: ${RATE_LIMIT_UPLOAD:30}
     inference-per-minute: ${RATE_LIMIT_INFERENCE:20}
   billing:
     default-balance-cny: ${DEFAULT_USER_BALANCE_CNY:20.00}
     default-monthly-quota-cny: ${DEFAULT_USER_MONTHLY_QUOTA_CNY:100.00}
     sandbox-otp: ${PAYMENT_SANDBOX_OTP:246810}
+  personal-ai:
+    remote-enabled: ${PERSONAL_AI_REMOTE_ENABLED:false}
+    allowed-base-urls: ${PERSONAL_AI_ALLOWED_BASE_URLS:}
   credentials:
     master-key: ${CREDENTIAL_MASTER_KEY}
   payment:

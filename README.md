@@ -9,7 +9,7 @@
 ## 完整数据库与性能改进（2026-10）
 
 - [完整组件运行、持久化与当前环境验证边界](docs/STACK.md)
-- [22 张业务表、V1–V7迁移与真实 MySQL 契约测试](database/README.md)
+- [31 张业务表、V1–V12 迁移与真实 MySQL 契约测试](database/README.md)
 - [算法/查询优化、基准方法与复现命令](docs/PERFORMANCE.md)
 - [实测结果与验证清单](docs/VALIDATION.md)
 
@@ -40,7 +40,7 @@
 | --- | --- | --- | --- |
 | JDK | **17**（Temurin/Oracle 均可） | 编译与运行 Spring Boot 后端 | `java -version` |
 | Maven | **3.9+** | 依赖管理与构建 | `mvn -version` |
-| Node.js | **22.x**（LTS） | 前端构建与开发服务器 | `node -v` |
+| Node.js | **22.22.2+**（22.x LTS） | 前端构建与开发服务器 | `node -v` |
 | npm | 随 Node 22 附带（≥ 10） | 前端依赖安装 | `npm -v` |
 | FFmpeg | 4.x 或 5.x/6.x/7.x，需在 `PATH` 中 | 视频音轨降噪与媒体测试 | `ffmpeg -version` |
 | MySQL | **8.4** | 业务数据库（Docker 方式无需自装） | `mysql --version` |
@@ -117,9 +117,10 @@ sh deploy.sh
 
 ### 知识库与笔记
 
-- **知识库**：跨学科主题树（内置生物化学与医学 6 主题 18 张知识卡，可自行增删改），知识卡支持 Markdown、标签、与笔记双向链接。
+- **知识库**：跨学科主题树（内置生物化学与医学 6 主题 18 张知识卡，公共卡仅管理员维护，个人卡由本人管理），知识卡支持 Markdown、标签、与笔记双向链接。
 - **笔记**：Markdown 编辑器 + 实时预览；可引用已上传的图片/视频、某次推理任务的输出与 `trace_id` 作为可复现证据。
-- **AI 辅助整理**：摘要、大纲、标签、格式润色四种动作。配了模型密钥走真实模型；未配则走本地规则引擎，并在结果中**如实标注** `engine=LOCAL_RULES`，不伪装成模型输出。
+- **个人 AI 辅助整理**：摘要、大纲、标签、格式整理、实验报告草稿；每位用户使用自己的加密 API 配置。先预览确切外发内容，再确认调用，结果预览后手动应用。本地规则为单独选项，明确标注 `LOCAL_RULES`，不会暗中改用管理员密钥。
+- **实验材料选择**：只列出本人的已完成实验及个人图片识别结果；服务端在选择、插入预览与 AI 执行时校验归属。
 - **导出**：Markdown / PDF / Word 三种格式。PDF 与 Word 均正确支持中文（PDF 内嵌 STSong CJK 字体，非 ASCII 不会被替换为 `?`）。
 - **分享**：生成平台内只读分享链接，可设有效期、统计浏览次数、随时撤销（撤销后返回 410）。
 
@@ -127,39 +128,33 @@ sh deploy.sh
 
 - **RBAC 权限**：管理员 / 研究员 / 查看者三种角色，权限码以角色为单位统一管理，管理员可在后台创建用户、改角色、启停账号。
 - **计费沙箱**：个人钱包、月度配额、用量账本；支付宝/微信/银行卡**本地充值沙箱**（扫码确认、短信验证码、到账轮询均为演示，不发生真实扣款）。
-- **供应商预算**：管理员维护各供应商预算与已用/剩余额度，API 密钥以 AES-256-GCM 加密入库，支持逗号分隔密钥环与 401/429 自动轮换。
+- **个人设置**：资料、密码、登录会话、个人 AI、真实平台用量、私有 JSON 导出与账户隔离的外观偏好。密码/角色等安全更改使相关会话失效，旧无会话 JWT 升级后需重新登录。
+- **凭据隔离**：个人 API 密钥以 AES-256-GCM 加密入库，只能由本人配置使用，响应不返回密钥。历史管理员密钥记录保留，但个人调用不会读取它们。费用由个人供应商计收，平台不冒充供应商余额/账单。
 - **协作**：GitHub 风格工作空间、成员角色、带病毒扫描附件的站内信箱。
 
 ---
 
-## 模型接入
+## 模型接入与个人图片识别
 
-默认 `MODEL_MODE=demo`：返回**明确标注**的合成演示结果（结果体带 `adapter: DEMO`、`warnings: "DEMO 结果不得用于论文结论"`），不产生真实调用费用，**不能**作为准确率或论文结论。
+默认 `MODEL_MODE=demo`：旧实验对照入口返回明确标注的合成结果，不产生真实模型费用，不能用于准确率或论文结论。旧 `live` / `http` 公共密钥执行入口已停用。
 
-要接入真实模型，编辑 `.env`：
+真实文本整理、票据和车牌图片识别使用独立个人 BYOK 流程：
 
-```env
-MODEL_MODE=live
-DEEPSEEK_API_KEYS=sk-xxx,sk-yyy      # 多个密钥逗号分隔，自动轮换
-KIMI_API_KEYS=
-QWEN_API_KEYS=
-# 模型 ID 改成你账户实际可用的名称
-DEEPSEEK_MODEL=deepseek-v4-flash-vision-exp
-KIMI_MODEL=kimi-k3
-QWEN_MODEL=qwen3-vl-plus
-QWEN_VIDEO_MODEL=qwen3.5-omni-plus
-```
+1. 部署者保管独立的 `CREDENTIAL_MASTER_KEY`，通过 HTTPS 提供应用；用户在「设置 → 个人 AI」配置自己的供应商、模型 ID 和密钥。
+2. 部署默认 `PERSONAL_AI_REMOTE_ENABLED=false`，所有外部调用关闭。准备好后，部署者可以在自己的配置中启用，再重新创建后端容器使配置生效。开发验证没有打开该开关或调用真实供应商。
+3. 每次先查看供应商/模型/确切文本；图片识别还展示自己的图片、SHA-256、大小和提示词。确认后才发送，最多一次调用，结果需人工检查。
+4. 图片须为通过病毒扫描的 PNG/JPEG/WebP、最多 5 MiB。票据/车牌结果归本人保存，可在笔记选择器插入。真实视频调用尚未开放；DEMO 视频流程仍保留。
 
-改完 `docker compose up -d backend model-worker` 重启生效。
+文本适配器覆盖 OpenAI、Gemini、xAI/Grok、Claude、DeepSeek、Kimi、Qwen，以及通过 Groq/Together 等真实托管 API 的 Llama 和自定义 OpenAI 兼容网关。分别实现 OpenAI Chat、Anthropic Messages、Gemini generateContent 协议。模型须由用户明确选择，账户可用性与视觉能力不作默认保证；DeepSeek 图片调用尚未获验证，因此当前拒绝该路径。
 
-| 供应商 | 默认模型 | 图片 | 视频/音频 | 接入方式 |
-| --- | --- | --- | --- | --- |
-| DeepSeek | `deepseek-v4-flash-vision-exp` | ✅ | ❌ | OpenAI 兼容图片消息 |
-| Kimi | `kimi-k3` | ✅ | ✅ | 图片内联；视频先传 Files API 再传 `ms://` ID |
-| 千问 | `qwen3-vl-plus` | ✅ | — | OpenAI 兼容图片消息 |
-| 千问 | `qwen3.5-omni-plus` | — | ✅ | 音视频消息；Base64 请求约 7 MB 上限 |
+自定义/区域网关须由部署者加入 `PERSONAL_AI_ALLOWED_BASE_URLS` 的精确 HTTPS 地址列表；拒绝私网、环回、保留地址、重定向与 DNS 重绑定。这里不提供任意 localhost/内网穿透，也不假设存在通用 Meta API。
 
-自建/本地模型：设 `MODEL_MODE=http` + `MODEL_BASE_URL`，按 `ai/` 目录内适配器实现的 HTTP 契约对接。本仓库**不含任何模型权重**。
+- [个人 AI 接口、安全默认与官方协议来源](docs/PERSONAL_AI.md)
+- [账户、权限与请求安全边界](docs/SECURITY.md)
+- [恶意脚本/主动内容检查及兼容限制](docs/CONTENT_SECURITY.md)
+- [独立词汇学习：词书、四次答对与次日复习](docs/VOCABULARY.md)
+
+所有供应商协议验证使用模拟服务与合成数据，不代表已验证真实密钥、地区路由、费用或所有模型兼容性。
 
 ---
 
@@ -171,7 +166,7 @@ QWEN_VIDEO_MODEL=qwen3.5-omni-plus
 | `src/main/` | Spring Boot API、业务逻辑、鉴权、配置、Flyway 引导 |
 | `src/test/` | 登录、权限、上传、实验、报告、媒体处理的集成测试 |
 | `ai/src/main/java/` | 模型适配器、密钥轮转、媒体处理、笔记 AI 辅助；由根 Maven 统一编译 |
-| `database/migrations/` | Flyway 版本迁移（V1–V7），**唯一的建表来源** |
+| `database/migrations/` | Flyway 版本迁移（V1–V12），**唯一的建表来源** |
 | `models/` | 模型扩展占位目录；不提交权重 |
 | `compose.yaml` | MySQL、Redis、MinIO、ClamAV、API、Worker、客户端的服务编排 |
 | `deploy.ps1` / `deploy.sh` | 一键生成 `.env` 并部署 |

@@ -61,7 +61,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     @Override protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
-        String category = category(request.getRequestURI());
+        String category = category(request);
         int limit = switch (category) { case "auth" -> authLimit; case "inference" -> inferenceLimit;
             case "files" -> uploadLimit; default -> generalLimit; };
         long minute = Instant.now().getEpochSecond() / 60;
@@ -126,10 +126,13 @@ public class RateLimitFilter extends OncePerRequestFilter {
         catch (Exception invalid) { throw new IllegalArgumentException("Invalid literal IP address"); }
     }
 
-    private String category(String path) {
-        if (path.contains("/auth/") || path.startsWith("/api/v1/account/")) return "auth";
-        if (path.contains("/inference/") || path.contains("/personal-ai/execute")) return "inference";
-        if (path.contains("/files")) return "files";
+    private String category(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        boolean mutation = !Set.of("GET", "HEAD", "OPTIONS").contains(request.getMethod());
+        if (mutation && (path.contains("/auth/") || path.startsWith("/api/v1/account/"))) return "auth";
+        if ("POST".equals(request.getMethod()) && (path.equals("/api/v1/inference/tasks")
+                || path.equals("/api/v1/personal-ai/execute") || path.equals("/api/v1/personal-ai/recognition/execute"))) return "inference";
+        if ("POST".equals(request.getMethod()) && path.equals("/api/v1/files")) return "files";
         return "general";
     }
 }

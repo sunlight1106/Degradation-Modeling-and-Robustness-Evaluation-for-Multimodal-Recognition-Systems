@@ -1,5 +1,7 @@
 import { reactive } from 'vue'
 import { api, tokenStorage, ApiClientError } from '@/api/client'
+import { themeStore } from './theme'
+import { personalApi } from '@/api/personal'
 import type { UserView } from '@/types/api'
 
 const state = reactive<{
@@ -12,39 +14,57 @@ export const authStore = {
   state,
   get token() { return tokenStorage.get() },
   async login(username: string, password: string) {
+    let operationGeneration = tokenStorage.generation()
     state.loading = true
     try {
       const response = await api.login(username, password)
+      if (tokenStorage.generation() !== operationGeneration) throw new ApiClientError('SESSION_CHANGED', '登录状态已更改，请重试。', 401)
       tokenStorage.set(response.token)
+      operationGeneration = tokenStorage.generation()
       state.user = response.user
+      themeStore.useAccount(response.user.id)
       state.initialized = true
       return response.user
     } finally {
-      state.loading = false
+      if (tokenStorage.generation() === operationGeneration) state.loading = false
     }
   },
   async ensureUser() {
-    if (state.user) return state.user
+    if (state.user && tokenStorage.get()) return state.user
+    if (state.user) authStore.clearSession()
     if (!tokenStorage.get()) {
       state.initialized = true
       return null
     }
+    const expectedToken = tokenStorage.get()
+    const expectedGeneration = tokenStorage.generation()
+    const isCurrent = () => tokenStorage.get() === expectedToken && tokenStorage.generation() === expectedGeneration
     state.loading = true
     try {
-      state.user = await api.me()
-      return state.user
+      const user = await api.me()
+      if (!isCurrent()) return state.user
+      state.user = user
+      themeStore.useAccount(user.id)
+      return user
     } catch (reason) {
+      if (!isCurrent()) return state.user
       if (reason instanceof ApiClientError && reason.status === 401) tokenStorage.clear()
       state.user = null
       return null
     } finally {
-      state.loading = false
-      state.initialized = true
+      if (isCurrent()) { state.loading = false; state.initialized = true }
     }
   },
-  logout() {
+  async logout() {
+    // Revoke the server-side session before dropping the browser token.
+    await personalApi.logout()
+    authStore.clearSession()
+  },
+  clearSession() {
     tokenStorage.clear()
+    themeStore.useAccount()
     state.user = null
+    state.loading = false
     state.initialized = true
   },
   has(permission: string) {
@@ -55,3 +75,5 @@ export const authStore = {
   },
 }
 
+
+window.addEventListener('personal-platform:session-expired', () => authStore.clearSession())

@@ -18,6 +18,7 @@ const error = ref('')
 const busy = ref(false)
 
 const canWrite = computed(() => authStore.has('knowledge:write'))
+const writableTopics = computed(() => topics.value.filter(topic => !topic.builtin))
 
 const domains = computed(() => {
   const map = new Map<string, KnowledgeTopicView[]>()
@@ -125,9 +126,16 @@ const entryModal = ref(false)
 const entryForm = ref({ topicId: 0, title: '', summary: '', body: '', tags: '' })
 
 function openEntryModal(source?: KnowledgeEntryView) {
+  const preferredId = source?.topicId ?? activeTopicId.value
+  const target = writableTopics.value.find(topic => topic.id === preferredId) ?? writableTopics.value[0]
+  if (!target) {
+    toastStore.error('请先创建一个个人主题，再新建或复制知识卡。公共主题由平台维护。')
+    topicModal.value = true
+    return
+  }
   entryForm.value = source
-    ? { topicId: source.topicId, title: '', summary: '', body: source.body, tags: source.tags.join(', ') }
-    : { topicId: activeTopicId.value ?? topics.value[0]?.id ?? 0, title: '', summary: '', body: '', tags: '' }
+    ? { topicId: target.id, title: '', summary: '', body: source.body, tags: source.tags.join(', ') }
+    : { topicId: target.id, title: '', summary: '', body: '', tags: '' }
   entryModal.value = true
 }
 
@@ -338,7 +346,7 @@ onMounted(load)
           <label class="field-label">
             所属主题
             <select v-model.number="entryForm.topicId" class="field-input" required>
-              <option v-for="topic in topics" :key="topic.id" :value="topic.id">{{ topic.domain }} · {{ topic.name }}</option>
+              <option v-for="topic in writableTopics" :key="topic.id" :value="topic.id">{{ topic.domain }} · {{ topic.name }}</option>
             </select>
           </label>
           <label class="field-label">标签（逗号分隔）<input v-model="entryForm.tags" class="field-input" maxlength="500" placeholder="糖酵解, PFK-1, 代谢调控" /></label>

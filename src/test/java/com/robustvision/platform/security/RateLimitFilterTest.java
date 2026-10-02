@@ -30,6 +30,17 @@ class RateLimitFilterTest {
             assertThat(response.getHeader("X-RateLimit-Status")).isEqualTo("bounded-local-fallback");
         }
     }
+    @Test void readingSettingsAndPollingTasksDoNotConsumeSensitiveMutationBudget() throws Exception {
+        var filter = filter("");
+        for (int i = 0; i < 6; i++) {
+            var req = request("203.0.113.8", null); req.setMethod("GET");
+            req.setRequestURI(i % 2 == 0 ? "/api/v1/account/profile" : "/api/v1/inference/tasks/example");
+            var response = new MockHttpServletResponse(); filter.doFilter(req, response, (r,s) -> {});
+            assertThat(response.getStatus()).isEqualTo(200);
+        }
+        var response = new MockHttpServletResponse(); filter.doFilter(request("203.0.113.8", null), response, (r,s) -> {});
+        assertThat(response.getStatus()).isEqualTo(200); assertThat(response.getHeader("X-RateLimit-Remaining")).isEqualTo("1");
+    }
     @Test void onlyExplicitTrustedProxyAllowsForwardedSourceAndStopsAtFirstUntrustedHop() {
         var filter = filter("10.0.0.2,10.0.0.3");
         assertThat(filter.sourceAddress(request("10.0.0.2", "198.51.100.1"))).isEqualTo("198.51.100.1");

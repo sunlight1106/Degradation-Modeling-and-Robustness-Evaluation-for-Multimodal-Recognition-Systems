@@ -16,14 +16,15 @@ marked.setOptions({
 
 const SANITIZE_CONFIG: Config = {
   USE_PROFILES: { html: true },
-  FORBID_TAGS: ['style', 'form', 'input', 'button', 'select', 'textarea', 'iframe', 'object', 'embed'],
-  FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'onfocus', 'formaction', 'srcdoc'],
+  FORBID_TAGS: ['style', 'form', 'input', 'button', 'select', 'textarea', 'iframe', 'object', 'embed', 'img', 'picture', 'source', 'video', 'audio', 'link'],
+  FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'onfocus', 'formaction', 'srcdoc', 'style', 'src', 'srcset', 'poster'],
   ALLOW_DATA_ATTR: false,
 }
 
 /** 把 Markdown 渲染为消毒后的 HTML 字符串。 */
 export function renderMarkdown(source: string | null | undefined): string {
   if (!source || !source.trim()) return ''
+  // Never auto-load images/media from notes or untrusted model output: a remote URL can exfiltrate viewing activity.
   const raw = marked.parse(source, { async: false }) as string
   return DOMPurify.sanitize(raw, SANITIZE_CONFIG)
 }

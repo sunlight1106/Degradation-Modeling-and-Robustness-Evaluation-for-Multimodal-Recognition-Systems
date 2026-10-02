@@ -1,16 +1,10 @@
 package com.robustvision.platform.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.robustvision.platform.common.BusinessException;
-import com.robustvision.platform.domain.ModelProvider;
 import com.robustvision.platform.dto.ApiDtos;
 import org.slf4j.MDC;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestClient;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -23,51 +17,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 
-/**
- * 笔记 AI 整理服务：摘要、大纲、标签、格式整理四种动作。
- *
- * 引擎选择如实标注，绝不混淆：
- * - MODEL：live 模式且至少一家供应商配了密钥，走真实 chat completion
- * - LOCAL_RULES：demo 模式或无密钥，使用本地确定性算法
- *
- * 本地实现延续项目既有原则——不把规则结果冒充模型结论。响应中的 engine 字段
- * 与 note 字段会明确告知用户当前结果来自哪里，前端也会展示。
- */
+/** Explicit local-rule note helper; remote BYOK requests use PersonalAiService after a consent preview. */
 @Service
 public class NoteAssistService {
 
     private static final Pattern CJK = Pattern.compile("[\\u4e00-\\u9fff]");
     private static final int MAX_BODY_CHARS = 24000;
-
-    private final ProviderKeyRingService keyRing;
-    private final ObjectMapper objectMapper;
-    private final String mode;
-    private final String qwenBaseUrl;
-    private final String qwenModel;
-    private final String deepSeekBaseUrl;
-    private final String deepSeekModel;
-    private final String kimiBaseUrl;
-    private final String kimiModel;
-
-    public NoteAssistService(ProviderKeyRingService keyRing,
-                             ObjectMapper objectMapper,
-                             @Value("${app.model.mode:demo}") String mode,
-                             @Value("${app.model.qwen.base-url:https://dashscope.aliyuncs.com/compatible-mode/v1}") String qwenBaseUrl,
-                             @Value("${app.model.qwen.model:qwen3-vl-plus}") String qwenModel,
-                             @Value("${app.model.deepseek.base-url:https://api.deepseek.com}") String deepSeekBaseUrl,
-                             @Value("${app.model.deepseek.model:deepseek-v4-flash-vision-exp}") String deepSeekModel,
-                             @Value("${app.model.kimi.base-url:https://api.moonshot.cn/v1}") String kimiBaseUrl,
-                             @Value("${app.model.kimi.model:kimi-k3}") String kimiModel) {
-        this.keyRing = keyRing;
-        this.objectMapper = objectMapper;
-        this.mode = mode;
-        this.qwenBaseUrl = qwenBaseUrl;
-        this.qwenModel = qwenModel;
-        this.deepSeekBaseUrl = deepSeekBaseUrl;
-        this.deepSeekModel = deepSeekModel;
-        this.kimiBaseUrl = kimiBaseUrl;
-        this.kimiModel = kimiModel;
-    }
 
     public ApiDtos.NoteAssistResponse assist(ApiDtos.NoteAssistRequest request) {
         String traceId = MDC.get("traceId");
@@ -80,144 +35,11 @@ public class NoteAssistService {
         if (body.isBlank()) {
             throw new BusinessException(HttpStatus.BAD_REQUEST, "ASSIST_BODY_EMPTY", "笔记内容为空，无法整理");
         }
-        if (body.length() > MAX_BODY_CHARS) body = body.substring(0, MAX_BODY_CHARS);
+        if (body.length() > MAX_BODY_CHARS) throw new BusinessException(HttpStatus.PAYLOAD_TOO_LARGE,
+                "ASSIST_BODY_TOO_LARGE", "单次本地整理最多 24000 个字符，请减少内容后重试；不会截断正文");
 
-        ModelProvider provider = selectProvider();
-        if (provider != null) {
-            try {
-                return callModel(provider, action, request.title(), body, traceId);
-            } catch (BusinessException exception) {
-                // 模型不可用时降级到本地规则，但必须在结果中如实说明
-                return local(action, body, traceId,
-                        "模型调用失败（" + exception.getMessage() + "），已改用本地规则整理");
-            }
-        }
+        // This legacy route is explicitly local-only. Remote BYOK execution requires a consent preview.
         return local(action, body, traceId, null);
-    }
-
-    // ------------------------------------------------------------------
-    // 引擎选择与模型调用
-    // ------------------------------------------------------------------
-
-    /** 选择第一个配置了密钥的供应商；demo 模式或全未配置时返回 null。 */
-    private ModelProvider selectProvider() {
-        if (!"live".equalsIgnoreCase(mode)) return null;
-        for (ModelProvider provider : List.of(ModelProvider.QWEN, ModelProvider.DEEPSEEK, ModelProvider.KIMI)) {
-            if (keyRing.configured(provider)) return provider;
-        }
-        return null;
-    }
-
-    private ApiDtos.NoteAssistResponse callModel(ModelProvider provider, String action,
-                                                 String title, String body, String traceId) {
-        String baseUrl = switch (provider) {
-            case QWEN -> qwenBaseUrl;
-            case DEEPSEEK -> deepSeekBaseUrl;
-            default -> kimiBaseUrl;
-        };
-        String model = switch (provider) {
-            case QWEN -> qwenModel;
-            case DEEPSEEK -> deepSeekModel;
-            default -> kimiModel;
-        };
-
-        Map<String, Object> payload = new LinkedHashMap<>();
-        payload.put("model", model);
-        payload.put("messages", List.of(
-                Map.of("role", "system", "content", systemPrompt()),
-                Map.of("role", "user", "content", userPrompt(action, title, body))));
-        payload.put("temperature", "tags".equals(action) || "outline".equals(action) ? 0.2 : 0.4);
-        payload.put("max_tokens", 1600);
-
-        int attempts = Math.max(1, Math.min(3, keyRing.count(provider)));
-        BusinessException lastError = null;
-        for (int attempt = 0; attempt < attempts; attempt++) {
-            String apiKey = keyRing.next(provider);
-            try {
-                JsonNode response = RestClient.create(baseUrl).post()
-                        .uri("/chat/completions")
-                        .header("Authorization", "Bearer " + apiKey)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .body(payload)
-                        .retrieve()
-                        .body(JsonNode.class);
-                String content = response == null ? null
-                        : response.path("choices").path(0).path("message").path("content").asText(null);
-                if (content == null || content.isBlank()) {
-                    throw new BusinessException(HttpStatus.BAD_GATEWAY, "ASSIST_MODEL_EMPTY",
-                            keyRing.displayName(provider) + " 返回了空内容");
-                }
-                long inputTokens = response.path("usage").path("prompt_tokens").asLong(0);
-                long outputTokens = response.path("usage").path("completion_tokens").asLong(0);
-                return buildResponse(action, content, "MODEL:" + keyRing.displayName(provider),
-                        traceId, inputTokens, outputTokens, null);
-            } catch (BusinessException exception) {
-                lastError = exception;
-            } catch (Exception exception) {
-                lastError = new BusinessException(HttpStatus.BAD_GATEWAY, "ASSIST_MODEL_ERROR",
-                        keyRing.displayName(provider) + " 暂时无法完成整理");
-            }
-        }
-        throw lastError != null ? lastError
-                : new BusinessException(HttpStatus.BAD_GATEWAY, "ASSIST_MODEL_ERROR", "模型调用失败");
-    }
-
-    private String systemPrompt() {
-        return """
-                你是个人知识库的整理助手，服务于一个跨学科的笔记平台，涵盖生物化学、医学、计算机、数学等领域。
-                你的任务是根据用户指定的动作整理笔记内容，要求：
-                1. 严格忠于原文，不编造原文中没有的事实、数据或结论。
-                2. 保留专业术语的准确表述，不要为了通顺而改变技术含义。
-                3. 如果原文信息不足以完成某个动作，明确说明不足，而不是猜测补全。
-                4. 使用简体中文输出，Markdown 格式。
-                """;
-    }
-
-    private String userPrompt(String action, String title, String body) {
-        String header = title == null || title.isBlank() ? "" : "笔记标题：" + title.trim() + "\n\n";
-        String instruction = switch (action) {
-            case "summarize" -> """
-                    请为下面的笔记生成摘要，要求：
-                    - 3 到 5 句话，150 字以内
-                    - 覆盖核心结论与关键概念，不要罗列细节
-                    - 直接输出摘要正文，不要加"摘要："之类的标签
-                    """;
-            case "outline" -> """
-                    请为下面的笔记生成层级大纲，要求：
-                    - 使用 Markdown 无序列表，用缩进表示层级
-                    - 最多三级，每级条目不超过 12 个字
-                    - 只输出大纲列表本身
-                    """;
-            case "tags" -> """
-                    请为下面的笔记提取 3 到 6 个标签，要求：
-                    - 每个标签 2 到 8 个字，覆盖学科领域与核心概念
-                    - 逗号分隔，单行输出，不要编号，不要任何解释
-                    """;
-            case "tidy" -> """
-                    请整理下面的笔记，要求：
-                    - 修正 Markdown 语法错误、统一标点、压缩多余空行
-                    - 可以调整语序让表达更清晰，但不得增删事实性内容
-                    - 直接输出整理后的完整 Markdown 正文
-                    """;
-            default -> "请整理下面的笔记内容。";
-        };
-        return header + instruction + "\n笔记内容：\n\n" + body;
-    }
-
-    private ApiDtos.NoteAssistResponse buildResponse(String action, String content, String engine,
-                                                     String traceId, long inputTokens, long outputTokens,
-                                                     String note) {
-        List<String> items = switch (action) {
-            case "tags" -> splitTags(content);
-            case "outline" -> splitLines(content);
-            default -> List.of();
-        };
-        String suffix = inputTokens > 0 || outputTokens > 0
-                ? "（本次消耗 " + inputTokens + " 输入 / " + outputTokens + " 输出 tokens）"
-                : "";
-        String finalNote = (note == null ? "" : note + " ")
-                + "结果由 " + engine.replace("MODEL:", "") + " 生成" + suffix;
-        return new ApiDtos.NoteAssistResponse(action, engine, content.trim(), items, finalNote.trim(), traceId);
     }
 
     // ------------------------------------------------------------------

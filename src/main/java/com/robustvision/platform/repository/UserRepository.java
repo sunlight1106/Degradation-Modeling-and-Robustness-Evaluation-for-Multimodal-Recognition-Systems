@@ -18,10 +18,18 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     @Query("select user from UserEntity user where user.id = :id")
     Optional<UserEntity> findLockedById(@Param("id") Long id);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select user from UserEntity user where user.username = :username")
+    Optional<UserEntity> findLockedByUsername(@Param("username") String username);
+
     boolean existsByUsername(String username);
     boolean existsByEmail(String email);
     boolean existsByEmailAndIdNot(String email, Long id);
     Optional<UserEntity> findByEmail(String email);
     List<UserEntity> findAllByOrderByCreatedAtDesc();
+    /** A locking/current read, including on MySQL REPEATABLE READ transactions. */
+    @Query(value = "SELECT id FROM app_user WHERE role_id = :roleId AND status = 'ACTIVE' ORDER BY id FOR UPDATE", nativeQuery = true)
+    List<Long> findLockedActiveAdminIds(@Param("roleId") Long roleId);
+
     long countByRoleCodeAndStatus(String roleCode, com.robustvision.platform.domain.UserStatus status);
 }

@@ -36,17 +36,22 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @Tag("mysql")
 @EnabledIfEnvironmentVariable(named = "MYSQL_TEST_URL", matches = "jdbc:mysql:.*")
 class MySqlSchemaMigrationTest {
-    private static final Set<String> DOMAIN_TABLES = Set.of(
+    private static final Set<String> LEGACY_DOMAIN_TABLES = Set.of(
             "app_role", "role_permission", "app_user", "file_asset", "model_definition", "inference_task",
             "user_wallet", "wallet_ledger", "recharge_order", "provider_budget", "workspace", "workspace_member",
             "workspace_member_permission", "internal_message", "message_recipient", "message_attachment",
             "provider_credential", "knowledge_topic", "knowledge_entry", "note", "note_reference", "note_share");
 
+    private static final Set<String> DOMAIN_TABLES = java.util.stream.Stream.concat(
+            LEGACY_DOMAIN_TABLES.stream(), java.util.stream.Stream.of("personal_ai_setting", "personal_ai_usage", "user_session",
+                    "vocabulary_book", "vocabulary_word", "vocabulary_profile", "vocabulary_progress", "vocabulary_question", "personal_recognition_result"))
+            .collect(java.util.stream.Collectors.toUnmodifiableSet());
+
     @Test
     void freshMigrationsCoverAllEntitiesAndConstraintsOnMySql84() throws Exception {
         try (TestDatabase database = new TestDatabase()) {
             Flyway flyway = database.flyway(null);
-            assertThat(flyway.migrate().migrationsExecuted).isGreaterThanOrEqualTo(7);
+            assertThat(flyway.migrate().migrationsExecuted).isGreaterThanOrEqualTo(12);
             flyway.validate();
             assertThat(flyway.migrate().migrationsExecuted).isZero();
             try (Connection connection = database.connect()) {
@@ -54,6 +59,7 @@ class MySqlSchemaMigrationTest {
                 assertThat(connection.getMetaData().getDatabaseProductVersion()).startsWith("8.4.");
                 assertDomainTables(connection);
                 seedAllDomains(connection);
+                seedAccountSettings(connection);
                 assertFixtureAndConstraints(connection);
                 assertIndexes(connection);
             }
@@ -61,11 +67,12 @@ class MySqlSchemaMigrationTest {
         }
     }
 
-    @Test
-    void populatedV6UpgradePreservesEveryDomainRowAndAppliedChecksums() throws Exception {
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"6", "7"})
+    void populatedBaselineUpgradePreservesEveryDomainRowAndAppliedChecksums(String baseline) throws Exception {
         try (TestDatabase database = new TestDatabase()) {
-            Flyway v6 = database.flyway("6");
-            assertThat(v6.migrate().migrationsExecuted).isEqualTo(6);
+            Flyway v6 = database.flyway(baseline);
+            assertThat(v6.migrate().migrationsExecuted).isEqualTo(Integer.parseInt(baseline));
             Map<String, List<String>> before;
             List<String> checksums;
             try (Connection connection = database.connect()) {
@@ -80,8 +87,9 @@ class MySqlSchemaMigrationTest {
             assertThat(latest.migrate().migrationsExecuted).isZero();
             try (Connection connection = database.connect()) {
                 assertThat(snapshot(connection)).isEqualTo(before);
+                seedAccountSettings(connection);
                 assertThat(rows(connection,
-                        "SELECT version, checksum FROM flyway_schema_history WHERE version IN ('1','2','3','4','5','6') ORDER BY installed_rank"))
+                        "SELECT version, checksum FROM flyway_schema_history WHERE CAST(version AS UNSIGNED) <= " + baseline + " ORDER BY installed_rank"))
                         .isEqualTo(checksums);
                 assertFixtureAndConstraints(connection);
                 assertIndexes(connection);
@@ -111,7 +119,7 @@ class MySqlSchemaMigrationTest {
         assertThat(scalar(c, "SELECT balance_cny FROM user_wallet WHERE user_id = 101")).isEqualTo("12.3456");
         assertThat(scalar(c, "SELECT cost_cny FROM inference_task WHERE id = 'task-1'")).isEqualTo("0.123456");
         assertThat(scalar(c, "SELECT COUNT(*) FROM information_schema.referential_constraints WHERE constraint_schema = DATABASE()"))
-                .isEqualTo("27");
+                .isEqualTo("40");
         assertDuplicateRejected(c, "INSERT INTO workspace_member (workspace_id, user_id, member_role) VALUES (201, 101, 'MEMBER')");
         assertDuplicateRejected(c, "INSERT INTO note_reference (note_id, reference_type, reference_id) VALUES ('note-1', 'FILE', 'file-1')");
         assertDuplicateRejected(c, "INSERT INTO note_share (id, note_id, shared_by, token) VALUES ('duplicate-share', 'note-1', 101, '0123456789abcdef0123456789abcdef')");
@@ -135,6 +143,14 @@ class MySqlSchemaMigrationTest {
 
     private static void assertIndexes(Connection c) throws SQLException {
         Map<String, String> expected = Map.ofEntries(
+                Map.entry("idx_vocab_book_owner", "owner_id,created_at"),
+                Map.entry("idx_vocab_progress_due", "owner_id,due_date"),
+                Map.entry("idx_vocab_question_owner_time", "owner_id,created_at"),
+                Map.entry("idx_vocab_question_owner_date", "owner_id,study_date"),
+                Map.entry("idx_personal_recognition_owner_created", "owner_id,created_at"),
+                Map.entry("idx_user_session_owner_expiry", "user_id,expires_at"),
+                Map.entry("idx_user_session_expiry", "expires_at"),
+                Map.entry("idx_personal_ai_usage_owner_time", "owner_id,created_at"),
                 Map.entry("idx_task_created", "created_at,id"),
                 Map.entry("idx_task_user_created", "requested_by,created_at"),
                 Map.entry("idx_file_created", "created_at,id"),
@@ -161,7 +177,7 @@ class MySqlSchemaMigrationTest {
 
     private static Map<String, List<String>> snapshot(Connection c) throws SQLException {
         Map<String, List<String>> result = new LinkedHashMap<>();
-        for (String table : new TreeSet<>(DOMAIN_TABLES)) {
+        for (String table : new TreeSet<>(LEGACY_DOMAIN_TABLES)) {
             List<String> values = rows(c, "SELECT * FROM `" + table + "`");
             values.sort(String::compareTo);
             result.put(table, values);
@@ -193,6 +209,25 @@ class MySqlSchemaMigrationTest {
 
     private static void execute(Connection c, String sql) throws SQLException {
         try (Statement statement = c.createStatement()) { statement.execute(sql); }
+    }
+
+    private static void seedAccountSettings(Connection c) throws SQLException {
+        execute(c, "INSERT INTO personal_ai_setting (id, owner_id, provider, model, base_url, encrypted_key, enabled, updated_at) VALUES ('setting-fixture', 101, 'OPENAI', 'synthetic', 'https://example.invalid', 'synthetic-ciphertext', false, CURRENT_TIMESTAMP(6))");
+        execute(c, "INSERT INTO personal_ai_usage (id, owner_id, provider, model, action, status, created_at) VALUES ('usage-fixture', 101, 'OPENAI', 'synthetic', 'SUMMARY', 'SUCCESS', CURRENT_TIMESTAMP(6))");
+        execute(c, "INSERT INTO user_session (id, user_id, created_at, expires_at, last_seen_at, user_agent) VALUES ('session-fixture', 101, CURRENT_TIMESTAMP(6), '2030-01-01 00:00:00', CURRENT_TIMESTAMP(6), 'synthetic-browser')");
+        assertDuplicateRejected(c, "INSERT INTO personal_ai_setting (id, owner_id, provider, model, base_url, encrypted_key, enabled, updated_at) VALUES ('duplicate-setting', 101, 'OPENAI', 'synthetic', 'https://example.invalid', 'synthetic-ciphertext', false, CURRENT_TIMESTAMP(6))");
+        assertThatThrownBy(() -> execute(c, "INSERT INTO user_session (id, user_id, created_at, expires_at, last_seen_at) VALUES ('orphan-session', 999999, CURRENT_TIMESTAMP(6), '2030-01-01 00:00:00', CURRENT_TIMESTAMP(6))"))
+                .isInstanceOf(SQLException.class).satisfies(error -> assertThat(((SQLException) error).getErrorCode()).isEqualTo(1452));
+        assertThat(scalar(c, "SELECT COUNT(*) FROM user_session WHERE user_id = 101")).isEqualTo("1");
+        execute(c, "INSERT INTO vocabulary_book (id, owner_id, title, description, attribution, level, created_at) VALUES ('book-fixture', 101, 'Fixture book', '', '', 'A1', CURRENT_TIMESTAMP(6))");
+        execute(c, "INSERT INTO vocabulary_word (id, book_id, term, ipa, pos, meaning, example_text, example_translation, distractors, sort_order) VALUES ('word-fixture', 'book-fixture', 'example', '', 'noun', '示例', '', '', '[]', 0)");
+        execute(c, "INSERT INTO vocabulary_profile (owner_id, zone_id, daily_goal, selected_book_id, updated_at) VALUES (101, 'UTC', 10, 'book-fixture', CURRENT_TIMESTAMP(6))");
+        execute(c, "INSERT INTO vocabulary_progress (id, owner_id, word_id, learning_correct, starred) VALUES ('progress-fixture', 101, 'word-fixture', 1, true)");
+        execute(c, "INSERT INTO vocabulary_question (id, owner_id, word_id, book_id, mode, options_json, correct_option_id, created_at, expires_at) VALUES ('question-fixture', 101, 'word-fixture', 'book-fixture', 'LEARN', '[]', 'synthetic-option', CURRENT_TIMESTAMP(6), '2030-01-01 00:00:00')");
+        execute(c, "INSERT INTO personal_recognition_result (id, owner_id, file_id, file_name, provider, model, task_type, result_text, input_tokens, output_tokens, created_at) VALUES ('recognition-fixture', 101, 'file-1', 'fixture.png', 'OPENAI', 'synthetic', 'GENERAL', 'Synthetic result', 1, 1, CURRENT_TIMESTAMP(6))");
+        assertDuplicateRejected(c, "INSERT INTO vocabulary_progress (id, owner_id, word_id) VALUES ('duplicate-progress', 101, 'word-fixture')");
+        assertThat(scalar(c, "SELECT COUNT(*) FROM vocabulary_progress WHERE owner_id = 101")).isEqualTo("1");
+        assertThat(scalar(c, "SELECT COUNT(*) FROM personal_recognition_result WHERE owner_id = 101")).isEqualTo("1");
     }
 
     private static void seedAllDomains(Connection c) throws SQLException {
@@ -271,7 +306,7 @@ class MySqlSchemaMigrationTest {
                 var scanner = new ClassPathScanningCandidateComponentProvider(false);
                 scanner.addIncludeFilter(new AnnotationTypeFilter(Entity.class));
                 var entities = scanner.findCandidateComponents("com.robustvision.platform.domain");
-                assertThat(entities).hasSize(20);
+                assertThat(entities).hasSize(DOMAIN_TABLES.size() - 2);
                 for (var definition : entities) sources.addAnnotatedClass(Class.forName(definition.getBeanClassName()));
                 try (var factory = sources.buildMetadata().buildSessionFactory()) {
                     assertThat(factory.isOpen()).isTrue();

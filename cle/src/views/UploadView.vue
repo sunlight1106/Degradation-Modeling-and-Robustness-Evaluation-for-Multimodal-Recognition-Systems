@@ -5,6 +5,7 @@ import { api, ApiClientError } from '@/api/client'
 import type { FileView, ModelRuntimeView, ModelView, TaskType } from '@/types/api'
 import UploadDropzone from '@/components/UploadDropzone.vue'
 import AppIcon from '@/components/AppIcon.vue'
+import PersonalRecognitionPanel from '@/components/PersonalRecognitionPanel.vue'
 import { toastStore } from '@/stores/toast'
 
 const route = useRoute()
@@ -32,7 +33,8 @@ const canRun = computed(() => Boolean(
   (selectedFile.value || uploadedFile.value)
   && modelId.value
   && mediaMatchesTask.value
-  && busyStage.value === 'idle',
+  && busyStage.value === 'idle'
+  && runtime.value?.mode === 'demo',
 ))
 
 onMounted(async () => {
@@ -116,6 +118,9 @@ async function run() {
       <p>上传图片或视频，选择任务和模型，并排查看处理前后的识别结果。</p>
     </section>
 
+    <PersonalRecognitionPanel />
+
+    <section class="page-intro"><p class="page-kicker">PLATFORM DEMO</p><h2>平台演示与双路对比</h2><p>下方链路用于本地演示实验；个人 API 图片识别请使用上方入口。</p></section>
     <div class="experiment-builder">
       <section class="panel builder-upload">
         <div class="panel-header builder-heading"><span class="step-pill">01</span><div><h3>输入样本</h3><p>选择或拖入你的图片、视频</p></div></div>
@@ -147,7 +152,7 @@ async function run() {
           <span><strong>启用质量感知优化</strong><small>{{ taskType === 'VIDEO_ANALYSIS' ? '生成降噪、响度归一化视频并做双路对照' : '运行基线与视觉增强双路对照' }}</small></span>
           <input v-model="enhancementEnabled" type="checkbox" /><i />
         </label>
-        <div class="mode-notice" :class="{ 'mode-notice--live': runtime?.mode !== 'demo' && runtime?.credentialConfigured }"><AppIcon name="spark" :size="19" /><div><strong>{{ runtime?.mode === 'demo' ? '当前使用演示适配器' : '多供应商真实模型 Worker' }}</strong><p v-if="runtime?.mode !== 'demo'">根据所选模型安全调用 DeepSeek、Kimi 或千问；密钥不会发送到浏览器。</p><p v-else>用于验证业务链路，不代表真实模型性能。</p></div></div>
+        <div class="mode-notice"><AppIcon name="spark" :size="19" /><div><strong>{{ runtime?.mode === 'demo' ? '当前使用演示适配器' : '平台共享模型调用已停用' }}</strong><p v-if="runtime?.mode !== 'demo'">请使用上方个人 AI 图片识别入口。视频暂不支持个人模型。</p><p v-else>用于验证业务链路，不代表真实模型性能。</p></div></div>
         <div v-if="(selectedFile || uploadedFile) && !mediaMatchesTask" class="inline-alert inline-alert--error">视频只能运行“视频分析”，图片请选择车牌或票据任务。</div>
         <div v-if="error" class="inline-alert inline-alert--error">{{ error }}</div>
         <button class="button button--dark button--full builder-submit" :disabled="!canRun" @click="run">

@@ -9,6 +9,7 @@ import com.robustvision.platform.repository.ModelDefinitionRepository;
 import com.robustvision.platform.repository.RoleRepository;
 import com.robustvision.platform.repository.UserRepository;
 import com.robustvision.platform.security.Permissions;
+import com.robustvision.platform.service.UserSessionService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -23,6 +24,7 @@ public class DataInitializer implements CommandLineRunner {
     private final UserRepository userRepository;
     private final ModelDefinitionRepository modelRepository;
     private final PasswordEncoder passwordEncoder;
+    private final UserSessionService sessions;
     private final String adminUsername;
     private final String adminPassword;
     private final String adminEmail;
@@ -36,6 +38,7 @@ public class DataInitializer implements CommandLineRunner {
                            UserRepository userRepository,
                            ModelDefinitionRepository modelRepository,
                            PasswordEncoder passwordEncoder,
+                           UserSessionService sessions,
                            @Value("${app.bootstrap.admin-username:admin}") String adminUsername,
                            @Value("${app.bootstrap.admin-password}") String adminPassword,
                            @Value("${app.bootstrap.admin-email:admin@personal-platform.local}") String adminEmail,
@@ -48,6 +51,7 @@ public class DataInitializer implements CommandLineRunner {
         this.userRepository = userRepository;
         this.modelRepository = modelRepository;
         this.passwordEncoder = passwordEncoder;
+        this.sessions = sessions;
         this.adminUsername = adminUsername;
         if (adminPassword == null || adminPassword.length() < 12) {
             throw new IllegalArgumentException("BOOTSTRAP_ADMIN_PASSWORD must contain at least 12 characters");
@@ -74,12 +78,11 @@ public class DataInitializer implements CommandLineRunner {
         roleRepository.save(admin);
         RoleEntity researcher = roleRepository.findByCode("RESEARCHER").orElseGet(() ->
                 roleRepository.save(new RoleEntity("RESEARCHER", "研究员", "上传、运行实验与查看结果", Permissions.researcher())));
-        researcher.setPermissions(Permissions.researcher());
-        roleRepository.save(researcher);
+        // Existing non-admin role permissions are administrator-managed settings.
+        // Re-running bootstrap must not silently overwrite them.
         RoleEntity viewer = roleRepository.findByCode("VIEWER").orElseGet(() ->
                 roleRepository.save(new RoleEntity("VIEWER", "查看者", "只读查看已授权内容", Permissions.viewer())));
-        viewer.setPermissions(Permissions.viewer());
-        roleRepository.save(viewer);
+
 
         if (!userRepository.existsByUsername(adminUsername)) {
             userRepository.save(new UserEntity(
@@ -93,6 +96,7 @@ public class DataInitializer implements CommandLineRunner {
             UserEntity existingAdmin = userRepository.findByUsername(adminUsername).orElseThrow();
             existingAdmin.setPasswordHash(passwordEncoder.encode(adminPassword));
             userRepository.save(existingAdmin);
+            sessions.revokeAll(existingAdmin.getId());
         }
 
         // 体验账号：供访客试用平台功能。未配置密码时跳过创建，避免产生无人知晓口令的账号。
@@ -109,6 +113,7 @@ public class DataInitializer implements CommandLineRunner {
                 UserEntity existingTest = userRepository.findByUsername(testUsername).orElseThrow();
                 existingTest.setPasswordHash(passwordEncoder.encode(testPassword));
                 userRepository.save(existingTest);
+                sessions.revokeAll(existingTest.getId());
             }
         }
 

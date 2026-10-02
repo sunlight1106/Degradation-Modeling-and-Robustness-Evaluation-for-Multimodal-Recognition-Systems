@@ -13,12 +13,17 @@
 | V5 | Payment sandbox, workspaces, messages, encrypted provider credentials |
 | V6 | Knowledge topics/cards, notes, references and share tokens |
 | V7 | Composite indexes matching existing repository filters/orderings |
+| V8 | Owner-scoped encrypted personal AI settings and nullable/known usage metadata |
+| V9 | Revocable, expiring login sessions |
+| V10 | Vocabulary books, words, per-user settings/progress and one-use question records |
+| V11 | Original starter vocabulary (no third-party proprietary corpus) |
+| V12 | Owner-scoped personal image recognition results |
 
 V1–V6 remain unchanged. V7 adds indexes only: it does not replace tables, change primary keys, reset passwords, rewrite content or modify balances. MySQL `CHAR` columns are explicitly mapped as `CHAR` in Hibernate, including fixed-width IDs, hashes and tokens; changing deployed IDs to `VARCHAR` is unnecessary.
 
 ### Complete persisted domain
 
-There are **22 application tables**, **20 JPA entities**, two permission collection tables and **27 foreign keys** (plus Flyway's history table):
+There are **31 application tables**, **29 JPA entities**, two permission collection tables and **40 foreign keys** (plus Flyway's history table):
 
 | Domain | Tables | Integrity / access paths |
 | --- | --- | --- |
@@ -28,6 +33,9 @@ There are **22 application tables**, **20 JPA entities**, two permission collect
 | Collaboration | `workspace`, `workspace_member`, `workspace_member_permission`, `internal_message`, `message_recipient`, `message_attachment` | Unique slug/member/recipient/attachment pairs; FK cascades for dependent rows; membership chronological indexes |
 | Provider credentials | `provider_credential` | Creator FK; encrypted secret only; active/provider/created-order indexes |
 | Knowledge | `knowledge_topic`, `knowledge_entry` | Topic/user FKs; unique user topic name; owner/topic ordered-list indexes |
+| Personal AI / recognition | `personal_ai_setting`, `personal_ai_usage`, `personal_recognition_result` | Per-owner profiles, no plaintext keys; private usage/results; unknown token usage remains NULL |
+| Login sessions | `user_session` | Owner FK, expiry/revocation, server-verified JWT session ID |
+| Vocabulary | `vocabulary_book`, `vocabulary_word`, `vocabulary_profile`, `vocabulary_progress`, `vocabulary_question` | Private books/progress, unique owner-word progress, one-use answer accounting |
 | Notes / sharing | `note`, `note_reference`, `note_share` | Note/creator FKs; unique note-target pair and share token; owner/status/update and reference order indexes |
 
 Redis queue entries and MinIO object bytes are not relational tables. Dataset ZIP/JSONL exports are derived from existing tasks/media; no fake training-job or checkpoint tables are added. The production repository layer uses Spring Data JPA and JPQL, with one native MySQL/H2-compatible insert-if-absent statement for atomic provider-budget initialization (see concurrency below).
@@ -52,12 +60,12 @@ export MYSQL_TEST_USERNAME='local_test_user'
 ./mvnw -Dtest=MySqlSchemaMigrationTest test
 ```
 
-Without `MYSQL_TEST_URL`, both contract tests are reported **skipped**, not passed. In CI or release verification, explicitly provide these variables and check `target/surefire-reports/com.robustvision.platform.database.MySqlSchemaMigrationTest.txt` for `Tests run: 2`, `Failures: 0`, `Errors: 0`, `Skipped: 0`.
+Without `MYSQL_TEST_URL`, the three schema contract cases are reported **skipped**, not passed. In CI or release verification, explicitly provide these variables and check `target/surefire-reports/com.robustvision.platform.database.MySqlSchemaMigrationTest.txt` for `Tests run: 3`, `Failures: 0`, `Errors: 0`, `Skipped: 0`.
 
 The tests verify:
 
-1. Fresh V1 → latest installation on MySQL 8.4, all application tables, InnoDB/utf8mb4, all 20 entity mappings via Hibernate schema validation.
-2. A populated V6 → latest upgrade with synthetic rows in every table, checking every domain row and all V1–V6 Flyway checksums are unchanged.
+1. Fresh V1 → latest installation on MySQL 8.4, all application tables, InnoDB/utf8mb4, all 29 entity mappings via Hibernate schema validation.
+2. Populated V6 and V7 → latest upgrades with synthetic rows in every table, checking every domain row and all previously applied Flyway checksums are unchanged.
 3. Repeated migrate is a no-op; Flyway validation succeeds.
 4. Referential and unique constraints, representative note-child cascades, Unicode/emoji round trips and exact money/cost precision.
 5. Column order of the query indexes used by owner-scoped and global lists.

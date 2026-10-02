@@ -63,6 +63,7 @@ public class InferenceService {
 
     public ApiDtos.InferenceView create(ApiDtos.CreateInferenceRequest request) {
         UserEntity current = currentUserService.requireCurrent();
+        invocationService.assertLegacyAvailable();
         FileAssetEntity input = fileService.requireAccessible(request.fileId());
         ModelDefinitionEntity model = modelService.requireActive(request.modelId());
         if (model.getTaskType() != request.taskType()) {
@@ -124,9 +125,8 @@ public class InferenceService {
             taskRepository.save(task);
         } catch (Exception exception) {
             String message = exception instanceof BusinessException ? exception.getMessage() : "实验执行失败";
-            log.error("Inference task failed taskId={} traceId={} model={} provider={} type={} message={}",
-                    task.getId(), task.getTraceId(), task.getModel().getCode(), task.getModel().getProvider(),
-                    exception.getClass().getName(), exception.getMessage(), exception);
+            log.error("Inference task failed taskId={} traceId={} model={} provider={} type={}",
+                    task.getId(), task.getTraceId(), task.getModel().getCode(), task.getModel().getProvider(), exception.getClass().getName());
             markFailed(task, message);
         }
     }

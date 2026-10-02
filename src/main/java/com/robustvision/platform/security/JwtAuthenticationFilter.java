@@ -1,5 +1,7 @@
 package com.robustvision.platform.security;
 
+import com.robustvision.platform.service.UserSessionService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -16,10 +18,12 @@ import java.io.IOException;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
     private final UserAccountDetailsService userDetailsService;
+    private final UserSessionService sessions;
 
-    public JwtAuthenticationFilter(JwtService jwtService, UserAccountDetailsService userDetailsService) {
+    public JwtAuthenticationFilter(JwtService jwtService, UserAccountDetailsService userDetailsService, UserSessionService sessions) {
         this.jwtService = jwtService;
         this.userDetailsService = userDetailsService;
+        this.sessions = sessions;
     }
 
     @Override
@@ -29,12 +33,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (authorization != null && authorization.startsWith("Bearer ")
                 && SecurityContextHolder.getContext().getAuthentication() == null) {
             String token = authorization.substring(7);
-            jwtService.validSubject(token).ifPresent(username -> {
-                UserDetails details = userDetailsService.loadUserByUsername(username);
-                if (details.isEnabled()) {
-                    UsernamePasswordAuthenticationToken authentication =
-                            new UsernamePasswordAuthenticationToken(details, null, details.getAuthorities());
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
+            jwtService.validToken(token).ifPresent(claims -> {
+                if (!sessions.isActive(claims.sessionId(), claims.subject())) return;
+                try {
+                    UserDetails details = userDetailsService.loadUserByUsername(claims.subject());
+                    if (details.isEnabled()) {
+                        UsernamePasswordAuthenticationToken authentication =
+                                new UsernamePasswordAuthenticationToken(details, null, details.getAuthorities());
+                        authentication.setDetails(new UserSessionService.SessionDetails(claims.sessionId()));
+                        SecurityContextHolder.getContext().setAuthentication(authentication);
+                    }
+                } catch (UsernameNotFoundException ignored) {
+                    // Deleted accounts never authenticate, even with a correctly signed token.
                 }
             });
         }
