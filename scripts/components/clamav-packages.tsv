@@ -1,0 +1,8 @@
+# Source: signed Debian trixie InRelease/Packages, authenticated by apt on 2026-10-02.
+# SHA256	filename	URL
+b547efa63e2fe99a98ee07dcbd51e99345230836704a3c9ae6d38061e1f16fd9	clamav_1.4.3+dfsg-1_amd64.deb	https://deb.debian.org/debian/pool/main/c/clamav/clamav_1.4.3%2bdfsg-1_amd64.deb
+a679a34abdb455424867a8f9ab505af27adc4bf74265ba2c56ff727fa9718367	clamav-base_1.4.3+dfsg-1_all.deb	https://deb.debian.org/debian/pool/main/c/clamav/clamav-base_1.4.3%2bdfsg-1_all.deb
+45ad13a9e57cf7c927272713bd510dee5aedb43cb0168f995978842a5a6f723c	clamav-daemon_1.4.3+dfsg-1_amd64.deb	https://deb.debian.org/debian/pool/main/c/clamav/clamav-daemon_1.4.3%2bdfsg-1_amd64.deb
+1693185fcfc3d87ccd72ee542b83c12162759cdd8b83492a0ea6946427205863	clamav-freshclam_1.4.3+dfsg-1_amd64.deb	https://deb.debian.org/debian/pool/main/c/clamav/clamav-freshclam_1.4.3%2bdfsg-1_amd64.deb
+1f5ef9b53f377e64b75810aec724d6257832ee22dc7508f86f31f7ea96c84efe	libclamav12_1.4.3+dfsg-1_amd64.deb	https://deb.debian.org/debian/pool/main/c/clamav/libclamav12_1.4.3%2bdfsg-1_amd64.deb
+b6039006e2758fa91a0e02ea1cbeded53ae0a5955298e1b0dddbe5a91784b510	libmspack0t64_0.11-1.1+b1_amd64.deb	https://deb.debian.org/debian/pool/main/libm/libmspack/libmspack0t64_0.11-1.1%2bb1_amd64.deb

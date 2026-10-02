@@ -17,3 +17,9 @@ uploads/
 Thumbs.db
 *.pem
 *.key
+
+# Local dependency/data/log/benchmark state (never commit secrets or databases)
+.runtime/
+.tools/
+__pycache__/
+*.pyc

@@ -1,30 +1,42 @@
 package com.robustvision.platform.service;
 
-import com.robustvision.platform.domain.InferenceStatus;
+import com.robustvision.platform.domain.InferenceTaskEntity;
+import com.robustvision.platform.domain.UserEntity;
 import com.robustvision.platform.dto.ApiDtos;
+import com.robustvision.platform.repository.InferenceTaskRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 @Service
 public class DashboardService {
     private final InferenceService inferenceService;
+    private final InferenceTaskRepository taskRepository;
+    private final CurrentUserService currentUserService;
 
-    public DashboardService(InferenceService inferenceService) {
+    public DashboardService(InferenceService inferenceService, InferenceTaskRepository taskRepository,
+                            CurrentUserService currentUserService) {
         this.inferenceService = inferenceService;
+        this.taskRepository = taskRepository;
+        this.currentUserService = currentUserService;
     }
 
+    @Transactional(readOnly = true)
     public ApiDtos.DashboardSummary summary() {
-        List<ApiDtos.InferenceView> tasks = inferenceService.listAccessible();
-        long completed = tasks.stream().filter(task -> task.status() == InferenceStatus.COMPLETED).count();
-        long failed = tasks.stream().filter(task -> task.status() == InferenceStatus.FAILED).count();
-        double successRate = tasks.isEmpty() ? 0 : completed * 100.0 / tasks.size();
-        double averageLift = tasks.stream()
-                .filter(task -> task.baselineConfidence() != null && task.optimizedConfidence() != null)
-                .mapToDouble(task -> task.optimizedConfidence() - task.baselineConfidence())
-                .average().orElse(0.0);
+        UserEntity current = currentUserService.requireCurrent();
+        boolean readAny = currentUserService.hasPermission(current, "experiment:read:any");
+        InferenceTaskRepository.SummaryStatistics stats = readAny
+                ? taskRepository.summarizeAll() : taskRepository.summarizeByRequestedById(current.getId());
+        List<InferenceTaskEntity> recent = readAny
+                ? taskRepository.findTop5ByOrderByCreatedAtDescIdDesc()
+                : taskRepository.findTop5ByRequestedByIdOrderByCreatedAtDescIdDesc(current.getId());
+        double successRate = stats.getTotal() == 0 ? 0 : stats.getCompleted() * 100.0 / stats.getTotal();
+        // SQL AVG excludes rows with either confidence null, matching the original stream.
+        double averageLift = stats.getAverageLift() == null ? 0 : stats.getAverageLift();
         return new ApiDtos.DashboardSummary(
-                tasks.size(), completed, failed, round(successRate), round(averageLift), tasks.stream().limit(5).toList());
+                stats.getTotal(), stats.getCompleted(), stats.getFailed(), round(successRate), round(averageLift),
+                recent.stream().map(inferenceService::toView).toList());
     }
 
     private double round(double value) {

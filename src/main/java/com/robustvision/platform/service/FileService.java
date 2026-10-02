@@ -243,20 +243,34 @@ public class FileService {
         catch (NoSuchAlgorithmException exception) { throw new IllegalStateException("SHA-256 unavailable", exception); }
     }
 
-    private BufferedImage enhance(BufferedImage source) {
-        BufferedImage output = new BufferedImage(source.getWidth(), source.getHeight(), BufferedImage.TYPE_INT_ARGB);
-        for (int y = 0; y < source.getHeight(); y++) for (int x = 0; x < source.getWidth(); x++) {
-            int argb = source.getRGB(x, y);
-            int alpha = (argb >>> 24) & 0xff;
-            int red = adjust((argb >>> 16) & 0xff);
-            int green = adjust((argb >>> 8) & 0xff);
-            int blue = adjust(argb & 0xff);
-            output.setRGB(x, y, (alpha << 24) | (red << 16) | (green << 8) | blue);
+    private static final int[] ENHANCEMENT_LOOKUP = new int[256];
+    static {
+        for (int value = 0; value < ENHANCEMENT_LOOKUP.length; value++) {
+            ENHANCEMENT_LOOKUP[value] = Math.max(0, Math.min(255, (int) ((value - 128) * 1.08 + 136)));
+        }
+    }
+
+    static BufferedImage enhance(BufferedImage source) {
+        int width = source.getWidth();
+        BufferedImage output = new BufferedImage(width, source.getHeight(), BufferedImage.TYPE_INT_ARGB);
+        // Read through getRGB to retain color-model, premultiplication and subimage semantics.
+        // One reusable scanline bounds temporary memory; the new output raster is contiguous ARGB.
+        int[] row = new int[width];
+        int[] pixels = ((java.awt.image.DataBufferInt) output.getRaster().getDataBuffer()).getData();
+        for (int y = 0; y < source.getHeight(); y++) {
+            source.getRGB(0, y, width, 1, row, 0, width);
+            int offset = y * width;
+            for (int x = 0; x < width; x++) {
+                int argb = row[x];
+                pixels[offset + x] = (argb & 0xff000000)
+                        | (ENHANCEMENT_LOOKUP[(argb >>> 16) & 0xff] << 16)
+                        | (ENHANCEMENT_LOOKUP[(argb >>> 8) & 0xff] << 8)
+                        | ENHANCEMENT_LOOKUP[argb & 0xff];
+            }
         }
         return output;
     }
 
-    private int adjust(int value) { return Math.max(0, Math.min(255, (int) ((value - 128) * 1.08 + 136))); }
     private String stripExtension(String filename) { int dot = filename.lastIndexOf('.'); return dot > 0 ? filename.substring(0, dot) : filename; }
     private record DetectedType(String contentType, String extension) {}
 }

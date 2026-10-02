@@ -6,6 +6,15 @@
 
 ---
 
+## 完整数据库与性能改进（2026-10）
+
+- [完整组件运行、持久化与当前环境验证边界](docs/STACK.md)
+- [22 张业务表、V1–V7迁移与真实 MySQL 契约测试](database/README.md)
+- [算法/查询优化、基准方法与复现命令](docs/PERFORMANCE.md)
+- [实测结果与验证清单](docs/VALIDATION.md)
+
+新增 Maven Wrapper（`./mvnw` / `mvnw.cmd`）锁定 Maven 3.9.9；完整 Compose 使用真实 MySQL、Redis、ClamAV、MinIO 和独立 Worker。当前受限云环境可验证 MySQL/Redis/ClamAV，但 MinIO 的系统网卡枚举被禁止；不要把显式 filesystem 部分运行模式当作 S3 已验证。
+
 ## 快速开始
 
 ### 部署方式一：Docker 一键部署（推荐）
@@ -55,7 +64,7 @@
 | 前端服务镜像 | `nginx:1.27-alpine` | `cle/Dockerfile` |
 | MySQL | 8.4 | `compose.yaml` |
 | Redis | 7.4-alpine | `compose.yaml` |
-| MinIO | 固定 sha256 摘要（不可变） | `compose.yaml` |
+| MinIO | 官方最终修复源版本 2025-10-15，归档停止维护；源码/工具链 SHA-256 锁定 | `scripts/components/Minio.Dockerfile` |
 | ClamAV | stable | `compose.yaml` |
 | 浏览器 | Chrome / Edge / Firefox / Safari 近两年版本 | 前端未用实验性 API |
 
@@ -78,15 +87,15 @@ Linux / macOS：
 sh deploy.sh
 ```
 
-脚本首次运行会：检测 Docker → 生成 `.env`（含随机强密码与密钥）→ `docker compose up -d --build --wait`。等待各服务健康检查通过后即完成。
+脚本首次运行会：检测 Docker → 生成 `.env`（含随机管理员密码、数据库密码与密钥）→ `docker compose up -d --build --wait`。等待各服务健康检查通过后即完成。
 
 ### 访问与账号
 
 | 用途 | 地址 / 账号 |
 | --- | --- |
 | 平台首页 | **http://localhost:4173** |
-| 管理员 | 用户名 `admin`，密码 `1926648785ljz`（仓库默认值；公网或共享部署前请在 `.env` 改为强密码并重启后端） |
-| 体验账号 | 用户名 `test`，密码 `Test1234`（供访客试用，权限为研究员，无管理能力） |
+| 管理员 | 用户名 `admin`；首次部署随机生成密码，保存在本机 `.env` 的 `BOOTSTRAP_ADMIN_PASSWORD`，不会打印到部署日志 |
+| 体验账号 | 默认不创建；需要演示时在 `.env` 显式配置 `BOOTSTRAP_TEST_PASSWORD`（至少 8 位，勿与管理员相同），权限为研究员 |
 | 自助注册 | 首页登录区 → 注册，填写用户名/邮箱/密码即可，管理员后台即时可见 |
 
 端口被占用时：Windows 首次运行传 `-Port 4273`；已部署则改 `.env` 的 `WEB_PORT` 后重跑脚本。
@@ -162,7 +171,7 @@ QWEN_VIDEO_MODEL=qwen3.5-omni-plus
 | `src/main/` | Spring Boot API、业务逻辑、鉴权、配置、Flyway 引导 |
 | `src/test/` | 登录、权限、上传、实验、报告、媒体处理的集成测试 |
 | `ai/src/main/java/` | 模型适配器、密钥轮转、媒体处理、笔记 AI 辅助；由根 Maven 统一编译 |
-| `database/migrations/` | Flyway 版本迁移（V1–V6），**唯一的建表来源** |
+| `database/migrations/` | Flyway 版本迁移（V1–V7），**唯一的建表来源** |
 | `models/` | 模型扩展占位目录；不提交权重 |
 | `compose.yaml` | MySQL、Redis、MinIO、ClamAV、API、Worker、客户端的服务编排 |
 | `deploy.ps1` / `deploy.sh` | 一键生成 `.env` 并部署 |
@@ -208,9 +217,9 @@ mvn verify                     # 后端编译 + 集成测试（含 FFmpeg 媒体
 npm run dev --prefix cle
 ```
 
-后端可直接 `mvn spring-boot:run`，默认 `demo` 模式、文件系统存储、内联队列，便于离线开发。完整 Docker 模式则通过 Nginx 同源转发，无需开发服务器。
+后端可在配置真实 MySQL、Redis、JWT_SECRET 和 CREDENTIAL_MASTER_KEY 后用 `./mvnw spring-boot:run`。默认模型为 `demo`、存储为文件系统、队列为内联；H2 只用于测试，普通运行不会自动创建内存数据库。完整本地组件请用 `scripts/local/start-stack.sh`。完整 Docker 模式则通过 Nginx 同源转发，无需开发服务器。
 
-CI（`.github/workflows/verify.yml`）在每次推送时执行前端 `npm ci && npm run build` 与后端 `mvn -B verify`（自动安装 FFmpeg）。
+CI（`.github/workflows/verify.yml`）执行前端构建、后端 `./mvnw -B verify`（含 FFmpeg），并在真实 MySQL 8.4 服务上验证迁移和并发账本。
 
 ---
 
@@ -229,7 +238,7 @@ CI（`.github/workflows/verify.yml`）在每次推送时执行前端 `npm ci && 
 - 在聊天等公开位置出现过的密钥，应立即在供应商控制台撤销并重建。
 - `.env` 不进入版本控制；生产部署应使用 Secret Manager、TLS、强管理员密码，并收敛 Swagger/Actuator 暴露面。
 - 上传限制、ClamAV、限流与配额属于纵深防御，不能替代网络隔离、备份与依赖漏洞管理。
-- 体验账号 `test/Test1234` 是**公开共享**账号，仅供功能试用，请勿在其中存放真实数据；正式使用前应在 `.env` 改密或置空 `BOOTSTRAP_TEST_PASSWORD` 以禁用。
+- 体验账号默认不创建。需要共享演示时请显式配置单独密码，勿存放真实数据。正式使用时保持 `BOOTSTRAP_TEST_PASSWORD` 为空；这只跳过新账号创建，已有体验账号应在管理后台禁用。
 
 ---
 

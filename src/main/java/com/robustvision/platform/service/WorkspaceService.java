@@ -30,8 +30,30 @@ public class WorkspaceService {
     @Transactional(readOnly = true)
     public List<ApiDtos.WorkspaceView> list() {
         UserEntity current = currentUserService.requireCurrent();
-        if (currentUserService.isSuperAdmin(current)) return workspaceRepository.findAll().stream().map(item -> toView(item, current)).toList();
-        return memberRepository.findByUserIdOrderByCreatedAtDesc(current.getId()).stream().map(item -> toView(item.getWorkspace(), current)).toList();
+        boolean admin = currentUserService.isSuperAdmin(current);
+        List<WorkspaceRepository.WorkspaceSummary> workspaces = admin
+                ? workspaceRepository.findAllSummaries() : workspaceRepository.findMemberSummaries(current.getId());
+        if (workspaces.isEmpty()) return List.of();
+
+        // Request-local grouping only: membership changes are reflected on every new listing.
+        Map<Long, Map<Long, MemberViewBuilder>> membersByWorkspace = new HashMap<>();
+        for (WorkspaceMemberRepository.MemberDetails row : memberRepository.findDetailsByWorkspaceIds(
+                workspaces.stream().map(WorkspaceRepository.WorkspaceSummary::getId).toList())) {
+            MemberViewBuilder member = membersByWorkspace.computeIfAbsent(row.getWorkspaceId(), key -> new LinkedHashMap<>())
+                    .computeIfAbsent(row.getId(), key -> new MemberViewBuilder(row));
+            if (row.getPermission() != null) member.permissions.add(row.getPermission());
+        }
+        return workspaces.stream().map(workspace -> {
+            List<ApiDtos.WorkspaceMemberView> members = membersByWorkspace.getOrDefault(workspace.getId(), Map.of())
+                    .values().stream().map(MemberViewBuilder::toView).toList();
+            ApiDtos.WorkspaceMemberView own = members.stream().filter(member -> current.getId().equals(member.userId()))
+                    .findFirst().orElse(null);
+            WorkspaceMemberRole currentRole = own == null ? (admin ? WorkspaceMemberRole.ADMIN : null) : own.role();
+            Set<String> currentPermissions = admin ? ALL : own == null ? Set.of() : own.permissions();
+            return new ApiDtos.WorkspaceView(workspace.getId(), workspace.getName(), workspace.getSlug(), workspace.getColor(),
+                    workspace.getOwnerId(), workspace.getOwnerName(), currentRole, currentPermissions,
+                    members, workspace.getCreatedAt(), workspace.getUpdatedAt());
+        }).toList();
     }
 
     @Transactional
@@ -108,6 +130,18 @@ public class WorkspaceService {
         return new ApiDtos.WorkspaceView(workspace.getId(), workspace.getName(), workspace.getSlug(), workspace.getColor(),
                 workspace.getOwner().getId(), workspace.getOwner().getDisplayName(), currentRole, currentPermissions,
                 members, workspace.getCreatedAt(), workspace.getUpdatedAt());
+    }
+
+    private static final class MemberViewBuilder {
+        private final WorkspaceMemberRepository.MemberDetails details;
+        private final Set<String> permissions = new LinkedHashSet<>();
+
+        private MemberViewBuilder(WorkspaceMemberRepository.MemberDetails details) { this.details = details; }
+
+        private ApiDtos.WorkspaceMemberView toView() {
+            return new ApiDtos.WorkspaceMemberView(details.getId(), details.getUserId(), details.getUsername(),
+                    details.getDisplayName(), details.getRole(), permissions, details.getCreatedAt());
+        }
     }
 
     private void validatePermissions(Set<String> permissions) {

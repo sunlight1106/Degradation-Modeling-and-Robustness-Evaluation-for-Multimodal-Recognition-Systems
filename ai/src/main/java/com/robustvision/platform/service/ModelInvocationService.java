@@ -26,6 +26,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class ModelInvocationService {
@@ -35,6 +36,9 @@ public class ModelInvocationService {
     private final String mode;
     private final String httpBaseUrl;
     private final Map<ModelProvider, ProviderConfig> providers = new EnumMap<>(ModelProvider.class);
+    // Lazily build once per configured endpoint, preserving transport connection reuse.
+    // Credentials remain request headers, never defaults on a shared client.
+    private final Map<String, RestClient> clients = new ConcurrentHashMap<>();
 
     public ModelInvocationService(FileService fileService, ObjectMapper objectMapper, ProviderKeyRingService keyRing,
                                   @Value("${app.model.mode:demo}") String mode,
@@ -72,8 +76,9 @@ public class ModelInvocationService {
         List<ProviderRuntime> providerViews = List.of(ModelProvider.DEEPSEEK, ModelProvider.KIMI, ModelProvider.QWEN).stream()
                 .map(provider -> {
                     ProviderConfig config = providers.get(provider);
+                    int keyCount = keyRing.count(provider);
                     return new ProviderRuntime(provider, keyRing.displayName(provider), config.modelLabel(), config.baseUrl(),
-                            keyRing.configured(provider), keyRing.count(provider), provider != ModelProvider.DEEPSEEK);
+                            keyCount > 0, keyCount, provider != ModelProvider.DEEPSEEK);
                 }).toList();
         return new RuntimeInfo(mode, "Multi-provider", "DeepSeek · Kimi · Qwen", "server-side adapters",
                 providerViews.stream().anyMatch(ProviderRuntime::credentialConfigured),
@@ -98,7 +103,7 @@ public class ModelInvocationService {
         body.add("traceId", traceId);
         long started = System.nanoTime();
         try {
-            Map<String, Object> response = RestClient.create(httpBaseUrl).post().uri("/v1/infer")
+            Map<String, Object> response = client(httpBaseUrl).post().uri("/v1/infer")
                     .contentType(MediaType.MULTIPART_FORM_DATA).body(body).retrieve().body(Map.class);
             if (response == null) throw new IllegalStateException("empty model response");
             Number confidence = (Number) response.get("confidence");
@@ -124,7 +129,10 @@ public class ModelInvocationService {
                     "千问音视频的 Base64 请求需小于 10 MB，请使用不超过约 7 MB 的短视频，或改用 Kimi 视频模型");
         }
         String mediaType = file.getContentType().startsWith("video/") ? "video_url" : "image_url";
-        String dataUrl = "data:" + file.getContentType() + ";base64," + Base64.getEncoder().encodeToString(bytes);
+        boolean uploadVideo = provider == ModelProvider.KIMI && taskType == TaskType.VIDEO_ANALYSIS;
+        // Kimi video uses a Files API reference. Do not allocate an unused 4/3-sized Base64 copy.
+        String dataUrl = uploadVideo ? null
+                : "data:" + file.getContentType() + ";base64," + Base64.getEncoder().encodeToString(bytes);
         long started = System.nanoTime();
         String providerModel = config.model(taskType);
 
@@ -135,7 +143,7 @@ public class ModelInvocationService {
             String temporaryFileId = null;
             try {
                 String mediaUrl = dataUrl;
-                if (provider == ModelProvider.KIMI && taskType == TaskType.VIDEO_ANALYSIS) {
+                if (uploadVideo) {
                     temporaryFileId = uploadKimiVideo(config.baseUrl(), apiKey, file, bytes);
                     mediaUrl = "ms://" + temporaryFileId;
                 }
@@ -152,7 +160,7 @@ public class ModelInvocationService {
                 if (!(provider == ModelProvider.QWEN && taskType == TaskType.VIDEO_ANALYSIS)) {
                     body.put("response_format", Map.of("type", "json_object"));
                 }
-                JsonNode response = RestClient.create(config.baseUrl()).post().uri("/chat/completions")
+                JsonNode response = client(config.baseUrl()).post().uri("/chat/completions")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey)
                         .contentType(MediaType.APPLICATION_JSON).body(body).retrieve().body(JsonNode.class);
                 if (response == null) throw new IllegalStateException("empty provider response");
@@ -205,7 +213,7 @@ public class ModelInvocationService {
         MultiValueMap<String, Object> upload = new LinkedMultiValueMap<>();
         upload.add("file", resource);
         upload.add("purpose", "video");
-        JsonNode response = RestClient.create(baseUrl).post().uri("/files")
+        JsonNode response = client(baseUrl).post().uri("/files")
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey)
                 .contentType(MediaType.MULTIPART_FORM_DATA).body(upload).retrieve().body(JsonNode.class);
         String id = response == null ? "" : response.path("id").asText();
@@ -215,9 +223,13 @@ public class ModelInvocationService {
 
     private void deleteKimiFile(String baseUrl, String apiKey, String fileId) {
         try {
-            RestClient.create(baseUrl).delete().uri("/files/{id}", fileId)
+            client(baseUrl).delete().uri("/files/{id}", fileId)
                     .header(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey).retrieve().toBodilessEntity();
         } catch (Exception ignored) { }
+    }
+
+    RestClient client(String baseUrl) {
+        return clients.computeIfAbsent(baseUrl, RestClient::create);
     }
 
     private BusinessException providerException(ModelProvider provider, int status) {

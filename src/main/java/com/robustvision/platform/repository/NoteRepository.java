@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Collection;
 import java.util.Optional;
 
 public interface NoteRepository extends JpaRepository<NoteEntity, String> {
@@ -27,6 +28,14 @@ public interface NoteRepository extends JpaRepository<NoteEntity, String> {
             ORDER BY n.updatedAt DESC
             """)
     List<NoteEntity> search(@Param("ownerId") Long ownerId, @Param("keyword") String keyword);
+
+    interface ShareCount {
+        String getNoteId();
+        long getShareCount();
+    }
+
+    @Query("select s.note.id as noteId, count(s) as shareCount from NoteShareEntity s where s.note.id in :noteIds group by s.note.id")
+    List<ShareCount> countSharesByNoteIds(@Param("noteIds") Collection<String> noteIds);
 
     long countByOwnerId(Long ownerId);
 }

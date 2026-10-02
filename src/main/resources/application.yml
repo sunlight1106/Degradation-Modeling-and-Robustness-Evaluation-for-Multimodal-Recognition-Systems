@@ -1,5 +1,6 @@
 server:
   port: 8080
+  shutdown: graceful
   error:
     include-message: never
 
@@ -8,6 +9,15 @@ spring:
     url: ${DB_URL:jdbc:mysql://localhost:3306/robust_vision?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC&allowPublicKeyRetrieval=true&useSSL=false}
     username: ${DB_USERNAME:robust_user}
     password: ${DB_PASSWORD:robust_password}
+    hikari:
+      maximum-pool-size: ${DB_POOL_MAX:10}
+      minimum-idle: ${DB_POOL_MIN_IDLE:2}
+      connection-timeout: 10000
+      validation-timeout: 3000
+      data-source-properties:
+        cachePrepStmts: true
+        prepStmtCacheSize: 250
+        prepStmtCacheSqlLimit: 2048
   jpa:
     open-in-view: false
     hibernate:
@@ -24,6 +34,8 @@ spring:
       max-request-size: 105MB
   data:
     redis:
+      repositories:
+        enabled: false
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:}
@@ -34,6 +46,13 @@ spring:
       write-dates-as-timestamps: false
 
 management:
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      group:
+        readiness:
+          include: readinessState,db,redis,stackDependencies
   endpoints:
     web:
       exposure:
@@ -90,7 +109,7 @@ app:
     webhook-url: ${SMS_WEBHOOK_URL:}
   bootstrap:
     admin-username: ${BOOTSTRAP_ADMIN_USERNAME:admin}
-    admin-password: ${BOOTSTRAP_ADMIN_PASSWORD:1926648785ljz}
+    admin-password: ${BOOTSTRAP_ADMIN_PASSWORD}
     admin-email: ${BOOTSTRAP_ADMIN_EMAIL:admin@personal-platform.local}
     reset-admin-password: ${RESET_ADMIN_PASSWORD:false}
     test-username: ${BOOTSTRAP_TEST_USERNAME:test}

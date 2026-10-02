@@ -1,5 +1,8 @@
 package com.robustvision.platform.domain;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -19,6 +22,7 @@ import java.util.UUID;
 public class FileAssetEntity {
     @Id
     @Column(length = 36)
+    @JdbcTypeCode(SqlTypes.CHAR)
     private String id;
 
     @Column(name = "original_name", nullable = false)
@@ -34,6 +38,7 @@ public class FileAssetEntity {
     private long sizeBytes;
 
     @Column(nullable = false, length = 64)
+    @JdbcTypeCode(SqlTypes.CHAR)
     private String sha256;
 
     @Column(name = "storage_path", nullable = false, length = 600)

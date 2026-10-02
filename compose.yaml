@@ -3,6 +3,7 @@ name: robust-vision
 services:
   mysql:
     image: mysql:8.4
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_0900_ai_ci"]
     environment:
       MYSQL_DATABASE: ${MYSQL_DATABASE:-robust_vision}
       MYSQL_USER: ${MYSQL_USER:-robust_user}
@@ -26,7 +27,11 @@ services:
       retries: 20
 
   minio:
-    image: minio/minio@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e
+    platform: linux/amd64
+    image: robust-vision-minio:2025-10-15
+    build:
+      context: .
+      dockerfile: scripts/components/Minio.Dockerfile
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-personaladmin}
@@ -37,22 +42,6 @@ services:
       interval: 5s
       timeout: 3s
       retries: 30
-
-  minio-init:
-    image: minio/mc@sha256:a7fe349ef4bd8521fb8497f55c6042871b2ae640607cf99d9bede5e9bdf11727
-    depends_on:
-      minio:
-        condition: service_healthy
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-personaladmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Run deploy.ps1 or deploy.sh first}
-      S3_BUCKET: ${S3_BUCKET:-personal-platform}
-    entrypoint: ["/bin/sh", "-c"]
-    command:
-      - >-
-        mc alias set local http://minio:9000 "$${MINIO_ROOT_USER}" "$${MINIO_ROOT_PASSWORD}" &&
-        mc mb --ignore-existing "local/$${S3_BUCKET}" &&
-        mc anonymous set none "local/$${S3_BUCKET}"
 
   clamav:
     image: clamav/clamav:stable
@@ -66,27 +55,31 @@ services:
       start_period: 60s
 
   backend:
+    image: robust-vision-backend:local
     build:
       context: .
       dockerfile: src/Dockerfile
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/health"]
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/health/readiness"]
       interval: 10s
       timeout: 5s
       retries: 30
-      start_period: 60s
+      start_period: 15s
+      start_interval: 2s
     environment: &backend-environment
-      SPRING_JPA_HIBERNATE_DDL_AUTO: none
+      SPRING_JPA_HIBERNATE_DDL_AUTO: validate
       DB_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-robust_vision}?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC&allowPublicKeyRetrieval=true&useSSL=false
       DB_USERNAME: ${MYSQL_USER:-robust_user}
       DB_PASSWORD: ${MYSQL_PASSWORD:?Run deploy.ps1 or deploy.sh first}
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      DB_POOL_MAX: ${DB_POOL_MAX:-10}
+      DB_POOL_MIN_IDLE: ${DB_POOL_MIN_IDLE:-2}
       QUEUE_MODE: redis
       JWT_SECRET: ${JWT_SECRET:?Run deploy.ps1 or deploy.sh first}
       BOOTSTRAP_ADMIN_USERNAME: ${BOOTSTRAP_ADMIN_USERNAME:-admin}
-      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-1926648785ljz}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:?Run deploy.ps1 or deploy.sh to generate a password}
       RESET_ADMIN_PASSWORD: ${RESET_ADMIN_PASSWORD:-false}
       BOOTSTRAP_TEST_USERNAME: ${BOOTSTRAP_TEST_USERNAME:-test}
       BOOTSTRAP_TEST_PASSWORD: ${BOOTSTRAP_TEST_PASSWORD:-}
@@ -126,21 +119,27 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      minio-init:
-        condition: service_completed_successfully
+      minio:
+        condition: service_healthy
       clamav:
         condition: service_healthy
 
   model-worker:
     restart: unless-stopped
-    build:
-      context: .
-      dockerfile: src/Dockerfile
+    image: robust-vision-backend:local
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8081/actuator/health/readiness"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 15s
+      start_interval: 2s
     environment:
       <<: *backend-environment
       SERVER_PORT: 8081
       WORKER_ENABLED: "true"
       APP_BOOTSTRAP_ENABLED: "false"
+      SPRING_FLYWAY_ENABLED: "false"
     depends_on:
       backend:
         condition: service_healthy

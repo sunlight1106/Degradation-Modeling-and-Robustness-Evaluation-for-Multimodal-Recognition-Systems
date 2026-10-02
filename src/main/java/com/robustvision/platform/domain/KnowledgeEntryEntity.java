@@ -1,5 +1,8 @@
 package com.robustvision.platform.domain;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -19,6 +22,7 @@ public class KnowledgeEntryEntity {
 
     @Id
     @Column(length = 36)
+    @JdbcTypeCode(SqlTypes.CHAR)
     private String id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
