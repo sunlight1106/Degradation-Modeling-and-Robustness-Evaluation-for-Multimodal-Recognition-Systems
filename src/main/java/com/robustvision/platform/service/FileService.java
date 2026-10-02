@@ -19,7 +19,6 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
@@ -28,7 +27,6 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.HexFormat;
 import java.util.List;
-import java.util.Locale;
 import java.util.UUID;
 
 @Service
@@ -37,6 +35,7 @@ public class FileService {
     private final CurrentUserService currentUserService;
     private final ObjectStorageService objectStorage;
     private final AntivirusService antivirusService;
+    private final ContentInspectionService contentInspectionService;
     private final MediaProcessingService mediaProcessingService;
     private final Path legacyRoot;
     private final long maxSize;
@@ -45,6 +44,7 @@ public class FileService {
                        CurrentUserService currentUserService,
                        ObjectStorageService objectStorage,
                        AntivirusService antivirusService,
+                       ContentInspectionService contentInspectionService,
                        MediaProcessingService mediaProcessingService,
                        @Value("${app.storage.legacy-root:./data/uploads}") String legacyRoot,
                        @Value("${app.storage.max-size-bytes:20971520}") long maxSize) {
@@ -52,6 +52,7 @@ public class FileService {
         this.currentUserService = currentUserService;
         this.objectStorage = objectStorage;
         this.antivirusService = antivirusService;
+        this.contentInspectionService = contentInspectionService;
         this.mediaProcessingService = mediaProcessingService;
         this.legacyRoot = Path.of(legacyRoot).toAbsolutePath().normalize();
         this.maxSize = maxSize;
@@ -66,7 +67,9 @@ public class FileService {
         }
         try {
             byte[] bytes = multipartFile.getBytes();
-            DetectedType type = detectType(bytes);
+            validateReadSize(bytes);
+            ContentInspectionService.InspectedType type = contentInspectionService.inspectMedia(
+                    bytes, multipartFile.getOriginalFilename(), multipartFile.getContentType());
             AntivirusService.ScanResult scan = antivirusService.scan(bytes);
             String originalName = sanitizeName(multipartFile.getOriginalFilename(), type.extension());
             String storedName = UUID.randomUUID() + "." + type.extension();
@@ -104,8 +107,10 @@ public class FileService {
         try {
             byte[] bytes = multipartFile.getBytes();
             String original = multipartFile.getOriginalFilename() == null ? "attachment.bin" : multipartFile.getOriginalFilename();
-            String extension = extension(original);
-            String contentType = attachmentType(bytes, extension);
+            validateReadSize(bytes);
+            ContentInspectionService.InspectedType type = contentInspectionService.inspectAttachment(bytes, original, multipartFile.getContentType());
+            String extension = type.extension();
+            String contentType = type.contentType();
             AntivirusService.ScanResult scan = antivirusService.scan(bytes);
             String safeName = sanitizeName(original, extension.isBlank() ? "bin" : extension);
             String storedName = UUID.randomUUID() + (extension.isBlank() ? "" : "." + extension);
@@ -179,6 +184,7 @@ public class FileService {
 
     private FileAssetEntity storeDerived(FileAssetEntity source, UserEntity owner, byte[] result,
                                          String contentType, String extension, String prefix) {
+        contentInspectionService.inspectMedia(result, "derived." + extension, contentType);
         AntivirusService.ScanResult scan = antivirusService.scan(result);
         String storedName = UUID.randomUUID() + "." + extension;
         String key = datedKey(storedName);
@@ -195,47 +201,16 @@ public class FileService {
         return "%04d/%02d/%02d/%s".formatted(now.getYear(), now.getMonthValue(), now.getDayOfMonth(), storedName);
     }
 
-    private DetectedType detectType(byte[] bytes) {
-        if (bytes.length >= 3 && (bytes[0] & 0xff) == 0xff && (bytes[1] & 0xff) == 0xd8 && (bytes[2] & 0xff) == 0xff)
-            return new DetectedType("image/jpeg", "jpg");
-        if (bytes.length >= 8 && (bytes[0] & 0xff) == 0x89 && bytes[1] == 0x50 && bytes[2] == 0x4e
-                && bytes[3] == 0x47 && bytes[4] == 0x0d && bytes[5] == 0x0a && bytes[6] == 0x1a && bytes[7] == 0x0a)
-            return new DetectedType("image/png", "png");
-        if (bytes.length >= 12 && ascii(bytes, 0, 4).equals("RIFF") && ascii(bytes, 8, 4).equals("WEBP"))
-            return new DetectedType("image/webp", "webp");
-        if (bytes.length >= 12 && ascii(bytes, 4, 4).equals("ftyp"))
-            return new DetectedType("video/mp4", "mp4");
-        if (bytes.length >= 4 && (bytes[0] & 0xff) == 0x1a && (bytes[1] & 0xff) == 0x45
-                && (bytes[2] & 0xff) == 0xdf && (bytes[3] & 0xff) == 0xa3)
-            return new DetectedType("video/webm", "webm");
-        throw new BusinessException(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "UNSUPPORTED_FILE_TYPE",
-                "仅支持真实的 JPEG、PNG、WEBP、MP4 或 WEBM 文件");
-    }
-
-    private String ascii(byte[] bytes, int offset, int length) {
-        return new String(bytes, offset, length, StandardCharsets.US_ASCII);
+    private void validateReadSize(byte[] bytes) {
+        if (bytes.length == 0) throw new BusinessException(HttpStatus.BAD_REQUEST, "EMPTY_FILE", "文件不能为空");
+        if (bytes.length > maxSize) throw new BusinessException(HttpStatus.PAYLOAD_TOO_LARGE, "FILE_TOO_LARGE", "文件超过大小限制");
     }
 
     private String sanitizeName(String originalName, String extension) {
-        String name = originalName == null ? "media." + extension : Path.of(originalName).getFileName().toString();
+        String name = originalName == null ? "media." + extension : originalName.replace('\\', '/').substring(originalName.replace('\\', '/').lastIndexOf('/') + 1);
         name = name.replaceAll("[^A-Za-z0-9._\\-\\u4e00-\\u9fa5]", "_");
         if (name.length() > 180) name = name.substring(name.length() - 180);
         return name.isBlank() ? "media." + extension : name;
-    }
-
-    private String extension(String name) {
-        int dot = name.lastIndexOf('.');
-        return dot > 0 && dot + 1 < name.length() ? name.substring(dot + 1).toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]", "") : "";
-    }
-
-    private String attachmentType(byte[] bytes, String extension) {
-        try { return detectType(bytes).contentType(); }
-        catch (BusinessException ignored) { }
-        if (bytes.length >= 4 && ascii(bytes, 0, 4).equals("%PDF") && "pdf".equals(extension)) return "application/pdf";
-        if (bytes.length >= 4 && bytes[0] == 0x50 && bytes[1] == 0x4b && List.of("docx", "xlsx", "pptx").contains(extension))
-            return "application/vnd.openxmlformats-officedocument." + ("docx".equals(extension) ? "wordprocessingml.document" : "octet-stream");
-        if (List.of("txt", "csv", "json", "md").contains(extension)) return "text/plain";
-        throw new BusinessException(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "ATTACHMENT_TYPE_UNSUPPORTED", "附件仅支持图片、视频、PDF、DOCX、TXT、CSV、JSON 或 Markdown");
     }
 
     private String sha256(byte[] bytes) {
@@ -272,5 +247,4 @@ public class FileService {
     }
 
     private String stripExtension(String filename) { int dot = filename.lastIndexOf('.'); return dot > 0 ? filename.substring(0, dot) : filename; }
-    private record DetectedType(String contentType, String extension) {}
 }
