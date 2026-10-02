@@ -1,0 +1,47 @@
+name: Local recovery rehearsal
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  recovery:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: isolated-ci-recovery-only
+        ports: ["3306:3306"]
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=5s --health-timeout=3s --health-retries=30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - name: Install pinned official MySQL 8.4 clients
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 2 \
+            https://cdn.mysql.com/archives/mysql-8.4/mysql-8.4.6-linux-glibc2.28-x86_64-minimal.tar.xz \
+            --output "$RUNNER_TEMP/mysql84.tar.xz"
+          echo "f284b17b9e038adbe77f0dd5fb11ed30262286b23a390b8b4e367abc3574c42e  $RUNNER_TEMP/mysql84.tar.xz" | sha256sum --check
+          mkdir "$RUNNER_TEMP/mysql84"
+          tar --extract --xz --file "$RUNNER_TEMP/mysql84.tar.xz" --directory "$RUNNER_TEMP/mysql84" --strip-components=1
+          echo "$RUNNER_TEMP/mysql84/bin" >> "$GITHUB_PATH"
+      - name: Backup format and safety refusals
+        run: python3 scripts/backup/test_local_backup.py
+      - name: Synthetic full-schema and filesystem restore on real MySQL
+        run: ./mvnw -B -Dtest=MySqlBackupRestoreTest test
+        env:
+          MYSQL_TEST_URL: jdbc:mysql://127.0.0.1:3306/?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
+          MYSQL_TEST_USERNAME: root
+          MYSQL_TEST_PASSWORD: isolated-ci-recovery-only
+          MYSQL_BACKUP_TESTS: 'true'
+      - name: Require execution rather than an opt-in skip
+        run: |
+          grep -F 'Tests run: 1, Failures: 0, Errors: 0, Skipped: 0' target/surefire-reports/com.robustvision.platform.database.MySqlBackupRestoreTest.txt

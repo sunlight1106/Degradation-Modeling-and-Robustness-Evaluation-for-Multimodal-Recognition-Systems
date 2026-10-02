@@ -99,7 +99,7 @@ mysql --host=127.0.0.1 --user=robust_user --password robust_vision < database/di
 
 ## Upgrade / recovery / backup
 
-1. Back up MySQL, object storage and `.env` together. Encrypted provider credentials need the original credential master key. Test restores on an isolated server.
+1. Capture coordinated MySQL/object-storage backups and separately protect the original application/encryption secrets. Never package `.env` or private keys with source releases or ordinary backup archives. Encrypted provider credentials require the original `CREDENTIAL_MASTER_KEY`. A user JSON export is not a full backup. Test restores on an isolated server. For the bounded local filesystem profile, see the [executable backup and isolated restore rehearsal](../scripts/backup/README.md). MinIO/S3 recovery needs its own separately verified procedure.
 2. Stop or quiesce writers, then start one bootstrap-enabled API instance to migrate; start additional workers after it is healthy. Fresh production schemas should be created as `CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci`.
 3. Verify Flyway success and `ddl-auto=validate`, then check health and exercise login, note creation and an inference task before restoring ordinary traffic.
 4. Do not edit an applied migration or use `baseline-on-migrate` to hide a drifted schema. Add the next version for future changes.

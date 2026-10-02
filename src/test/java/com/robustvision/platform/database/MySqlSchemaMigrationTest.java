@@ -211,7 +211,7 @@ class MySqlSchemaMigrationTest {
         try (Statement statement = c.createStatement()) { statement.execute(sql); }
     }
 
-    private static void seedAccountSettings(Connection c) throws SQLException {
+    static void seedAccountSettings(Connection c) throws SQLException {
         execute(c, "INSERT INTO personal_ai_setting (id, owner_id, provider, model, base_url, encrypted_key, enabled, updated_at) VALUES ('setting-fixture', 101, 'OPENAI', 'synthetic', 'https://example.invalid', 'synthetic-ciphertext', false, CURRENT_TIMESTAMP(6))");
         execute(c, "INSERT INTO personal_ai_usage (id, owner_id, provider, model, action, status, created_at) VALUES ('usage-fixture', 101, 'OPENAI', 'synthetic', 'SUMMARY', 'SUCCESS', CURRENT_TIMESTAMP(6))");
         execute(c, "INSERT INTO user_session (id, user_id, created_at, expires_at, last_seen_at, user_agent) VALUES ('session-fixture', 101, CURRENT_TIMESTAMP(6), '2030-01-01 00:00:00', CURRENT_TIMESTAMP(6), 'synthetic-browser')");
@@ -230,7 +230,7 @@ class MySqlSchemaMigrationTest {
         assertThat(scalar(c, "SELECT COUNT(*) FROM personal_recognition_result WHERE owner_id = 101")).isEqualTo("1");
     }
 
-    private static void seedAllDomains(Connection c) throws SQLException {
+    static void seedAllDomains(Connection c) throws SQLException {
         // Ordinary synthetic data only: no real credentials, payment details, or model calls.
         String[] statements = {
                 "INSERT INTO app_role (id, code, name) VALUES (91, 'SCHEMA_TEST', '测试角色')",

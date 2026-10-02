@@ -23,3 +23,7 @@ Thumbs.db
 .tools/
 __pycache__/
 *.pyc
+
+# Private local recovery bundles (source scripts remain tracked)
+backups/
+*.backup.zip
