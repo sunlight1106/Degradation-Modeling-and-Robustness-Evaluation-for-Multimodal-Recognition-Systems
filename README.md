@@ -6,7 +6,7 @@
 
 **首次使用按「下载 → 启动 → 登录」操作。Docker 部署不需要在本机安装 Java、Node.js 或 Maven。**
 
-[下载源码 ZIP](https://github.com/sunlight1106/Personal-Knowledge-Base-and-AI-Recognition-Evaluation/archive/refs/heads/main.zip) · [首次启动](#首次启动) · [日常使用](#日常使用) · [更新版本](#更新版本) · [常见问题](#常见问题) · [许可与设计说明](#许可与设计说明)
+[下载源码 ZIP](https://github.com/sunlight1106/Personal-Knowledge-Base-and-AI-Recognition-Evaluation/archive/refs/heads/main.zip) · [首次启动](#首次启动) · [日常使用](#日常使用) · [更新版本](#更新版本) · [常见问题](#常见问题) · [许可](#许可)
 
 ## 能做什么
 
