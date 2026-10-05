@@ -45,7 +45,7 @@ onMounted(load)
 <template>
   <div class="shared-page">
     <header class="shared-nav">
-      <RouterLink to="/" class="shared-brand">Personal Platform</RouterLink>
+      <RouterLink to="/" class="shared-brand">个人知识库与 AI 识别评测</RouterLink>
       <RouterLink :to="{ name: 'notes' }" class="shared-back">
         <AppIcon name="note" :size="16" /> 我的笔记
       </RouterLink>

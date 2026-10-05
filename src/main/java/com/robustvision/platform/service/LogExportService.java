@@ -47,7 +47,7 @@ public class LogExportService {
 
     private byte[] pdf(List<ApiDtos.InferenceView> tasks) {
         List<String> lines = new ArrayList<>();
-        lines.add("Personal Platform - Inference Logs"); lines.add("Generated: " + Instant.now()); lines.add("Records: " + tasks.size()); lines.add("");
+        lines.add("Personal Knowledge Base and AI Recognition Evaluation - Inference Logs"); lines.add("Generated: " + Instant.now()); lines.add("Records: " + tasks.size()); lines.add("");
         tasks.stream().limit(44).forEach(task -> lines.add(task.createdAt() + " | " + task.status() + " | " + task.provider() + " | " + task.traceId()));
         if (tasks.size() > 44) lines.add("More records are available in JSON or CSV export.");
         StringBuilder content = new StringBuilder("BT /F1 9 Tf 40 805 Td 12 TL ");
@@ -74,7 +74,7 @@ public class LogExportService {
 
     private byte[] docx(List<ApiDtos.InferenceView> tasks) throws Exception {
         StringBuilder body = new StringBuilder();
-        body.append(paragraph("Personal Platform 推理日志")).append(paragraph("生成时间：" + Instant.now())).append(paragraph("记录数：" + tasks.size()));
+        body.append(paragraph("个人知识库与 AI 识别评测 · 推理日志")).append(paragraph("生成时间：" + Instant.now())).append(paragraph("记录数：" + tasks.size()));
         tasks.forEach(task -> body.append(paragraph(task.createdAt() + "｜" + task.status() + "｜" + task.provider() + "｜" + task.model().name() + "｜traceId=" + task.traceId())));
         String document = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><w:document xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:body>" + body + "<w:sectPr/></w:body></w:document>";
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();

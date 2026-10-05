@@ -25,7 +25,7 @@ public class SmsGatewayService {
         try {
             RestClient.create().post().uri(webhookUrl).contentType(MediaType.APPLICATION_JSON)
                     .body(Map.of("phone", phone, "code", code, "orderId", orderId,
-                            "message", "Personal Platform 验证码：" + code + "，10 分钟内有效。"))
+                            "message", "个人知识库与 AI 识别评测验证码：" + code + "，10 分钟内有效。"))
                     .retrieve().toBodilessEntity();
         } catch (Exception exception) {
             throw new BusinessException(HttpStatus.BAD_GATEWAY, "SMS_SEND_FAILED", "短信验证码发送失败");

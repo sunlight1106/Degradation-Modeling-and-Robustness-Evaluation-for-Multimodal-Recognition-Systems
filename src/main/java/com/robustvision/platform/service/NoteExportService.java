@@ -76,7 +76,7 @@ public class NoteExportService {
     private byte[] markdown(ApiDtos.NoteView note) {
         StringBuilder builder = new StringBuilder();
         builder.append("# ").append(note.title()).append("\n\n");
-        builder.append("> 导出自 Personal Platform 知识库 · ")
+        builder.append("> 导出自 个人知识库与 AI 识别评测 · ")
                .append(STAMP.format(Instant.now())).append("\n");
         if (note.tags() != null && !note.tags().isEmpty()) {
             builder.append("> 标签：").append(String.join("、", note.tags())).append("\n");
@@ -128,7 +128,7 @@ public class NoteExportService {
             title.setSpacingAfter(6f);
             document.add(title);
 
-            StringBuilder meta = new StringBuilder("Personal Platform 知识库导出 · ").append(STAMP.format(Instant.now()));
+            StringBuilder meta = new StringBuilder("个人知识库与 AI 识别评测导出 · ").append(STAMP.format(Instant.now()));
             if (note.tags() != null && !note.tags().isEmpty()) {
                 meta.append(" · 标签：").append(String.join("、", note.tags()));
             }
@@ -303,7 +303,7 @@ public class NoteExportService {
 
             body.append(run(note.title(), 40, true, false, "2F4F43", 240));
 
-            StringBuilder meta = new StringBuilder("Personal Platform 知识库导出 · ")
+            StringBuilder meta = new StringBuilder("个人知识库与 AI 识别评测导出 · ")
                     .append(STAMP.format(Instant.now()));
             if (note.tags() != null && !note.tags().isEmpty()) {
                 meta.append(" · 标签：").append(String.join("、", note.tags()));

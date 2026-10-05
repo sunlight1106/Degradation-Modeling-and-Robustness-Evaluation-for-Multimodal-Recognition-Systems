@@ -32,7 +32,7 @@ onMounted(async () => {
 async function exportDataset() {
   exporting.value = true
   try {
-    await api.download('/api/v1/training/dataset', 'personal-platform-training-dataset.zip')
+    await api.download('/api/v1/training/dataset', 'pkb-ai-evaluation-training-dataset.zip')
     toastStore.success('训练数据集已导出；请先人工复核标签')
   } catch (reason) {
     toastStore.error(reason instanceof ApiClientError ? reason.message : '数据集导出失败')

@@ -13,11 +13,11 @@ const chapters = [
 ]
 </script>
 <template><div class="lab-docs lab-home"><header class="lab-header"><nav aria-label="面包屑"><a href="#introduction">HOME</a><span>›</span></nav><div class="lab-header-links"><RouterLink to="/docs">使用文档</RouterLink><RouterLink to="/models">模型目录</RouterLink><RouterLink :to="enter">{{ authStore.state.user ? '工作台' : '登录' }} ↗</RouterLink></div></header><main>
-<DocRow id="introduction" title="多模态识别与鲁棒性研究空间" intro><p>连接模型、组织知识，理解每一次识别的结果。</p><p>从原始输入开始，对照退化条件下的模型表现，记录优化过程。将数据、实验和笔记放在同一个工作空间里。</p><p><RouterLink :to="enter">进入工作台</RouterLink> · <RouterLink to="/docs">阅读使用文档</RouterLink></p><template #detail><div class="lab-index-note"><span>PERSONAL PLATFORM</span><p>研究、记录与复现。</p><p>选择一个主题，继续你的工作。</p></div></template></DocRow>
+<DocRow id="introduction" title="个人知识库与 AI 识别评测" intro><p>连接模型、组织知识，理解每一次识别的结果。</p><p>从原始输入开始，对照退化条件下的模型表现，记录优化过程。将数据、实验和笔记放在同一个工作空间里。</p><p><RouterLink :to="enter">进入工作台</RouterLink> · <RouterLink to="/docs">阅读使用文档</RouterLink></p><template #detail><div class="lab-index-note"><span>PERSONAL KNOWLEDGE BASE / AI RECOGNITION EVALUATION</span><p>研究、记录与复现。</p><p>选择一个主题，继续你的工作。</p></div></template></DocRow>
 <DocRow v-for="chapter in chapters" :key="chapter.id" :id="chapter.id" :title="chapter.title"><p>{{ chapter.intro }}</p><ul class="lab-index-list"><li v-for="item in chapter.links" :key="item.to"><RouterLink :to="item.to">{{ item.title }}</RouterLink><p>{{ item.text }}</p></li></ul><template #detail><p class="lab-margin-note">{{ chapter.id.toUpperCase() }}</p><p class="lab-section-description">{{ chapter.id === 'recognition' ? '个人模型用于图片识别；双路 DEMO 输出用于检查流程。' : chapter.id === 'knowledge' ? '按主题整理知识，用笔记连接素材与实验。' : '保留配置、输出和观察，为下一次实验留下依据。' }}</p></template></DocRow>
 <DocRow id="method" title="同一输入，两条对照路径"><p>分别记录基线和优化结果。置信度变化只是一条线索，真实标注才是判断准确率的依据。</p><RouterLink to="/docs#interactive-notes">逐行阅读实验配置 →</RouterLink><template #detail><CodeListing id="home-method" code="# 实验流程示意
 input → baseline
 input → preprocessing → optimized
 
 # 比较输出，保留记录
-compare(baseline, optimized)" /></template></DocRow></main><footer class="lab-footer"><span>Personal Platform</span><a href="#introduction">返回顶部 ↑</a></footer></div></template>
+compare(baseline, optimized)" /></template></DocRow></main><footer class="lab-footer"><span>个人知识库与 AI 识别评测</span><a href="#introduction">返回顶部 ↑</a></footer></div></template>

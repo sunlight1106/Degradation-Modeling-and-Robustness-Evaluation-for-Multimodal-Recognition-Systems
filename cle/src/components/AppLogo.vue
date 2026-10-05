@@ -3,10 +3,10 @@ withDefaults(defineProps<{ compact?: boolean; light?: boolean }>(), { compact: f
 </script>
 
 <template>
-  <div class="brand" :class="{ 'brand--light': light }">
+  <div title="Personal Knowledge Base and AI Recognition Evaluation" aria-label="个人知识库与 AI 识别评测" class="brand" :class="{ 'brand--light': light }">
     <span class="brand-mark" aria-hidden="true">
-      <svg viewBox="0 0 32 32" fill="none"><path d="M8 25V10h5v3c2-3 6-4 10-3v5c-6-2-10 1-10 6v4Z" fill="currentColor"/><circle cx="23" cy="24" r="2" fill="#719aae"/></svg>
+      <svg viewBox="0 0 32 32" fill="none"><path d="M8 7h5v10l7-7h6L17 19l7 7h-6l-5-5v5H8Z" fill="currentColor"/><circle cx="25" cy="5" r="2" fill="#719aae"/></svg>
     </span>
-    <span v-if="!compact" class="brand-name">personal / research</span>
+    <span v-if="!compact" class="brand-name">knowledge / ai</span>
   </div>
 </template>

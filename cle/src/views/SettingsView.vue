@@ -96,7 +96,7 @@ function exportData() {
     const data = await personalApi.exportData(exportPassword.value)
     if (!active) return
     const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json;charset=utf-8' }))
-    const anchor = document.createElement('a'); anchor.href = url; anchor.download = `personal-platform-data-${new Date().toISOString().slice(0, 10)}.json`
+    const anchor = document.createElement('a'); anchor.href = url; anchor.download = `pkb-ai-evaluation-data-${new Date().toISOString().slice(0, 10)}.json`
     document.body.appendChild(anchor); anchor.click(); anchor.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000)
     toastStore.success('个人数据导出已开始下载')
   })

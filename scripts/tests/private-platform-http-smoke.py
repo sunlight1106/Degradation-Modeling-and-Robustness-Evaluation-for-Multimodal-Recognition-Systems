@@ -7,7 +7,7 @@ an existing schema or app data. No network calls to AI providers are enabled.
 
 Example (inside the disposable MySQL server's same execution namespace):
   PRIVATE_PLATFORM_DISPOSABLE_MYSQL=1 python3 scripts/tests/private-platform-http-smoke.py \
-    --jar /path/to/fresh/personal-platform-backend-0.6.0.jar --report /tmp/jar-smoke.json
+    --jar /path/to/fresh/pkb-ai-evaluation-backend-0.6.0.jar --report /tmp/jar-smoke.json
 
 Successful recognition with an explicitly synthetic upstream/AV boundary is
 covered separately by PersonalPlatformHttpIntegrationTest. This script verifies

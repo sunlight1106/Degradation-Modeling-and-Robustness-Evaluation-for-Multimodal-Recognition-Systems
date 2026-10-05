@@ -52,6 +52,6 @@ async function submit() {
       <p class="login-register-link">还没有账号？<RouterLink to="/register">创建账号</RouterLink></p>
       <p class="login-footnote">初始账号由部署环境变量设置。首次登录后请修改默认密码。</p>
     </section>
-    <aside class="login-aside research-login-note"><p class="research-eyebrow">PERSONAL / RESEARCH</p><h2>让每次探索，<br>都有清晰的记录。</h2><p>连接模型，整理知识，对照实验结果。<br>从这里继续你的研究。</p><ol><li>01 / 准备输入</li><li>02 / 运行实验</li><li>03 / 记录发现</li></ol><RouterLink to="/docs">查看使用文档 →</RouterLink></aside>
+    <aside class="login-aside research-login-note"><p class="research-eyebrow">KNOWLEDGE / AI EVALUATION</p><h2>让每次探索，<br>都有清晰的记录。</h2><p>连接模型，整理知识，对照实验结果。<br>从这里继续你的研究。</p><ol><li>01 / 准备输入</li><li>02 / 运行实验</li><li>03 / 记录发现</li></ol><RouterLink to="/docs">查看使用文档 →</RouterLink></aside>
   </div>
 </template>

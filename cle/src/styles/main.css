@@ -334,7 +334,7 @@ code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
   .process-preview, .user-stat-row { grid-template-columns: 1fr 1fr; }.process-preview { padding: 12px; }.comparison-meta { grid-template-columns: 1fr; }.comparison-meta > .status-badge { display: none; }.comparison-meta .button { width: 100%; }.comparison-slider, .comparison-placeholder { min-height: 390px; }.comparison-metrics { grid-template-columns: 1fr; }.delta-card { grid-column: auto; }.model-card-top { margin-bottom: 45px; }.integration-banner { grid-template-columns: 1fr; }.integration-icon { display: none; }.form-grid { padding: 15px; }.user-stat-row div:nth-child(2) { border-right: 0; }.user-stat-row div { min-height: 58px; }.permission-footer { gap: 10px; }.permission-footer .button { min-width: 130px; }.contract-grid { grid-template-columns: 1fr; }.contract-grid > svg { transform: rotate(90deg); margin: auto; }
 }
 
-/* Personal Platform redesign —— 统一引用设计令牌，避免两套色值漂移 */
+/* Knowledge / AI interface —— 统一引用设计令牌，避免两套色值漂移 */
 :root {
   --pp-black: var(--ink);
   --pp-paper: var(--canvas);

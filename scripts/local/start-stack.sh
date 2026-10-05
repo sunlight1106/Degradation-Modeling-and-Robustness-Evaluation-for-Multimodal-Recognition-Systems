@@ -16,7 +16,7 @@ if [[ ${1:-} == --build ]]; then
   [[ -d cle/node_modules ]] || npm ci --prefix cle
   npm run build --prefix cle
 fi
-JAR=${APP_JAR:-$ROOT/target/personal-platform-backend-0.6.0.jar}
+JAR=${APP_JAR:-$ROOT/target/pkb-ai-evaluation-backend-0.6.0.jar}
 [[ -f "$JAR" && -f cle/dist/index.html && -d cle/node_modules ]] || { echo 'Build first: scripts/local/start-stack.sh --build' >&2; exit 1; }
 mkdir -p "$RUNTIME"/{mysql,redis,uploads,logs,secrets}
 chmod 700 "$RUNTIME/secrets"

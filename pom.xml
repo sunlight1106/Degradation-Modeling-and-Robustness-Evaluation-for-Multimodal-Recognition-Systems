@@ -12,10 +12,10 @@
     </parent>
 
     <groupId>com.robustvision</groupId>
-    <artifactId>personal-platform-backend</artifactId>
+    <artifactId>pkb-ai-evaluation-backend</artifactId>
     <version>0.6.0</version>
-    <name>Personal Platform Backend</name>
-    <description>Multimodal recognition, evaluation and model analysis API</description>
+    <name>Personal Knowledge Base and AI Recognition Evaluation — Backend</name>
+    <description>Self-hosted personal knowledge, notes, AI recognition and evaluation API</description>
 
     <properties>
         <java.version>17</java.version>

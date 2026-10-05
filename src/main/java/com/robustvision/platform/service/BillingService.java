@@ -286,7 +286,7 @@ public class BillingService {
     }
     private ApiDtos.PublicPaymentView toPublic(RechargeOrderEntity order) {
         return new ApiDtos.PublicPaymentView(order.getId(), order.getMethod(), order.getAmount(), order.getStatus(),
-                "Personal Platform", order.getExpiresAt(), order.getPaidAt());
+                "个人知识库与 AI 识别评测", order.getExpiresAt(), order.getPaidAt());
     }
     private ApiDtos.WalletLedgerView toLedger(WalletLedgerEntity ledger) { return new ApiDtos.WalletLedgerView(ledger.getId(), ledger.getType(), ledger.getAmount(), ledger.getBalanceAfter(), ledger.getReferenceId(), ledger.getDescription(), ledger.getCreatedAt()); }
     private String normalizeLast4(String value) { String digits = value == null ? "" : value.replaceAll("\\D", ""); if (!digits.matches("\\d{4}")) throw new BusinessException(HttpStatus.BAD_REQUEST, "BANK_LAST4_INVALID", "银行卡末四位不正确"); return digits; }

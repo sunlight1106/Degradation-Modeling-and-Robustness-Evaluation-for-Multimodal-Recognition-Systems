@@ -70,7 +70,7 @@ const adapter = (task: InferenceView) => String((task.optimizedResult || task.ba
 const usage = (task: InferenceView) => (task.optimizedResult || task.baselineResult)?.usage as Record<string, number> | undefined
 async function exportLogs(format: 'pdf' | 'docx' | 'csv' | 'json') {
   exporting.value = format
-  try { await api.download(`/api/v1/inference/tasks/export?format=${format}`, `personal-platform-logs.${format}`); toastStore.success(`${format.toUpperCase()} 日志已导出`) }
+  try { await api.download(`/api/v1/inference/tasks/export?format=${format}`, `pkb-ai-evaluation-logs.${format}`); toastStore.success(`${format.toUpperCase()} 日志已导出`) }
   catch (reason) { toastStore.error(reason instanceof ApiClientError ? reason.message : '日志导出失败') }
   finally { exporting.value = '' }
 }

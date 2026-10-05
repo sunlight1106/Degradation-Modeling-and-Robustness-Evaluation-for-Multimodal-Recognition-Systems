@@ -53,7 +53,7 @@ For content round trips, use **`vocabularyBookImports`**. Each object is one sel
    ```python
    import json
    from pathlib import Path
-   account = json.loads(Path("personal-platform-data.json").read_text(encoding="utf-8"))
+   account = json.loads(Path("pkb-ai-evaluation-data.json").read_text(encoding="utf-8"))
    if account.get("schemaVersion") != 2:
        raise ValueError("Expected account export version 2")
    index = 0

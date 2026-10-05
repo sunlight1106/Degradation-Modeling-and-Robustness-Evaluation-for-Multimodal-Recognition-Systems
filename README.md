@@ -1,10 +1,12 @@
-# 多模态识别与个人知识平台
+# Personal Knowledge Base and AI Recognition Evaluation
+
+**个人知识库与 AI 识别评测**
 
 在自己的电脑运行一个研究工作台：写笔记、整理知识、学习词汇，使用自己的 AI 配置识别图片，或运行本地演示实验。
 
 **首次使用按「下载 → 启动 → 登录」操作。Docker 部署不需要在本机安装 Java、Node.js 或 Maven。**
 
-[下载源码 ZIP](https://github.com/sunlight1106/Degradation-Modeling-and-Robustness-Evaluation-for-Multimodal-Recognition-Systems/archive/refs/heads/main.zip) · [首次启动](#首次启动) · [日常使用](#日常使用) · [更新版本](#更新版本) · [常见问题](#常见问题) · [许可与设计说明](#许可与设计说明)
+[下载源码 ZIP](https://github.com/sunlight1106/Personal-Knowledge-Base-and-AI-Recognition-Evaluation/archive/refs/heads/main.zip) · [首次启动](#首次启动) · [日常使用](#日常使用) · [更新版本](#更新版本) · [常见问题](#常见问题) · [许可与设计说明](#许可与设计说明)
 
 ## 能做什么
 
@@ -24,7 +26,7 @@
 ### 直接下载 ZIP
 
 1. 点击上方「下载源码 ZIP」，或在 GitHub 选择 **Code → Download ZIP**。
-2. 将 ZIP **完整解压**到固定目录，例如 `D:\ResearchPlatform`。
+2. 将 ZIP **完整解压**到固定目录，例如 `D:\KnowledgeAI`。
 3. 打开解压后的项目目录，确认能看到 `compose.yaml`、`deploy.ps1` 和 `cle` 文件夹。
 
 ZIP 是源码包，不是安装程序；不能直接双击里面的网页运行。
@@ -32,8 +34,8 @@ ZIP 是源码包，不是安装程序；不能直接双击里面的网页运行�
 ### 使用 Git，方便以后更新
 
 ```sh
-git clone --depth 1 https://github.com/sunlight1106/Degradation-Modeling-and-Robustness-Evaluation-for-Multimodal-Recognition-Systems.git
-cd Degradation-Modeling-and-Robustness-Evaluation-for-Multimodal-Recognition-Systems
+git clone --depth 1 https://github.com/sunlight1106/Personal-Knowledge-Base-and-AI-Recognition-Evaluation.git
+cd Personal-Knowledge-Base-and-AI-Recognition-Evaluation
 ```
 
 ## 首次启动
@@ -148,6 +150,17 @@ docker compose stop
 
 ## 更新版本
 
+### 已下载过旧名称仓库的用户
+
+仓库现名为 **Personal-Knowledge-Base-and-AI-Recognition-Evaluation**（个人知识库与 AI 识别评测）。在原项目目录执行一次，更新远程地址：
+
+```sh
+git remote set-url origin https://github.com/sunlight1106/Personal-Knowledge-Base-and-AI-Recognition-Evaluation.git
+git remote -v
+```
+
+确认 `origin` 显示上面的新地址，再按下方步骤更新。**不用重新下载项目，也不用改本地文件夹名称。** ZIP 用户直接按本节的 ZIP 更新步骤操作。
+
 ### Git 下载的用户
 
 先保存本地代码改动，并备份 `.env`、数据库与上传对象。然后在原项目目录执行：
@@ -166,6 +179,8 @@ Windows 重新运行 `deploy.ps1`；Linux / macOS 重新运行 `sh deploy.sh`。
 4. 在原目录重新运行部署脚本，完成后刷新网页。
 
 Compose 项目名固定为 `robust-vision`。同一台电脑上的多个源码目录默认共用这组服务和数据，第二次解压不代表独立测试环境。
+
+这是为已有安装保留的兼容标识，不是项目显示名称。数据库、对象存储桶、Docker 数据卷、登录存储键和备份格式也保留原标识；仅因仓库改名，无需修改 `.env`、重建数据库或搬迁数据。Java 包名 `com.robustvision.platform` 继续兼容现有工具。构建包名称和导出文件中的项目名前缀改为 `pkb-ai-evaluation`。
 
 ## 常见问题
 
@@ -216,7 +231,7 @@ npm run build --prefix cle
 
 后端：Linux / macOS 使用 `./mvnw -B verify`，Windows 使用 `.\mvnw.cmd -B verify`。完整本地开发见组件栈文档；测试用 H2 不用于正式数据库。
 
-[GitHub Actions](https://github.com/sunlight1106/Degradation-Modeling-and-Robustness-Evaluation-for-Multimodal-Recognition-Systems/actions) 在推送后执行前端测试与构建、后端测试和 MySQL 契约测试。自动化测试不等于真实供应商联调或所有部署环境验证。
+[GitHub Actions](https://github.com/sunlight1106/Personal-Knowledge-Base-and-AI-Recognition-Evaluation/actions) 在推送后执行前端测试与构建、后端测试和 MySQL 契约测试。自动化测试不等于真实供应商联调或所有部署环境验证。
 
 [性能与复现](docs/PERFORMANCE.md) · [验证范围](docs/VALIDATION.md) · [账户安全](docs/SECURITY.md) · [上传内容检查](docs/CONTENT_SECURITY.md)
 

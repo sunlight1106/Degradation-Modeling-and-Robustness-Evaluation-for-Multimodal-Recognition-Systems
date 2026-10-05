@@ -76,11 +76,11 @@ async function submit() {
         <p class="password-guide">建议使用 12 位以上，并混合大小写、数字和符号。</p>
         <p v-if="error" class="form-error">{{ error }}</p>
         <button class="button button--dark button--full" type="submit" :disabled="busy">
-          {{ busy ? '正在创建…' : '创建 Personal Platform 账号' }} <AppIcon v-if="!busy" name="arrow" :size="17" />
+          {{ busy ? '正在创建…' : '创建账号' }} <AppIcon v-if="!busy" name="arrow" :size="17" />
         </button>
       </form>
       <p class="login-register-link">已有账号？<RouterLink to="/login">返回登录</RouterLink></p>
     </section>
-    <aside class="login-aside research-login-note"><p class="research-eyebrow">PERSONAL / RESEARCH</p><h2>建立自己的<br>研究档案。</h2><p>用一个账号连接素材、模型和笔记，<br>让实验过程有据可查。</p><ol><li>01 / 整理素材</li><li>02 / 记录实验</li><li>03 / 回顾与复现</li></ol><RouterLink to="/docs">阅读使用文档 →</RouterLink></aside>
+    <aside class="login-aside research-login-note"><p class="research-eyebrow">KNOWLEDGE / AI EVALUATION</p><h2>建立自己的<br>研究档案。</h2><p>用一个账号连接素材、模型和笔记，<br>让实验过程有据可查。</p><ol><li>01 / 整理素材</li><li>02 / 记录实验</li><li>03 / 回顾与复现</li></ol><RouterLink to="/docs">阅读使用文档 →</RouterLink></aside>
   </div>
 </template>

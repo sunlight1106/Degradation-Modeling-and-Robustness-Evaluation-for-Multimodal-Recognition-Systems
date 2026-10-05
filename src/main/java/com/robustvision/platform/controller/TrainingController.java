@@ -30,7 +30,7 @@ public class TrainingController {
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType("application/zip"))
                 .header(HttpHeaders.CONTENT_DISPOSITION,
-                        ContentDisposition.attachment().filename("personal-platform-training-dataset.zip").build().toString())
+                        ContentDisposition.attachment().filename("pkb-ai-evaluation-training-dataset.zip").build().toString())
                 .body(content);
     }
 }
