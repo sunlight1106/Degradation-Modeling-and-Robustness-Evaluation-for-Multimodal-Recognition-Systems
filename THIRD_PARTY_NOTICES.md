@@ -1,10 +1,4 @@
-# 设计参考与第三方说明
-
-## 原创代码与界面
-
-原创代码适用根目录 [LICENSE](LICENSE) 的 MIT 许可。
-
-界面参考 [LabML Annotated Deep Learning](https://nn.labml.ai/) 及其[源码仓库](https://github.com/labmlai/annotated_deep_learning_paper_implementations) 的研究笔记组织方式：说明与示例并排、细分隔线、可定位的标题和代码符号。当前阅读组件、样式、示例文字与图标独立实现，没有打包 LabML 的源代码、文章、品牌标识或图片。本项目不代表 LabML，没有隶属或背书关系。
+# 第三方许可
 
 ## 已退出当前版本的素材
 
