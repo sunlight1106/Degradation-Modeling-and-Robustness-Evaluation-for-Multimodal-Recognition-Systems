@@ -335,13 +335,13 @@ public final class ApiDtos {
     public record NoteView(
             String id, String title, String body, List<String> tags,
             NoteStatusView status, List<NoteReferenceView> references,
-            int shareCount, Instant createdAt, Instant updatedAt
+            int shareCount, Instant createdAt, Instant updatedAt, String library, String contentFormat
     ) {}
 
     /** 笔记列表使用的精简视图，不含正文，减少传输体积。 */
     public record NoteSummaryView(
             String id, String title, String excerpt, List<String> tags,
-            NoteStatusView status, int shareCount, Instant createdAt, Instant updatedAt
+            NoteStatusView status, int shareCount, Instant createdAt, Instant updatedAt, String library, String contentFormat
     ) {}
 
     public record NoteStatusView(String code, String label) {}
@@ -350,14 +350,18 @@ public final class ApiDtos {
             @NotBlank @Size(max = 180) String title,
             @NotBlank @Size(max = 200000) String body,
             @Size(max = 500) String tags,
-            String status
+            String status,
+            @Size(max = 40) String library,
+            @jakarta.validation.constraints.Pattern(regexp = "MARKDOWN|HTML") String contentFormat
     ) {}
 
     public record UpdateNoteRequest(
             @Size(min = 1, max = 180) String title,
             @Size(max = 200000) String body,
             @Size(max = 500) String tags,
-            String status
+            String status,
+            @Size(max = 40) String library,
+            @jakarta.validation.constraints.Pattern(regexp = "MARKDOWN|HTML") String contentFormat
     ) {}
 
     public record NoteReferenceView(
@@ -399,6 +403,6 @@ public final class ApiDtos {
     /** 分享只读视图，供登录用户查看他人分享的笔记。 */
     public record SharedNoteView(
             String title, String body, List<String> tags, String ownerName,
-            Instant createdAt, Instant updatedAt, List<NoteReferenceView> references
+            Instant createdAt, Instant updatedAt, List<NoteReferenceView> references, String contentFormat
     ) {}
 }

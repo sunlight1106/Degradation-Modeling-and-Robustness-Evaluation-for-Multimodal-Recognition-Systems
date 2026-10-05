@@ -51,7 +51,7 @@ class MySqlSchemaMigrationTest {
     void freshMigrationsCoverAllEntitiesAndConstraintsOnMySql84() throws Exception {
         try (TestDatabase database = new TestDatabase()) {
             Flyway flyway = database.flyway(null);
-            assertThat(flyway.migrate().migrationsExecuted).isGreaterThanOrEqualTo(13);
+            assertThat(flyway.migrate().migrationsExecuted).isGreaterThanOrEqualTo(14);
             flyway.validate();
             assertThat(flyway.migrate().migrationsExecuted).isZero();
             try (Connection connection = database.connect()) {
@@ -134,6 +134,9 @@ class MySqlSchemaMigrationTest {
                 "INSERT INTO note (id, owner_id, title, body) VALUES ('orphan-note', 999999, 'orphan', '')"))
                 .isInstanceOf(SQLException.class).satisfies(error -> assertThat(((SQLException) error).getErrorCode()).isEqualTo(1452));
 
+        assertThat(scalar(c, "SELECT library FROM note WHERE id = 'note-1'")).isEqualTo("综合学习");
+        assertThat(scalar(c, "SELECT content_format FROM note WHERE id = 'note-1'")).isEqualTo("MARKDOWN");
+
         // Delete only the disposable child note, then verify all dependent rows cascade.
         execute(c, "INSERT INTO note (id, owner_id, title, body) VALUES ('cascade-note', 101, 'temporary', '')");
         execute(c, "INSERT INTO note_reference (note_id, reference_type, reference_id) VALUES ('cascade-note', 'FILE', 'file-1')");
@@ -186,8 +189,9 @@ class MySqlSchemaMigrationTest {
     private static Map<String, List<String>> snapshot(Connection c) throws SQLException {
         Map<String, List<String>> result = new LinkedHashMap<>();
         for (String table : new TreeSet<>(LEGACY_DOMAIN_TABLES)) {
-            // V13 adds nullable group/reply columns; compare every original message column across upgrades.
-            String columns = table.equals("internal_message") ? "id,sender_id,subject,body,created_at" : "*";
+            // Compare original columns across V13 message and V14 note additions.
+            String columns = table.equals("internal_message") ? "id,sender_id,subject,body,created_at"
+                    : table.equals("note") ? "id,owner_id,title,body,tags,status,created_at,updated_at" : "*";
             List<String> values = rows(c, "SELECT " + columns + " FROM `" + table + "`");
             values.sort(String::compareTo);
             result.put(table, values);

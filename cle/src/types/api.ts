@@ -267,7 +267,8 @@ export interface MessageView {
 export type NoteStatusCode = 'DRAFT' | 'ACTIVE' | 'ARCHIVED'
 export type NoteReferenceType = 'FILE' | 'TASK' | 'ENTRY'
 export type NoteAssistAction = 'summarize' | 'outline' | 'tags' | 'tidy'
-export type NoteExportFormat = 'md' | 'pdf' | 'docx'
+export type NoteExportFormat = 'md' | 'pdf' | 'docx' | 'html' | 'txt'
+export type NoteContentFormat = 'MARKDOWN' | 'HTML'
 
 export interface KnowledgeTopicView {
   id: number
@@ -310,6 +311,8 @@ export interface NoteReferenceView {
 }
 
 export interface NoteView {
+  library: string
+  contentFormat: NoteContentFormat
   id: string
   title: string
   body: string
@@ -322,6 +325,8 @@ export interface NoteView {
 }
 
 export interface NoteSummaryView {
+  library: string
+  contentFormat: NoteContentFormat
   id: string
   title: string
   excerpt: string
@@ -357,6 +362,7 @@ export interface NoteShareView {
 }
 
 export interface SharedNoteView {
+  contentFormat: NoteContentFormat
   title: string
   body: string
   tags: string[]

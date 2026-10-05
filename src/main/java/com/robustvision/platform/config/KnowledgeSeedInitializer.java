@@ -18,10 +18,10 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * 知识库种子数据：预置生物化学医学领域的 6 个主题与 18 张知识卡。
+ * 知识库种子数据：预置英语、计算机、数学与生物化学医学的入门主题与知识卡。
  *
  * 幂等设计——按「领域 + 主题名」和「主题 + 标题」判重，重复启动不会插入重复数据；
- * 用户删除过的预置卡不会复活（删除记录不再重建），编辑过的内容不会被覆盖。
+ * 已有标题的预置内容不会被覆盖；缺失的入门主题与卡片会补齐。
  *
  * 内容为框架级要点，用于给知识库一个可立即使用的骨架。具体数值（参考区间、
  * 动力学参数等）请以现行教材与临床指南为准，卡片中已标注需核对的地方。
@@ -49,22 +49,22 @@ public class KnowledgeSeedInitializer implements CommandLineRunner {
         // 一次性加载已有预置主题，避免在循环中重复查表
         Map<String, KnowledgeTopicEntity> existingTopics = new LinkedHashMap<>();
         for (KnowledgeTopicEntity topic : topicRepository.findByOwnerIsNullOrderBySortOrderAscIdAsc()) {
-            if (DOMAIN.equals(topic.getDomain())) existingTopics.put(topic.getName(), topic);
+            existingTopics.put(topic.getDomain() + "/" + topic.getName(), topic);
         }
 
         int createdTopics = 0;
         int createdEntries = 0;
 
         for (SeedTopic seed : TOPICS) {
-            KnowledgeTopicEntity topic = existingTopics.get(seed.name());
+            KnowledgeTopicEntity topic = existingTopics.get(seed.domain() + "/" + seed.name());
             if (topic == null) {
                 topic = topicRepository.save(new KnowledgeTopicEntity(
-                        DOMAIN, seed.name(), seed.description(), true, null, seed.order()));
-                existingTopics.put(seed.name(), topic);
+                        seed.domain(), seed.name(), seed.description(), true, null, seed.order()));
+                existingTopics.put(seed.domain() + "/" + seed.name(), topic);
                 createdTopics++;
             }
 
-            // 已有卡片标题集合，用于判重；用户编辑过的内容不会被覆盖，删除过的也不会复活
+            // 已有卡片标题集合，用于判重；用户编辑过的内容不会被覆盖；缺失的入门卡片会补齐
             Set<String> existingTitles = entryRepository
                     .findByTopicIdOrderBySortOrderAscCreatedAtAsc(topic.getId())
                     .stream().map(KnowledgeEntryEntity::getTitle).collect(Collectors.toSet());
@@ -83,12 +83,26 @@ public class KnowledgeSeedInitializer implements CommandLineRunner {
                 TOPICS.length, createdTopics, createdEntries);
     }
 
-    private record SeedTopic(String name, String description, int order, SeedEntry... entries) {}
+    private record SeedTopic(String domain, String name, String description, int order, SeedEntry... entries) {}
 
     private record SeedEntry(String title, String summary, String body, String tags) {}
 
     private static final SeedTopic[] TOPICS = {
-            new SeedTopic("糖代谢", "葡萄糖的分解、合成与血糖调控", 10,
+        new SeedTopic("英语学习", "词汇与表达", "在语境中积累词汇，配合背单词复习。", 10,
+                new SeedEntry("如何记录一个新词", "在语境中积累词汇，配合背单词复习。", "## observe · 观察\n\n- 例句：We observe a change in the results.\n- 搭配：observe a pattern / observe a difference\n- 自己造句：记录与你的研究相关的一句话。\n\n## 复习\n\n先遮住释义回忆，再根据例句复述。需要间隔复习时，使用侧栏「背单词」。", "英语学习")),
+        new SeedTopic("英语学习", "语法与写作", "整理句型、易错点与写作修改。", 20,
+                new SeedEntry("英文段落练习模板", "整理句型、易错点与写作修改。", "## 观点\n\nThis experiment compares two methods.\n\n## 证据\n\n用一句话描述观察到的结果，注明数据来源。\n\n## 解释\n\n说明结果如何支持观点，保留不确定性。\n\n## 修改记录\n\n| 原句 | 修改 | 原因 |\n| --- | --- | --- |\n| 在此填写 | 在此填写 | 时态、用词或逻辑 |", "英语学习")),
+        new SeedTopic("英语学习", "阅读与听力", "保存文章提纲、听力要点和复述记录。", 30,
+                new SeedEntry("阅读与听力记录", "保存文章提纲、听力要点和复述记录。", "## 材料\n\n标题、来源链接、日期、难度。\n\n## 要点\n\n- 主题是什么？\n- 作者给出了哪些证据？\n- 哪一句还不理解？\n\n## 英文复述\n\n用自己的话写三句话，不直接复制原文。", "英语学习")),
+        new SeedTopic("计算机学习", "编程与算法", "记录代码、运行结果、边界条件与复杂度。", 40,
+                new SeedEntry("算法实验记录", "记录代码、运行结果、边界条件与复杂度。", "## 问题\n\n输入、输出和约束。\n\n## Python 示例\n\n```python\ndef total(values):\n    return sum(values)\n\nprint(total([1, 2, 3]))\n```\n\n## 验证\n\n- 空数组：0\n- 正负数混合：手工计算对照\n- 时间复杂度：O(n)\n\n代码块用于阅读，程序请在自己的开发环境运行。", "计算机学习")),
+        new SeedTopic("计算机学习", "系统与网络", "按原理、实验、现象、解释组织知识。", 50,
+                new SeedEntry("网络请求排查记录", "按原理、实验、现象、解释组织知识。", "## 目标\n\n记录一个请求从客户端到服务端的路径。\n\n## 观察\n\n| 环节 | 证据 | 结果 |\n| --- | --- | --- |\n| 域名解析 | 解析结果 | 待记录 |\n| 建立连接 | 状态与耗时 | 待记录 |\n| 应用响应 | 状态码 | 待记录 |\n\n## 结论\n\n区分已经验证的事实和待验证的假设。", "计算机学习")),
+        new SeedTopic("计算机学习", "数据与人工智能", "记录数据、基线、实验配置与评测结果。", 60,
+                new SeedEntry("可复现实验清单", "记录数据、基线、实验配置与评测结果。", "## 数据\n\n来源、许可、清洗步骤与训练/验证/测试划分。\n\n## 配置\n\n```json\n{ \"seed\": 42, \"batch_size\": 32 }\n```\n\n## 比较\n\n先固定数据和指标，再比较模型或预处理方法。记录基线、结果和失败案例。\n\n## 限制\n\n记录当前结果不适用的情况。", "计算机学习")),
+        new SeedTopic("数学学习", "概念与例题", "从定义、直觉、例题和错题建立知识关联。", 70,
+                new SeedEntry("概念学习模板", "从定义、直觉、例题和错题建立知识关联。", "## 定义\n\n准确写出定义，并注明前提。\n\n## 直觉\n\n用一句自己的话解释。\n\n## 例题\n\n列出已知条件、推导步骤和结果。\n\n## 反例与复习\n\n条件改变后结论是否仍成立？记录易错点。", "数学学习")),
+            new SeedTopic(DOMAIN, "糖代谢", "葡萄糖的分解、合成与血糖调控", 10,
                     new SeedEntry("糖酵解：从葡萄糖到丙酮酸",
                             "胞质中十步反应，净产 2 ATP 与 2 NADH，三个关键限速酶决定通量。",
                             """
@@ -238,7 +252,7 @@ public class KnowledgeSeedInitializer implements CommandLineRunner {
                             "糖异生,血糖,胰高血糖素,Cori循环,葡萄糖-6-磷酸酶")
             ),
 
-            new SeedTopic("脂代谢", "脂肪酸的分解与合成、酮体与脂蛋白运输", 20,
+            new SeedTopic(DOMAIN, "脂代谢", "脂肪酸的分解与合成、酮体与脂蛋白运输", 20,
                     new SeedEntry("脂肪酸 β-氧化",
                             "线粒体中四步循环逐次切下乙酰 CoA，肉碱穿梭是限速入口。",
                             """
@@ -364,7 +378,7 @@ public class KnowledgeSeedInitializer implements CommandLineRunner {
                             "酮体,酮症酸中毒,肝脏,饥饿,糖尿病")
             ),
 
-            new SeedTopic("蛋白质与酶", "氨基酸代谢、蛋白质结构与酶动力学", 30,
+            new SeedTopic(DOMAIN, "蛋白质与酶", "氨基酸代谢、蛋白质结构与酶动力学", 30,
                     new SeedEntry("酶动力学：米氏方程的意义",
                             "Km 反映亲和力，Vmax 反映催化能力；竞争性抑制改变 Km 而不改变 Vmax。",
                             """
@@ -489,7 +503,7 @@ public class KnowledgeSeedInitializer implements CommandLineRunner {
                             "尿素循环,转氨酶,谷氨酰胺,血氨,肝性脑病")
             ),
 
-            new SeedTopic("核酸与分子生物学", "DNA 复制、转录翻译与基因表达调控", 40,
+            new SeedTopic(DOMAIN, "核酸与分子生物学", "DNA 复制、转录翻译与基因表达调控", 40,
                     new SeedEntry("DNA 复制的半保留与半不连续机制",
                             "解旋、引物、冈崎片段、连接，以及复制保真度的三重保障。",
                             """
@@ -631,7 +645,7 @@ public class KnowledgeSeedInitializer implements CommandLineRunner {
                             "遗传密码,翻译,核糖体,tRNA,抗生素")
             ),
 
-            new SeedTopic("维生素与微量元素", "辅酶前体、缺乏症与毒性边界", 50,
+            new SeedTopic(DOMAIN, "维生素与微量元素", "辅酶前体、缺乏症与毒性边界", 50,
                     new SeedEntry("水溶性维生素：B 族与 C",
                             "多数作为辅酶前体，体内储存少需持续摄入，过量多可排出但仍有上限。",
                             """
@@ -728,7 +742,7 @@ public class KnowledgeSeedInitializer implements CommandLineRunner {
                             "维生素A,维生素D,维生素K,华法林,视觉循环")
             ),
 
-            new SeedTopic("临床生化指标", "常用检验项目的意义、干扰因素与解读边界", 60,
+            new SeedTopic(DOMAIN, "临床生化指标", "常用检验项目的意义、干扰因素与解读边界", 60,
                     new SeedEntry("肝功能相关指标解读",
                             "转氨酶、胆红素、白蛋白与碱性磷酸酶分别反映损伤、代谢、合成功能与胆汁淤积。",
                             """

@@ -7,6 +7,7 @@ import type {
   FileView,
   KnowledgeEntryView,
   NoteExportFormat,
+  NoteContentFormat,
   NoteReferenceType,
   NoteReferenceView,
   NoteShareView,
@@ -17,7 +18,8 @@ import AppIcon from '@/components/AppIcon.vue'
 import NotePersonalTools from '@/components/NotePersonalTools.vue'
 import { authStore } from '@/stores/auth'
 import { toastStore } from '@/stores/toast'
-import { countWords, extractOutline, readingMinutes, renderMarkdown } from '@/lib/markdown'
+import { noteLibraries, noteTemplates } from '@/lib/noteLibraries'
+import { countWords, extractOutline, readingMinutes, renderNote } from '@/lib/markdown'
 
 const route = useRoute()
 const router = useRouter()
@@ -34,6 +36,8 @@ const currentId = ref<string | null>(null)
 const title = ref('')
 const body = ref('')
 const tagsInput = ref('')
+const library = ref('综合学习')
+const contentFormat = ref<NoteContentFormat>('MARKDOWN')
 const status = ref<NoteStatusCode>('DRAFT')
 const references = ref<NoteReferenceView[]>([])
 const shareCount = ref(0)
@@ -47,8 +51,8 @@ const ready = ref(false)
 
 const bodyEl = ref<HTMLTextAreaElement | null>(null)
 
-const previewHtml = computed(() => renderMarkdown(body.value))
-const outline = computed(() => extractOutline(body.value))
+const previewHtml = computed(() => renderNote(body.value, contentFormat.value))
+const outline = computed(() => contentFormat.value === 'HTML' ? [] : extractOutline(body.value))
 const wordCount = computed(() => countWords(body.value))
 const readMinutes = computed(() => readingMinutes(body.value))
 const isNew = computed(() => currentId.value === null)
@@ -66,12 +70,14 @@ function formatDate(value: string | null) {
   return new Date(value).toLocaleString('zh-CN', { hour12: false })
 }
 
-watch([title, body, tagsInput, status], () => {
+watch([title, body, tagsInput, status, library, contentFormat], () => {
   if (ready.value) dirty.value = true
 })
 
 function applyNote(note: NoteView) {
   currentId.value = note.id
+  library.value = note.library || "综合学习"
+  contentFormat.value = note.contentFormat || "MARKDOWN"
   title.value = note.title
   body.value = note.body
   tagsInput.value = note.tags.join(', ')
@@ -87,6 +93,15 @@ async function load() {
   const version = ++loadVersion
   const raw = route.params.id
   if (typeof raw !== 'string' || !raw) {
+    library.value = typeof route.query.library === 'string' ? route.query.library.slice(0, 40) : '综合学习'
+    if (route.query.template === 'study') useTemplate()
+    if (typeof route.query.entry === 'string') {
+      try {
+        const entry = await api.knowledgeEntry(route.query.entry)
+        if (version !== loadVersion) return
+        title.value = entry.title; body.value = entry.body; library.value = entry.domain; tagsInput.value = entry.tags.join(', ')
+      } catch (reason) { toastStore.error(errText(reason, '知识卡读取失败')) }
+    }
     await nextTick()
     dirty.value = false
     ready.value = true
@@ -127,6 +142,8 @@ async function save(): Promise<string | null> {
       body: body.value,
       tags: tagsInput.value.trim(),
       status: status.value,
+      library: library.value.trim() || "综合学习",
+      contentFormat: contentFormat.value,
     }
     const wasNew = isNew.value
     const saved = currentId.value
@@ -199,6 +216,14 @@ const tools: Array<{ label: string; title: string; run: () => void }> = [
   { label: '</>', title: '行内代码', run: () => surround('`') },
 ]
 
+function useTemplate() {
+  if (body.value.trim() && !window.confirm("用学习模板替换当前正文？")) return
+  const template = noteTemplates[library.value] || noteTemplates["综合学习"]!
+  title.value = title.value || template.title
+  body.value = template.body
+  contentFormat.value = "MARKDOWN"
+}
+
 function onBodyKeydown(event: KeyboardEvent) {
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
     event.preventDefault()
@@ -214,10 +239,11 @@ function applyTags(items: string[]) { tagsInput.value = Array.from(new Set([...t
 const exporting = ref<NoteExportFormat | null>(null)
 
 async function exportAs(format: NoteExportFormat) {
-  const id = await ensureSaved()
-  if (!id) return
+  if (exporting.value || saving.value || loading.value || !ready.value) return
   exporting.value = format
   try {
+    const id = await ensureSaved()
+    if (!id) return
     const base = (title.value.trim() || '笔记').replace(/[\\/:*?"<>|]/g, '_').slice(0, 60)
     await api.exportNote(id, format, `${base}.${format}`)
     toastStore.success(`已导出 ${format.toUpperCase()}`)
@@ -393,10 +419,10 @@ onBeforeUnmount(() => { loadVersion++; refVersion++; window.removeEventListener(
       <div>
         <p class="page-kicker">NOTE EDITOR</p>
         <h2>{{ isNew ? '新建笔记' : '编辑笔记' }}</h2>
-        <p>左侧 Markdown 编辑，右侧实时预览。可引用文件、推理任务与知识卡，支持 AI 整理、导出与分享。</p>
+        <p>按学习库整理笔记。左侧编写 Markdown 或 HTML，右侧实时预览，支持代码块、表格和文档导出。</p>
       </div>
       <div class="intro-actions note-editor-head">
-        <RouterLink :to="{ name: 'notes' }" class="button button--ghost">
+        <RouterLink :to="{ name: 'notes', query: { library } }" class="button button--ghost">
           <AppIcon name="chevron" :size="16" /> 返回列表
         </RouterLink>
         <button v-if="!isNew" class="button button--ghost note-danger" @click="remove">
@@ -414,6 +440,8 @@ onBeforeUnmount(() => { loadVersion++; refVersion++; window.removeEventListener(
       <div class="note-editor-fields">
         <input v-model="title" :disabled="loading || saving || !ready" class="field-input note-title-input" maxlength="180" placeholder="无标题笔记" />
         <div class="note-editor-row">
+          <label class="field-label">学习库<input v-model="library" :disabled="loading || saving || !ready" class="field-input" list="note-libraries" maxlength="40" placeholder="选择或输入自定义库名" /><datalist id="note-libraries"><option v-for="name in noteLibraries" :key="name" :value="name" /></datalist></label>
+          <label class="field-label">编写格式<select v-model="contentFormat" :disabled="loading || saving || !ready" class="field-input"><option value="MARKDOWN">Markdown</option><option value="HTML">HTML</option></select></label>
           <label class="field-label note-status-field">
             状态
             <select v-model="status" :disabled="loading || saving || !ready" class="field-input">
@@ -422,7 +450,7 @@ onBeforeUnmount(() => { loadVersion++; refVersion++; window.removeEventListener(
           </label>
           <label class="field-label note-tags-field">
             标签（逗号分隔）
-            <input v-model="tagsInput" :disabled="loading || saving || !ready" class="field-input" maxlength="500" placeholder="糖代谢, 酶动力学" />
+            <input v-model="tagsInput" :disabled="loading || saving || !ready" class="field-input" maxlength="500" placeholder="如：英语写作, Python, 复习" />
           </label>
         </div>
       </div>
@@ -434,19 +462,22 @@ onBeforeUnmount(() => { loadVersion++; refVersion++; window.removeEventListener(
       </div>
       <div class="note-editor-export">
         <span class="note-editor-export-label"><AppIcon name="export" :size="15" /> 导出</span>
-        <button class="button button--ghost button--small" :disabled="exporting !== null" @click="exportAs('md')">Markdown</button>
-        <button class="button button--ghost button--small" :disabled="exporting !== null" @click="exportAs('pdf')">PDF</button>
-        <button class="button button--ghost button--small" :disabled="exporting !== null" @click="exportAs('docx')">DOCX</button>
+        <button class="button button--ghost button--small" :disabled="exporting !== null || saving || loading || !ready" @click="exportAs('md')">Markdown</button>
+        <button class="button button--ghost button--small" :disabled="exporting !== null || saving || loading || !ready" @click="exportAs('pdf')">PDF</button>
+        <button class="button button--ghost button--small" :disabled="exporting !== null || saving || loading || !ready" @click="exportAs('docx')">Word</button>
+        <button class="button button--ghost button--small" :disabled="exporting !== null || saving || loading || !ready" @click="exportAs('html')">HTML</button>
+        <button class="button button--ghost button--small" :disabled="exporting !== null || saving || loading || !ready" @click="exportAs('txt')">TXT</button>
       </div>
     </section>
 
-    <NotePersonalTools :key="currentId || 'new'" :title="title" :body="body" :disabled="loading || saving || !ready || !canWrite" @append="appendToBody" @replace="body = $event" @tags="applyTags" />
+
 
     <section class="note-editor-layout" :class="{ 'note-editor-layout--outline': outline.length > 0 }">
       <article class="panel note-editor-pane">
         <header class="note-pane-head">
-          <strong>编辑</strong>
-          <div class="note-md-tools">
+          <strong>{{ contentFormat === "HTML" ? "HTML 源码" : "Markdown" }}</strong>
+          <button class="button button--ghost button--small" :disabled="loading || saving || !ready" @click="useTemplate">插入学习模板</button>
+          <div v-if="contentFormat === 'MARKDOWN'" class="note-md-tools">
             <button v-for="tool in tools" :key="tool.title" type="button" :disabled="loading || saving || !ready" :title="tool.title" @click="tool.run">{{ tool.label }}</button>
           </div>
         </header>
@@ -456,7 +487,9 @@ onBeforeUnmount(() => { loadVersion++; refVersion++; window.removeEventListener(
           :disabled="loading || saving || !ready"
           class="note-editor-textarea"
           spellcheck="false"
-          placeholder="开始记录。支持 Markdown：## 标题、- 列表、**加粗**、`代码`、> 引用、表格与代码块。"
+          :placeholder="contentFormat === 'HTML' ? '<h2>学习目标</h2>\n<p>在这里开始记录。</p>' : '## 学习目标\n\n支持 Markdown、表格与 Python / HTML 等代码块。'"
+          aria-label="笔记正文"
+          maxlength="200000"
           @keydown="onBodyKeydown"
         />
       </article>
@@ -464,7 +497,7 @@ onBeforeUnmount(() => { loadVersion++; refVersion++; window.removeEventListener(
       <article class="panel note-preview-pane">
         <header class="note-pane-head">
           <strong>预览</strong>
-          <span class="note-preview-hint">已安全渲染 · 不自动加载图片</span>
+          <span class="note-preview-hint">实时更新 · 仅排版，不执行脚本</span>
         </header>
         <div v-if="previewHtml" class="markdown-body" v-html="previewHtml" />
         <p v-else class="note-preview-empty">预览会随左侧输入实时更新。</p>
@@ -477,6 +510,8 @@ onBeforeUnmount(() => { loadVersion++; refVersion++; window.removeEventListener(
         </nav>
       </aside>
     </section>
+
+    <NotePersonalTools v-if="contentFormat === 'MARKDOWN'" :key="currentId || 'new'" :title="title" :body="body" :disabled="loading || saving || !ready || !canWrite" @append="appendToBody" @replace="body = $event" @tags="applyTags" />
 
     <section class="panel note-refs-panel">
       <header class="panel-header">

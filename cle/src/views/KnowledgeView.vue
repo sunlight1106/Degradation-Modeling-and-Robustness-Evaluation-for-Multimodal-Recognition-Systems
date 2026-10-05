@@ -187,7 +187,7 @@ onMounted(load)
       <div>
         <p class="page-kicker">KNOWLEDGE BASE</p>
         <h2>知识库</h2>
-        <p>跨学科知识沉淀。预置生物化学与医学框架，可自由新增计算机、数学、物理等任意领域。</p>
+        <p>按学科浏览入门知识卡，在自己的学习库中写笔记、整理代码并导出文档。</p>
       </div>
       <div class="intro-actions">
         <button v-if="canWrite" class="button" @click="openTopicModal">
@@ -198,6 +198,10 @@ onMounted(load)
         </button>
       </div>
     </section>
+
+    <nav class="learning-library-links" aria-label="学习库列表">
+      <RouterLink v-for="name in ['英语学习', '计算机学习', '数学学习', '生物化学与医学']" :key="name" :to="{ name: 'notes', query: { library: name } }"><span>{{ name }}</span><small>笔记列表 ↗</small></RouterLink>
+    </nav>
 
     <section class="kb-stats">
       <div><small>学科领域</small><strong>{{ domains.length }}</strong></div>
@@ -289,6 +293,7 @@ onMounted(load)
             <h3>{{ activeEntry.title }}</h3>
           </div>
           <div class="kb-reader-actions">
+            <RouterLink v-if="authStore.has('note:write')" class="button button--ghost button--small" :to="{ name: 'note-create', query: { entry: activeEntry.id, library: activeEntry.domain } }">写成笔记 / 导出</RouterLink>
             <button v-if="canWrite" class="icon-button" title="以本卡内容为模板新建" @click="openEntryModal(activeEntry)">
               <AppIcon name="copy" :size="17" />
             </button>
@@ -353,10 +358,11 @@ onMounted(load)
         </div>
         <label class="field-label">标题<input v-model="entryForm.title" class="field-input" maxlength="180" required /></label>
         <label class="field-label">摘要<input v-model="entryForm.summary" class="field-input" maxlength="500" placeholder="一句话概括，显示在卡片上" /></label>
-        <label class="field-label">
-          正文（Markdown）
+        <div class="knowledge-compose-split"><label class="field-label">
+          正文（Markdown，可嵌入 HTML）
           <textarea v-model="entryForm.body" class="field-input kb-editor-textarea" rows="14" required placeholder="## 小节标题&#10;&#10;支持表格、列表、代码块。" />
         </label>
+        <section class="knowledge-compose-preview"><strong>实时预览</strong><div class="markdown-body" v-html="renderMarkdown(entryForm.body)" /></section></div>
         <p class="field-hint">{{ countWords(entryForm.body) }} 字 · 内容经消毒后渲染，可放心粘贴外部资料</p>
         <button class="button button--dark button--full" :disabled="busy">{{ busy ? '创建中…' : '创建知识卡' }}</button>
       </form>

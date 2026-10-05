@@ -120,7 +120,7 @@ public class NoteShareService {
                 KnowledgeService.splitTags(note.getTags()),
                 note.getOwner().getDisplayName(),
                 note.getCreatedAt(), note.getUpdatedAt(),
-                referenceService.resolveForNote(note.getId()));
+                referenceService.resolveForNote(note.getId()), note.getContentFormat());
     }
 
     // ------------------------------------------------------------------

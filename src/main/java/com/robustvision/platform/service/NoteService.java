@@ -86,6 +86,8 @@ public class NoteService {
         NoteEntity note = noteRepository.save(new NoteEntity(
                 user, request.title().trim(), request.body(),
                 trimToNull(request.tags()), parseStatusOrDefault(request.status())));
+        note.setLibrary(normalizeLibrary(request.library()));
+        if (request.contentFormat() != null) note.setContentFormat(request.contentFormat());
         return toView(note);
     }
 
@@ -95,6 +97,8 @@ public class NoteService {
         NoteEntity note = requireOwn(id, user);
         if (request.title() != null && !request.title().isBlank()) note.setTitle(request.title().trim());
         if (request.body() != null) note.setBody(request.body());
+        if (request.library() != null) note.setLibrary(normalizeLibrary(request.library()));
+        if (request.contentFormat() != null) note.setContentFormat(request.contentFormat());
         if (request.tags() != null) note.setTags(trimToNull(request.tags()));
         if (request.status() != null && !request.status().isBlank()) note.setStatus(parseStatus(request.status()));
         note.setUpdatedAt(Instant.now());
@@ -161,11 +165,11 @@ public class NoteService {
 
     private ApiDtos.NoteSummaryView toSummaryView(NoteEntity note, int shareCount) {
         return new ApiDtos.NoteSummaryView(
-                note.getId(), note.getTitle(), excerpt(note.getBody()),
+                note.getId(), note.getTitle(), excerpt("HTML".equals(note.getContentFormat()) ? NoteContent.htmlToMarkdown(note.getBody()) : note.getBody()),
                 KnowledgeService.splitTags(note.getTags()),
                 statusView(note.getStatus()),
                 shareCount,
-                note.getCreatedAt(), note.getUpdatedAt());
+                note.getCreatedAt(), note.getUpdatedAt(), note.getLibrary(), note.getContentFormat());
     }
 
     private ApiDtos.NoteView toView(NoteEntity note) {
@@ -175,7 +179,7 @@ public class NoteService {
                 statusView(note.getStatus()),
                 referenceService.resolveForNote(note.getId()),
                 shareRepository.findByNoteIdOrderByCreatedAtDesc(note.getId()).size(),
-                note.getCreatedAt(), note.getUpdatedAt());
+                note.getCreatedAt(), note.getUpdatedAt(), note.getLibrary(), note.getContentFormat());
     }
 
     /** 去掉 Markdown 语法标记后取前若干字符作为列表摘要。 */
@@ -221,6 +225,10 @@ public class NoteService {
             throw new BusinessException(HttpStatus.BAD_REQUEST, "REFERENCE_TYPE_INVALID",
                     "引用类型只能是 FILE、TASK 或 ENTRY");
         }
+    }
+
+    private String normalizeLibrary(String value) {
+        return value == null || value.isBlank() ? "综合学习" : value.trim();
     }
 
     private String trimToNull(String value) {

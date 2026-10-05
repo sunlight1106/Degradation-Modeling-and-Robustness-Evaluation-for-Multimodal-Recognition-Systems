@@ -17,7 +17,7 @@ import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
 
-/** Markdown 笔记。body 为原始 Markdown，渲染与消毒在前端完成，导出在后端完成。 */
+/** 私有学习笔记。保存 Markdown 或 HTML 源文，显示与导出分别进行安全处理。 */
 @Entity
 @Table(name = "note")
 public class NoteEntity {
@@ -39,6 +39,12 @@ public class NoteEntity {
 
     @Column(length = 500)
     private String tags;
+
+    @Column(nullable = false, length = 40)
+    private String library = "综合学习";
+
+    @Column(name = "content_format", nullable = false, length = 12)
+    private String contentFormat = "MARKDOWN";
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -64,6 +70,11 @@ public class NoteEntity {
     void ensureId() {
         if (id == null) id = UUID.randomUUID().toString();
     }
+
+    public String getLibrary() { return library; }
+    public void setLibrary(String library) { this.library = library; }
+    public String getContentFormat() { return contentFormat; }
+    public void setContentFormat(String format) { this.contentFormat = format; }
 
     public String getId() { return id; }
     public UserEntity getOwner() { return owner; }

@@ -57,7 +57,7 @@ class MySqlBackupRestoreTest {
             execute(admin, "CREATE DATABASE `" + source + "` CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci");
             createdSource = true;
             Flyway sourceFlyway = flyway(server + source + options, username, password);
-            assertThat(sourceFlyway.migrate().migrationsExecuted).isGreaterThanOrEqualTo(13);
+            assertThat(sourceFlyway.migrate().migrationsExecuted).isGreaterThanOrEqualTo(14);
             sourceFlyway.validate();
             Path sourceFiles = Files.createDirectory(temporary.resolve("source-files"));
             Path binary = sourceFiles.resolve("fixture/图像 🧪.bin");
@@ -71,6 +71,7 @@ class MySqlBackupRestoreTest {
             String ciphertext = crypto.encrypt(SYNTHETIC_TOKEN);
             try (Connection c = DriverManager.getConnection(server + source + options, username, password)) {
                 MySqlSchemaMigrationTest.seedAllDomains(c);
+                execute(c, "UPDATE note SET library = '英语学习', content_format = 'HTML', body = '<h2>Reading</h2><p>学习记录</p>' WHERE id = 'note-1'");
                 MySqlSchemaMigrationTest.seedAccountSettings(c);
                 execute(c, "UPDATE internal_message SET workspace_id=201 WHERE id='message-1'");
                 execute(c, "INSERT INTO internal_message (id,sender_id,subject,body,workspace_id,reply_to_id) VALUES ('group-reply',101,'群回复','回复资料',201,'message-1')");

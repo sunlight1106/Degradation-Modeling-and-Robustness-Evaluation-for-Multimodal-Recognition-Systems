@@ -49,14 +49,27 @@ public class NoteExportService {
         return switch (format) {
             case "md", "markdown" -> new ExportFile(
                     markdown(note), "text/markdown; charset=UTF-8", baseName + ".md");
+            case "html" -> new ExportFile(html(note).getBytes(StandardCharsets.UTF_8), "text/html; charset=UTF-8", baseName + ".html");
+            case "txt" -> new ExportFile(org.jsoup.Jsoup.parse(html(note)).body().wholeText().getBytes(StandardCharsets.UTF_8), "text/plain; charset=UTF-8", baseName + ".txt");
             case "pdf" -> new ExportFile(pdf(note), "application/pdf", baseName + ".pdf");
             case "docx", "word" -> new ExportFile(
                     docx(note),
                     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                     baseName + ".docx");
             default -> throw new BusinessException(HttpStatus.BAD_REQUEST, "NOTE_EXPORT_FORMAT_INVALID",
-                    "仅支持 Markdown(md)、PDF 或 Word(docx)");
+                    "支持 Markdown(md)、HTML、TXT、PDF 或 Word(docx)");
         };
+    }
+
+    private String exportBody(ApiDtos.NoteView note) {
+        return "HTML".equals(note.contentFormat()) ? NoteContent.htmlToMarkdown(note.body()) : (note.body() == null ? "" : note.body());
+    }
+
+    private String html(ApiDtos.NoteView note) {
+        String content = "HTML".equals(note.contentFormat()) ? NoteContent.safeHtml(note.body()) : NoteContent.markdownToHtml(exportBody(note));
+        return "<!doctype html><html lang=\"zh-CN\"><meta charset=\"utf-8\"><meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'\">"
+                + "<title>" + NoteContent.escape(note.title()) + "</title><style>body{max-width:850px;margin:48px auto;padding:0 28px;color:#263643;font:16px/1.8 system-ui}pre{white-space:pre-wrap;background:#f1f4f7;padding:20px}table{border-collapse:collapse}td,th{border:1px solid #ddd;padding:8px}blockquote{border-left:3px solid #ddd;padding-left:18px}</style><body><h1>"
+                + NoteContent.escape(note.title()) + "</h1>" + content + "</body></html>";
     }
 
     /** 文件名去掉路径分隔符与控制字符，避免响应头被注入。 */
@@ -82,7 +95,7 @@ public class NoteExportService {
             builder.append("> 标签：").append(String.join("、", note.tags())).append("\n");
         }
         builder.append("\n---\n\n");
-        builder.append(note.body() == null ? "" : note.body().trim()).append("\n");
+        builder.append(exportBody(note).trim()).append("\n");
 
         List<ApiDtos.NoteReferenceView> references = note.references();
         if (references != null && !references.isEmpty()) {
@@ -136,7 +149,7 @@ public class NoteExportService {
             metaParagraph.setSpacingAfter(14f);
             document.add(metaParagraph);
 
-            for (MarkdownDocument.Block block : MarkdownDocument.parse(note.body())) {
+            for (MarkdownDocument.Block block : MarkdownDocument.parse(exportBody(note))) {
                 switch (block.type()) {
                     case HEADING -> {
                         Font font = switch (block.level()) {
@@ -310,7 +323,7 @@ public class NoteExportService {
             }
             body.append(run(meta.toString(), 18, false, true, "7A7A72", 180));
 
-            for (MarkdownDocument.Block block : MarkdownDocument.parse(note.body())) {
+            for (MarkdownDocument.Block block : MarkdownDocument.parse(exportBody(note))) {
                 switch (block.type()) {
                     case HEADING -> {
                         int size = switch (block.level()) {

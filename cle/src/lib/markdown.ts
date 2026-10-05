@@ -21,6 +21,10 @@ const SANITIZE_CONFIG: Config = {
   ALLOW_DATA_ATTR: false,
 }
 
+export function renderNote(source: string | null | undefined, format = "MARKDOWN"): string {
+  return format === "HTML" ? DOMPurify.sanitize(source || "", SANITIZE_CONFIG) : renderMarkdown(source)
+}
+
 /** 把 Markdown 渲染为消毒后的 HTML 字符串。 */
 export function renderMarkdown(source: string | null | undefined): string {
   if (!source || !source.trim()) return ''
@@ -44,6 +48,7 @@ export function markdownToText(source: string | null | undefined, limit = 160): 
     .replace(/^\s*>\s?/gm, '')
     .replace(/^\s*[-*+]\s+/gm, '')
     .replace(/^\s*\d+[.)]\s+/gm, '')
+    .replace(/<[^>]*>/g, ' ')
     .replace(/[*_~|]/g, '')
     .replace(/\s+/g, ' ')
     .trim()
