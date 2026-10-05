@@ -19,6 +19,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -63,6 +64,7 @@ public class InferenceService {
 
     public ApiDtos.InferenceView create(ApiDtos.CreateInferenceRequest request) {
         UserEntity current = currentUserService.requireCurrent();
+        invocationService.assertLegacyAvailable();
         FileAssetEntity input = fileService.requireAccessible(request.fileId());
         ModelDefinitionEntity model = modelService.requireActive(request.modelId());
         if (model.getTaskType() != request.taskType()) {
@@ -81,54 +83,105 @@ public class InferenceService {
             self.processQueuedTask(task.getId());
         } else {
             try { queueService.enqueue(task.getId()); }
-            catch (BusinessException exception) { markFailed(task, exception.getMessage()); throw exception; }
+            catch (BusinessException exception) {
+                // LPUSH may have succeeded before a timeout. Keep the saved task recoverable,
+                // and never overwrite a result a worker may already have committed.
+                throw new BusinessException(exception.getStatus(), exception.getCode(),
+                        "队列提交未确认，任务已保存。请在 Logs 刷新状态或恢复等待中的任务，不要重复创建");
+            }
         }
         // 必须经代理调用，否则 requireView 上的事务注解失效，
         // 序列化输入/输出文件等懒加载关联时会抛 LazyInitializationException
         return self.requireView(task.getId());
     }
 
-    @Transactional
+    /** The failure transaction starts only after execution has committed or fully rolled back. */
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public void processQueuedTask(String taskId) {
-        InferenceTaskEntity task = taskRepository.findById(taskId).orElse(null);
-        if (task == null || task.getStatus() != InferenceStatus.PENDING) return;
-        task.setStatus(InferenceStatus.RUNNING);
-        taskRepository.save(task);
-        long totalInputTokens = 0;
-        long totalOutputTokens = 0;
         try {
-            ModelInvocationService.InvocationResult baseline = invocationService.invoke(
-                    task.getInputFile(), task.getModel(), task.getTaskType(), false, task.getTraceId());
-            task.setBaselineConfidence(baseline.confidence());
-            task.setBaselineLatencyMs(baseline.latencyMs());
-            task.setBaselineResult(objectMapper.writeValueAsString(baseline.payload()));
-            totalInputTokens += baseline.inputTokens();
-            totalOutputTokens += baseline.outputTokens();
-
-            if (task.isEnhancementEnabled()) {
-                FileAssetEntity output = fileService.createEnhancedCopy(task.getInputFile(), task.getRequestedBy());
-                ModelInvocationService.InvocationResult optimized = invocationService.invoke(
-                        output, task.getModel(), task.getTaskType(), true, task.getTraceId());
-                task.setOutputFile(output);
-                task.setOptimizedConfidence(optimized.confidence());
-                task.setOptimizedLatencyMs(optimized.latencyMs());
-                task.setOptimizedResult(objectMapper.writeValueAsString(optimized.payload()));
-                totalInputTokens += optimized.inputTokens();
-                totalOutputTokens += optimized.outputTokens();
-            }
-            BigDecimal cost = billingService.recordUsage(task.getRequestedBy(), task.getModel().getProvider(),
-                    totalInputTokens, totalOutputTokens, task.getId());
-            task.setUsage(totalInputTokens, totalOutputTokens, cost);
-            task.setStatus(InferenceStatus.COMPLETED);
-            task.setCompletedAt(Instant.now());
-            taskRepository.save(task);
+            self.executePendingTask(taskId);
         } catch (Exception exception) {
             String message = exception instanceof BusinessException ? exception.getMessage() : "实验执行失败";
-            log.error("Inference task failed taskId={} traceId={} model={} provider={} type={} message={}",
-                    task.getId(), task.getTraceId(), task.getModel().getCode(), task.getModel().getProvider(),
-                    exception.getClass().getName(), exception.getMessage(), exception);
-            markFailed(task, message);
+            log.error("Inference task failed taskId={} type={}", taskId, exception.getClass().getName());
+            self.failPendingTask(taskId, message);
         }
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void executePendingTask(String taskId) throws JsonProcessingException {
+        // Hold the row lock until billing and COMPLETED commit together. This path is
+        // synthetic-only; never use this long transaction for paid/provider requests.
+        InferenceTaskEntity task = taskRepository.findByIdForUpdate(taskId).orElse(null);
+        if (task == null || task.getStatus() != InferenceStatus.PENDING) return;
+        invocationService.assertLegacyAvailable();
+        task.setStatus(InferenceStatus.RUNNING);
+        long totalInputTokens = 0;
+        long totalOutputTokens = 0;
+        ModelInvocationService.InvocationResult baseline = invocationService.invoke(
+                task.getInputFile(), task.getModel(), task.getTaskType(), false, task.getTraceId());
+        task.setBaselineConfidence(baseline.confidence());
+        task.setBaselineLatencyMs(baseline.latencyMs());
+        task.setBaselineResult(objectMapper.writeValueAsString(baseline.payload()));
+        totalInputTokens += baseline.inputTokens();
+        totalOutputTokens += baseline.outputTokens();
+
+        if (task.isEnhancementEnabled()) {
+            FileAssetEntity output = fileService.createEnhancedCopy(task.getInputFile(), task.getRequestedBy());
+            ModelInvocationService.InvocationResult optimized = invocationService.invoke(
+                    output, task.getModel(), task.getTaskType(), true, task.getTraceId());
+            task.setOutputFile(output);
+            task.setOptimizedConfidence(optimized.confidence());
+            task.setOptimizedLatencyMs(optimized.latencyMs());
+            task.setOptimizedResult(objectMapper.writeValueAsString(optimized.payload()));
+            totalInputTokens += optimized.inputTokens();
+            totalOutputTokens += optimized.outputTokens();
+        }
+        BigDecimal cost = billingService.recordUsage(task.getRequestedBy(), task.getModel().getProvider(),
+                totalInputTokens, totalOutputTokens, task.getId());
+        task.setUsage(totalInputTokens, totalOutputTokens, cost);
+        task.setStatus(InferenceStatus.COMPLETED);
+        task.setCompletedAt(Instant.now());
+        taskRepository.save(task);
+    }
+
+    @Transactional
+    public void failPendingTask(String taskId, String message) {
+        InferenceTaskEntity task = taskRepository.findByIdForUpdate(taskId).orElse(null);
+        // A duplicate delivery may have won after rollback. Never replace its terminal result.
+        if (task == null || task.getStatus() != InferenceStatus.PENDING) return;
+        task.setStatus(InferenceStatus.FAILED);
+        String safeMessage = message == null ? "实验执行失败" : message;
+        task.setErrorMessage(safeMessage.substring(0, Math.min(safeMessage.length(), 1000)));
+        task.setCompletedAt(Instant.now());
+        taskRepository.save(task);
+    }
+
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    public ApiDtos.InferenceView recoverPendingTask(String taskId) {
+        self.enqueueOwnedPendingTask(taskId);
+        if (queueService.inline()) self.processQueuedTask(taskId);
+        return self.requireView(taskId);
+    }
+
+    @Transactional
+    public void enqueueOwnedPendingTask(String taskId) {
+        UserEntity current = currentUserService.requireCurrent();
+        if (!currentUserService.hasPermission(current, "experiment:run")) {
+            throw new BusinessException(HttpStatus.FORBIDDEN, "TASK_RECOVERY_DENIED", "没有恢复实验的权限");
+        }
+        InferenceTaskEntity task = taskRepository.findByIdForUpdate(taskId)
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "TASK_NOT_FOUND", "实验不存在"));
+        if (!task.getRequestedBy().getId().equals(current.getId())
+                || !task.getInputFile().getOwner().getId().equals(current.getId())) {
+            throw new BusinessException(HttpStatus.FORBIDDEN, "TASK_RECOVERY_DENIED", "只能恢复本人使用自己文件创建的实验");
+        }
+        invocationService.assertLegacyAvailable();
+        if (task.getStatus() != InferenceStatus.PENDING) {
+            throw new BusinessException(HttpStatus.CONFLICT, "TASK_NOT_PENDING", "仅等待中的 DEMO 实验可以重新入队，请刷新状态");
+        }
+        // Preserve PENDING on ambiguous Redis failure. Retrying adds only the same ID;
+        // execution's database lock makes duplicate successful deliveries harmless.
+        if (!queueService.inline()) queueService.enqueue(taskId);
     }
 
     @Transactional(readOnly = true)
@@ -161,7 +214,7 @@ public class InferenceService {
         return new ApiDtos.InferenceView(
                 task.getId(), task.getTraceId(), task.getTaskType(), task.getStatus(), task.isEnhancementEnabled(),
                 fileService.toView(task.getInputFile()), task.getOutputFile() == null ? null : fileService.toView(task.getOutputFile()),
-                modelService.toView(task.getModel()), task.getRequestedBy().getDisplayName(),
+                modelService.toView(task.getModel()), task.getRequestedBy().getDisplayName(), task.getRequestedBy().getId(),
                 task.getBaselineConfidence(), task.getOptimizedConfidence(), task.getBaselineLatencyMs(), task.getOptimizedLatencyMs(),
                 task.getProvider(), task.getInputTokens(), task.getOutputTokens(), task.getCostCny(),
                 parse(task.getBaselineResult()), parse(task.getOptimizedResult()), task.getErrorMessage(), task.getCreatedAt(),
@@ -177,13 +230,6 @@ public class InferenceService {
             throw new BusinessException(HttpStatus.FORBIDDEN, "TASK_ACCESS_DENIED", "无权查看此实验");
         }
         return task;
-    }
-
-    private void markFailed(InferenceTaskEntity task, String message) {
-        task.setStatus(InferenceStatus.FAILED);
-        task.setErrorMessage(message == null ? "实验执行失败" : message);
-        task.setCompletedAt(Instant.now());
-        taskRepository.save(task);
     }
 
     private JsonNode parse(String value) {

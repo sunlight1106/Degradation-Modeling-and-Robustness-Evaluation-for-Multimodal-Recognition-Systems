@@ -1,5 +1,8 @@
 package com.robustvision.platform.domain;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -20,6 +23,7 @@ import java.util.UUID;
 public class RechargeOrderEntity {
     @Id
     @Column(length = 36)
+    @JdbcTypeCode(SqlTypes.CHAR)
     private String id;
 
     @ManyToOne(fetch = FetchType.EAGER, optional = false)
@@ -38,6 +42,7 @@ public class RechargeOrderEntity {
     private RechargeStatus status = RechargeStatus.PENDING_VERIFICATION;
 
     @Column(name = "bank_last4", length = 4)
+    @JdbcTypeCode(SqlTypes.CHAR)
     private String bankLast4;
 
     @Column(name = "phone_masked", length = 32)
@@ -50,6 +55,7 @@ public class RechargeOrderEntity {
     private int verificationAttempts;
 
     @Column(name = "payment_token_hash", unique = true, length = 64)
+    @JdbcTypeCode(SqlTypes.CHAR)
     private String paymentTokenHash;
 
     @Column(name = "qr_payload", length = 1000)

@@ -1,5 +1,8 @@
 package com.robustvision.platform.domain;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.UUID;
@@ -8,6 +11,7 @@ import java.util.UUID;
 @Table(name = "internal_message")
 public class MessageEntity {
     @Id @Column(length = 36)
+    @JdbcTypeCode(SqlTypes.CHAR)
     private String id;
     @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "sender_id", nullable = false)

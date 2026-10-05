@@ -62,6 +62,14 @@ public class BillingService {
         prices.put(ModelProvider.CUSTOM, new Price(BigDecimal.ZERO, BigDecimal.ZERO));
     }
 
+    @Value("${app.model.mode:demo}")
+    private String modelMode = "demo";
+
+    private void requireSandbox() {
+        if (!"demo".equalsIgnoreCase(modelMode)) throw new BusinessException(HttpStatus.FORBIDDEN,
+                "SANDBOX_PAYMENT_DISABLED", "真实模型模式禁止沙箱充值；私人 API 费用由供应商直接计费");
+    }
+
     @Transactional
     public void assertCanRun(UserEntity user) {
         WalletEntity wallet = wallet(user); wallet.resetPeriodIfNeeded(LocalDate.now());
@@ -82,8 +90,7 @@ public class BillingService {
         BigDecimal charged = cost.min(wallet.getBalanceCny()); wallet.debit(charged); walletRepository.save(wallet);
         ledgerRepository.save(new WalletLedgerEntity(user, "USAGE", charged.negate(), wallet.getBalanceCny(), referenceId,
                 keyRing.displayName(provider) + " 模型调用"));
-        ProviderBudgetEntity budget = providerBudgetRepository.findById(provider)
-                .orElseGet(() -> new ProviderBudgetEntity(provider, new BigDecimal("500.00")));
+        ProviderBudgetEntity budget = lockedBudget(provider);
         budget.addUsage(cost); providerBudgetRepository.save(budget); return charged;
     }
 
@@ -98,6 +105,7 @@ public class BillingService {
 
     @Transactional
     public ApiDtos.RechargeOrderView createRecharge(ApiDtos.CreateRechargeRequest request) {
+        requireSandbox();
         UserEntity user = currentUserService.requireCurrent();
         BigDecimal amount = request.amount().setScale(2, RoundingMode.HALF_UP);
         if (amount.compareTo(BigDecimal.ONE) < 0 || amount.compareTo(new BigDecimal("10000")) > 0)
@@ -122,7 +130,7 @@ public class BillingService {
     @Transactional
     public ApiDtos.RechargeOrderView recharge(String id) {
         UserEntity user = currentUserService.requireCurrent();
-        RechargeOrderEntity order = rechargeRepository.findById(id)
+        RechargeOrderEntity order = rechargeRepository.findLockedById(id)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "RECHARGE_NOT_FOUND", "充值订单不存在"));
         if (!order.getUser().getId().equals(user.getId()) && !currentUserService.isSuperAdmin(user))
             throw new BusinessException(HttpStatus.FORBIDDEN, "RECHARGE_ACCESS_DENIED", "无权查看此订单");
@@ -132,6 +140,7 @@ public class BillingService {
 
     @Transactional(noRollbackFor = BusinessException.class)
     public ApiDtos.RechargeOrderView confirmRecharge(String id, ApiDtos.ConfirmRechargeRequest request) {
+        requireSandbox();
         UserEntity user = currentUserService.requireCurrent();
         RechargeOrderEntity order = rechargeRepository.findLockedById(id)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "RECHARGE_NOT_FOUND", "充值订单不存在"));
@@ -149,7 +158,7 @@ public class BillingService {
 
     @Transactional
     public ApiDtos.PublicPaymentView publicPayment(String token) {
-        RechargeOrderEntity order = rechargeRepository.findByPaymentTokenHash(hash(token))
+        RechargeOrderEntity order = rechargeRepository.findLockedByPaymentTokenHash(hash(token))
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "PAYMENT_NOT_FOUND", "支付二维码无效"));
         expireForRead(order);
         return toPublic(order);
@@ -157,6 +166,7 @@ public class BillingService {
 
     @Transactional(noRollbackFor = BusinessException.class)
     public ApiDtos.PublicPaymentView completeQrPayment(String token) {
+        requireSandbox();
         RechargeOrderEntity order = rechargeRepository.findLockedByPaymentTokenHash(hash(token))
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "PAYMENT_NOT_FOUND", "支付二维码无效"));
         requirePending(order, RechargeStatus.PENDING_PAYMENT); expireIfNeeded(order);
@@ -164,7 +174,7 @@ public class BillingService {
         return toPublic(order);
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     public List<ApiDtos.ProviderBudgetView> providerBudgets() {
         return List.of(ModelProvider.DEEPSEEK, ModelProvider.KIMI, ModelProvider.QWEN).stream().map(this::providerView).toList();
     }
@@ -172,16 +182,19 @@ public class BillingService {
     @Transactional
     public ApiDtos.ProviderBudgetView updateProviderBudget(ModelProvider provider, ApiDtos.UpdateProviderBudgetRequest request) {
         currentUserService.requireSuperAdmin();
-        ProviderBudgetEntity budget = providerBudgetRepository.findById(provider)
-                .orElseGet(() -> new ProviderBudgetEntity(provider, request.monthlyBudgetCny()));
+        ProviderBudgetEntity budget = lockedBudget(provider);
         budget.setMonthlyBudgetCny(request.monthlyBudgetCny()); providerBudgetRepository.save(budget); return providerView(provider);
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     public List<ApiDtos.AdminWalletView> adminWallets() {
         currentUserService.requireSuperAdmin();
+        // A read-only listing must not lock every user's wallet or create wallets.
+        Map<Long, WalletEntity> existing = new HashMap<>();
+        walletRepository.findAllByOrderByUpdatedAtDesc().forEach(wallet -> existing.put(wallet.getUser().getId(), wallet));
         return userRepository.findAllByOrderByCreatedAtDesc().stream().map(user ->
-                new ApiDtos.AdminWalletView(user.getId(), user.getUsername(), user.getDisplayName(), user.getRole().getCode(), toWallet(wallet(user)))).toList();
+                new ApiDtos.AdminWalletView(user.getId(), user.getUsername(), user.getDisplayName(), user.getRole().getCode(),
+                        toWallet(existing.getOrDefault(user.getId(), new WalletEntity(user, defaultBalance, defaultQuota))))).toList();
     }
 
     @Transactional
@@ -200,14 +213,17 @@ public class BillingService {
 
     private ApiDtos.ProviderBudgetView providerView(ModelProvider provider) {
         ProviderBudgetEntity budget = providerBudgetRepository.findById(provider)
-                .orElseGet(() -> providerBudgetRepository.save(new ProviderBudgetEntity(provider, new BigDecimal("500.00"))));
-        budget.resetPeriodIfNeeded(); providerBudgetRepository.save(budget);
-        BigDecimal remaining = budget.getMonthlyBudgetCny().subtract(budget.getUsedCny()).max(BigDecimal.ZERO);
-        double progress = budget.getMonthlyBudgetCny().signum() == 0 ? 0 : budget.getUsedCny()
+                .orElseGet(() -> new ProviderBudgetEntity(provider, new BigDecimal("500.00")));
+        // Reporting must not race usage with an unlocked read-modify-write reset,
+        // or hold database write locks during a provider's remote balance request.
+        BigDecimal used = budget.getPeriodStart().equals(LocalDate.now().withDayOfMonth(1))
+                ? budget.getUsedCny() : BigDecimal.ZERO;
+        BigDecimal remaining = budget.getMonthlyBudgetCny().subtract(used).max(BigDecimal.ZERO);
+        double progress = budget.getMonthlyBudgetCny().signum() == 0 ? 0 : used
                 .divide(budget.getMonthlyBudgetCny(), 6, RoundingMode.HALF_UP).doubleValue() * 100;
         ProviderBalanceService.ReportedBalance reported = providerBalanceService.fetch(provider);
         String source = provider == ModelProvider.QWEN ? "OFFICIAL_COST_CENTER_REQUIRED" : reported == null ? "UNAVAILABLE" : reported.source();
-        return new ApiDtos.ProviderBudgetView(provider, keyRing.displayName(provider), budget.getMonthlyBudgetCny(), budget.getUsedCny(),
+        return new ApiDtos.ProviderBudgetView(provider, keyRing.displayName(provider), budget.getMonthlyBudgetCny(), used,
                 remaining, Math.min(100, progress), reported == null ? null : reported.amount(), source,
                 keyRing.count(provider), "ROUND_ROBIN", keyRing.lastRotation(provider), budget.getUpdatedAt());
     }
@@ -229,11 +245,34 @@ public class BillingService {
         }
     }
     private void settle(RechargeOrderEntity order, String description) {
+        requireSandbox();
         order.markPaid(); rechargeRepository.save(order); WalletEntity wallet = wallet(order.getUser());
         wallet.credit(order.getAmount()); walletRepository.save(wallet);
         ledgerRepository.save(new WalletLedgerEntity(order.getUser(), "RECHARGE", order.getAmount(), wallet.getBalanceCny(), order.getId(), description));
     }
-    private WalletEntity wallet(UserEntity user) { return walletRepository.findByUserId(user.getId()).orElseGet(() -> walletRepository.save(new WalletEntity(user, defaultBalance, defaultQuota))); }
+    private WalletEntity wallet(UserEntity user) {
+        // Lock order is recharge order (when applicable) -> user (only for
+        // first creation) -> wallet -> provider budget. Existing wallets need
+        // no user lock, so unrelated accounts remain independent.
+        // This first check deliberately returns no managed wallet and takes no
+        // gap lock. Locking a missing wallet before its parent can deadlock
+        // concurrent insertions under MySQL REPEATABLE READ.
+        if (!walletRepository.existsByUserId(user.getId())) {
+            userRepository.findLockedById(user.getId()).orElseThrow(() ->
+                    new BusinessException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "用户不存在"));
+        }
+        // SELECT FOR UPDATE is a current read, so after waiting on the parent
+        // it sees another transaction's wallet even if our snapshot is older.
+        return walletRepository.findLockedByUserId(user.getId())
+                .orElseGet(() -> walletRepository.save(new WalletEntity(user, defaultBalance, defaultQuota)));
+    }
+
+    private ProviderBudgetEntity lockedBudget(ModelProvider provider) {
+        // One atomic insert-if-absent avoids the concurrent missing-budget race.
+        // Existing rows keep their configured limits and period/usage values.
+        providerBudgetRepository.ensureExists(provider.name(), LocalDate.now().withDayOfMonth(1));
+        return providerBudgetRepository.findLockedByProvider(provider).orElseThrow();
+    }
     private ApiDtos.WalletView toWallet(WalletEntity wallet) {
         BigDecimal remaining = wallet.getMonthlyQuotaCny().subtract(wallet.getMonthSpentCny()).max(BigDecimal.ZERO);
         double progress = wallet.getMonthlyQuotaCny().signum() == 0 ? 0 : wallet.getMonthSpentCny().divide(wallet.getMonthlyQuotaCny(), 6, RoundingMode.HALF_UP).doubleValue() * 100;

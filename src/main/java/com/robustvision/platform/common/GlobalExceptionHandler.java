@@ -19,9 +19,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ApiResponse<Void>> handleBusiness(BusinessException exception, HttpServletRequest request) {
-        log.warn("Business exception traceId={} method={} path={} code={} status={} message={}",
-                traceId(), request.getMethod(), request.getRequestURI(), exception.getCode(),
-                exception.getStatus().value(), exception.getMessage());
+        log.warn("Business exception traceId={} method={} route={} code={} status={}",
+                traceId(), request.getMethod(), safeRoute(request), exception.getCode(), exception.getStatus().value());
         return ResponseEntity.status(exception.getStatus())
                 .body(ApiResponse.failure(exception.getCode(), exception.getMessage()));
     }
@@ -40,6 +39,12 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(ApiResponse.failure("VALIDATION_ERROR", exception.getMessage()));
     }
 
+    @ExceptionHandler({org.springframework.http.converter.HttpMessageNotReadableException.class,
+            org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class})
+    public ResponseEntity<ApiResponse<Void>> handleMalformedRequest(Exception exception) {
+        return ResponseEntity.badRequest().body(ApiResponse.failure("INVALID_REQUEST", "请求格式不正确"));
+    }
+
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<ApiResponse<Void>> handleMaxUpload(MaxUploadSizeExceededException exception) {
         return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
@@ -54,11 +59,15 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleUnexpected(Exception exception, HttpServletRequest request) {
-        log.error("Unhandled API exception traceId={} method={} path={} type={} message={}",
-                traceId(), request.getMethod(), request.getRequestURI(), exception.getClass().getName(),
-                exception.getMessage(), exception);
+        log.error("Unhandled API exception traceId={} method={} route={} type={}",
+                traceId(), request.getMethod(), safeRoute(request), exception.getClass().getName());
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiResponse.failure("INTERNAL_ERROR", "服务暂时无法完成请求，请使用 traceId 排查"));
+    }
+
+    private String safeRoute(HttpServletRequest request) {
+        Object pattern = request.getAttribute(org.springframework.web.servlet.HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE);
+        return pattern instanceof String ? pattern.toString() : "unmatched";
     }
 
     private String traceId() {

@@ -12,17 +12,18 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 知识库服务：跨学科主题与知识卡的增删改查。
  *
  * 可见性规则：预置内容 owner 为空，所有登录用户可读；用户自建内容仅本人可读写。
- * 预置卡片允许编辑（编辑后仍标记 builtin，用于区分来源），删除即永久移除。
+ * 预置卡片仅管理员可维护；个人内容仅本人可修改。
  */
 @Service
 public class KnowledgeService {
@@ -50,7 +51,12 @@ public class KnowledgeService {
         topics.sort(Comparator.comparing(KnowledgeTopicEntity::getDomain)
                 .thenComparing(KnowledgeTopicEntity::getSortOrder)
                 .thenComparing(KnowledgeTopicEntity::getId));
-        return topics.stream().map(this::toTopicView).toList();
+        if (topics.isEmpty()) return List.of();
+        Map<Long, Long> entryCounts = entryRepository.countByTopicIds(topics.stream()
+                        .map(KnowledgeTopicEntity::getId).toList()).stream()
+                .collect(Collectors.toMap(KnowledgeEntryRepository.TopicEntryCount::getTopicId,
+                        KnowledgeEntryRepository.TopicEntryCount::getEntryCount));
+        return topics.stream().map(topic -> toTopicView(topic, entryCounts.getOrDefault(topic.getId(), 0L))).toList();
     }
 
     @Transactional(readOnly = true)
@@ -114,18 +120,19 @@ public class KnowledgeService {
         UserEntity user = currentUserService.requireCurrent();
         List<KnowledgeEntryEntity> entries;
         if (keyword != null && !keyword.isBlank()) {
-            entries = entryRepository.search(user.getId(), keyword.trim());
-            if (topicId != null) entries = entries.stream().filter(e -> topicId.equals(e.getTopic().getId())).toList();
+            entries = entryRepository.search(user.getId(), keyword.trim(), topicId);
         } else if (topicId != null) {
             requireReadableTopic(topicId, user);
-            entries = entryRepository.findByTopicIdOrderBySortOrderAscCreatedAtAsc(topicId);
+            entries = entryRepository.findReadableInTopic(topicId, user.getId());
         } else {
-            entries = new ArrayList<>();
-            for (KnowledgeTopicEntity topic : visibleTopics(user)) {
-                entries.addAll(entryRepository.findByTopicIdOrderBySortOrderAscCreatedAtAsc(topic.getId()));
-            }
+            entries = entryRepository.findInVisibleTopics(user.getId());
         }
-        return entries.stream().map(this::toEntryView).toList();
+        if (entries.isEmpty()) return List.of();
+        Map<String, Long> referenceCounts = entryRepository.countNoteReferencesByEntryIds(entries.stream()
+                        .map(KnowledgeEntryEntity::getId).toList()).stream()
+                .collect(Collectors.toMap(KnowledgeEntryRepository.EntryReferenceCount::getEntryId,
+                        KnowledgeEntryRepository.EntryReferenceCount::getReferenceCount));
+        return entries.stream().map(entry -> toEntryView(entry, referenceCounts.getOrDefault(entry.getId(), 0L))).toList();
     }
 
     @Transactional(readOnly = true)
@@ -192,14 +199,11 @@ public class KnowledgeService {
     }
 
     private List<KnowledgeTopicEntity> visibleTopics(UserEntity user) {
-        List<KnowledgeTopicEntity> topics = new ArrayList<>(topicRepository.findByOwnerIsNullOrderBySortOrderAscIdAsc());
-        topics.addAll(topicRepository.findByOwnerIdOrderBySortOrderAscIdAsc(user.getId()));
-        return topics;
+        return topicRepository.findVisibleTopics(user.getId());
     }
 
     private KnowledgeTopicEntity requireReadableTopic(Long id, UserEntity user) {
-        return topicRepository.findByIdAndOwnerIsNull(id)
-                .or(() -> topicRepository.findByIdAndOwnerId(id, user.getId()))
+        return topicRepository.findReadableTopic(id, user.getId())
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "TOPIC_NOT_FOUND", "知识主题不存在"));
     }
 
@@ -210,43 +214,47 @@ public class KnowledgeService {
     }
 
     private KnowledgeEntryEntity requireReadableEntry(String id, UserEntity user) {
-        return entryRepository.findByIdAndOwnerIsNull(id)
-                .or(() -> entryRepository.findByIdAndOwnerId(id, user.getId()))
+        if (!entryRepository.isReadable(id, user.getId())) {
+            throw new BusinessException(HttpStatus.NOT_FOUND, "ENTRY_NOT_FOUND", "知识卡不存在");
+        }
+        return entryRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "ENTRY_NOT_FOUND", "知识卡不存在"));
     }
 
-    /**
-     * 可写校验：预置知识卡（owner 为空）允许任何持 knowledge:write 的用户编辑——
-     * 个人知识库场景下内置内容也应可增补修正；用户自建卡则仅限本人或管理员。
-     */
+    /** Public knowledge remains readable; only an administrator can change global content. */
     private KnowledgeEntryEntity requireWritableEntry(String id, UserEntity user) {
-        KnowledgeEntryEntity entry = entryRepository.findById(id)
-                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "ENTRY_NOT_FOUND", "知识卡不存在"));
-        if (entry.getOwner() != null
-                && !entry.getOwner().getId().equals(user.getId())
-                && !currentUserService.isSuperAdmin(user)) {
-            throw new BusinessException(HttpStatus.FORBIDDEN, "ENTRY_FORBIDDEN", "无权编辑他人创建的知识卡");
+        KnowledgeEntryEntity entry = requireReadableEntry(id, user);
+        if (entry.getOwner() == null && !currentUserService.isSuperAdmin(user)) {
+            throw new BusinessException(HttpStatus.FORBIDDEN, "ENTRY_READONLY",
+                    "预置知识卡仅管理员可维护，请复制到自己的主题后编辑");
         }
         return entry;
     }
 
     private int nextSortOrder(Long ownerId) {
-        return topicRepository.findByOwnerIdOrderBySortOrderAscIdAsc(ownerId).stream()
-                .mapToInt(KnowledgeTopicEntity::getSortOrder).max().orElse(0) + 10;
+        return topicRepository.findMaxSortOrder(ownerId) + 10;
     }
 
     private ApiDtos.KnowledgeTopicView toTopicView(KnowledgeTopicEntity topic) {
+        return toTopicView(topic, entryRepository.countByTopicId(topic.getId()));
+    }
+
+    private ApiDtos.KnowledgeTopicView toTopicView(KnowledgeTopicEntity topic, long entryCount) {
         return new ApiDtos.KnowledgeTopicView(
                 topic.getId(), topic.getDomain(), topic.getName(), topic.getDescription(),
-                topic.isBuiltin(), topic.getSortOrder(), entryRepository.countByTopicId(topic.getId()),
+                topic.isBuiltin(), topic.getSortOrder(), entryCount,
                 topic.getCreatedAt(), topic.getUpdatedAt());
     }
 
     private ApiDtos.KnowledgeEntryView toEntryView(KnowledgeEntryEntity entry) {
+        return toEntryView(entry, entryRepository.countNoteReferences(entry.getId()));
+    }
+
+    private ApiDtos.KnowledgeEntryView toEntryView(KnowledgeEntryEntity entry, long referenceCount) {
         return new ApiDtos.KnowledgeEntryView(
                 entry.getId(), entry.getTopic().getId(), entry.getTopic().getName(), entry.getTopic().getDomain(),
                 entry.getTitle(), entry.getSummary(), entry.getBody(), splitTags(entry.getTags()),
-                entry.isBuiltin(), entryRepository.countNoteReferences(entry.getId()), entry.getSortOrder(),
+                entry.isBuiltin(), referenceCount, entry.getSortOrder(),
                 entry.getCreatedAt(), entry.getUpdatedAt());
     }
 

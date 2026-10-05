@@ -16,6 +16,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.Locale;
 
 /**
@@ -61,7 +63,15 @@ public class NoteService {
         } else {
             notes = noteRepository.findByOwnerIdOrderByUpdatedAtDesc(user.getId());
         }
-        return notes.stream().map(this::toSummaryView).toList();
+        Map<String, Integer> shareCounts = new HashMap<>();
+        // Keep IN clauses bounded and count shares without materializing share entities.
+        for (int start = 0; start < notes.size(); start += 500) {
+            List<String> ids = notes.subList(start, Math.min(start + 500, notes.size())).stream().map(NoteEntity::getId).toList();
+            for (NoteRepository.ShareCount row : noteRepository.countSharesByNoteIds(ids)) {
+                shareCounts.put(row.getNoteId(), Math.toIntExact(row.getShareCount()));
+            }
+        }
+        return notes.stream().map(note -> toSummaryView(note, shareCounts.getOrDefault(note.getId(), 0))).toList();
     }
 
     @Transactional(readOnly = true)
@@ -108,9 +118,9 @@ public class NoteService {
         UserEntity user = currentUserService.requireCurrent();
         NoteEntity note = requireOwn(id, user);
         NoteReferenceType type = parseReferenceType(request.referenceType());
-        if (!referenceService.targetExists(type, request.referenceId())) {
+        if (!referenceService.targetAccessible(type, request.referenceId(), user.getId())) {
             throw new BusinessException(HttpStatus.NOT_FOUND, "REFERENCE_TARGET_NOT_FOUND",
-                    "引用目标不存在，可能已被删除");
+                    "引用目标不存在或无权访问");
         }
         if (referenceService.exists(note.getId(), type, request.referenceId())) {
             throw new BusinessException(HttpStatus.CONFLICT, "REFERENCE_DUPLICATE", "该引用已存在");
@@ -149,12 +159,12 @@ public class NoteService {
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "NOTE_NOT_FOUND", "笔记不存在或无权访问"));
     }
 
-    private ApiDtos.NoteSummaryView toSummaryView(NoteEntity note) {
+    private ApiDtos.NoteSummaryView toSummaryView(NoteEntity note, int shareCount) {
         return new ApiDtos.NoteSummaryView(
                 note.getId(), note.getTitle(), excerpt(note.getBody()),
                 KnowledgeService.splitTags(note.getTags()),
                 statusView(note.getStatus()),
-                shareRepository.findByNoteIdOrderByCreatedAtDesc(note.getId()).size(),
+                shareCount,
                 note.getCreatedAt(), note.getUpdatedAt());
     }
 

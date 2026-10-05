@@ -1,8 +1,5 @@
 package com.robustvision.platform.service;
 
-import com.robustvision.platform.domain.FileAssetEntity;
-import com.robustvision.platform.domain.InferenceTaskEntity;
-import com.robustvision.platform.domain.KnowledgeEntryEntity;
 import com.robustvision.platform.domain.NoteReferenceEntity;
 import com.robustvision.platform.domain.NoteReferenceType;
 import com.robustvision.platform.dto.ApiDtos;
@@ -13,8 +10,9 @@ import com.robustvision.platform.repository.NoteReferenceRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
 import java.util.List;
-import java.util.Optional;
+import java.util.Map;
 
 /**
  * 笔记引用的解析服务：把 FILE / TASK / ENTRY 三类多态引用统一转成可展示信息。
@@ -24,6 +22,8 @@ import java.util.Optional;
  */
 @Service
 public class NoteReferenceService {
+
+    private static final int TARGET_BATCH_SIZE = 500;
 
     private final NoteReferenceRepository referenceRepository;
     private final FileAssetRepository fileAssetRepository;
@@ -42,8 +42,18 @@ public class NoteReferenceService {
 
     @Transactional(readOnly = true)
     public List<ApiDtos.NoteReferenceView> resolveForNote(String noteId) {
-        return referenceRepository.findByNoteIdOrderBySortOrderAscIdAsc(noteId).stream()
-                .map(this::toView).toList();
+        List<NoteReferenceRepository.ReferenceSummary> references = referenceRepository.findSummariesByNoteId(noteId);
+        // One summary query plus one target query per nonempty type/batch. Never
+        // hydrate result JSON, knowledge bodies, owners or roles for display labels.
+        Map<Long, ResolvedTarget> targets = new HashMap<>();
+        for (NoteReferenceType type : NoteReferenceType.values()) {
+            List<Long> ids = references.stream().filter(reference -> reference.getReferenceType() == type)
+                    .map(NoteReferenceRepository.ReferenceSummary::getId).toList();
+            for (int start = 0; start < ids.size(); start += TARGET_BATCH_SIZE) {
+                resolveTargets(type, ids.subList(start, Math.min(start + TARGET_BATCH_SIZE, ids.size())), targets);
+            }
+        }
+        return references.stream().map(reference -> toView(reference, targets.get(reference.getId()))).toList();
     }
 
     @Transactional(readOnly = true)
@@ -53,11 +63,11 @@ public class NoteReferenceService {
 
     /** 校验引用目标当前是否存在，供笔记服务在新增引用时调用。 */
     @Transactional(readOnly = true)
-    public boolean targetExists(NoteReferenceType type, String referenceId) {
+    public boolean targetAccessible(NoteReferenceType type, String referenceId, Long ownerId) {
         return switch (type) {
-            case FILE -> fileAssetRepository.existsById(referenceId);
-            case TASK -> inferenceTaskRepository.existsById(referenceId);
-            case ENTRY -> knowledgeEntryRepository.existsById(referenceId);
+            case FILE -> fileAssetRepository.existsByIdAndOwnerId(referenceId, ownerId);
+            case TASK -> inferenceTaskRepository.existsByIdAndRequestedByIdAndInputFileOwnerId(referenceId, ownerId, ownerId);
+            case ENTRY -> knowledgeEntryRepository.isReadable(referenceId, ownerId);
         };
     }
 
@@ -66,60 +76,36 @@ public class NoteReferenceService {
         return referenceRepository.findByReferenceTypeAndReferenceId(type, referenceId);
     }
 
-    private ApiDtos.NoteReferenceView toView(NoteReferenceEntity reference) {
+    private void resolveTargets(NoteReferenceType type, List<Long> ids, Map<Long, ResolvedTarget> targets) {
+        switch (type) {
+            case FILE -> referenceRepository.findFileTargets(ids).forEach(file -> targets.put(file.getReferenceRowId(),
+                    new ResolvedTarget(file.getOriginalName(), file.getContentType() + " · " + formatSize(file.getSizeBytes())
+                            + " · SHA-256 " + shortHash(file.getSha256()))));
+            case TASK -> referenceRepository.findTaskTargets(ids).forEach(task -> targets.put(task.getReferenceRowId(),
+                    new ResolvedTarget("推理任务 " + task.getTraceId(), task.getModelName() + " · " + task.getStatus()
+                            + (task.getCostCny() != null ? " · ¥" + task.getCostCny() : "")
+                            + " · traceId " + task.getTraceId())));
+            case ENTRY -> referenceRepository.findEntryTargets(ids).forEach(entry -> targets.put(entry.getReferenceRowId(),
+                    new ResolvedTarget(entry.getTitle(), entry.getDomain() + " · " + entry.getTopicName())));
+        }
+    }
+
+    private ApiDtos.NoteReferenceView toView(NoteReferenceRepository.ReferenceSummary reference, ResolvedTarget target) {
         NoteReferenceType type = reference.getReferenceType();
         String label = reference.getLabel();
-        String displayTitle;
-        String displayMeta;
-        boolean accessible;
-
-        switch (type) {
-            case FILE -> {
-                Optional<FileAssetEntity> file = fileAssetRepository.findById(reference.getReferenceId());
-                accessible = file.isPresent();
-                FileAssetEntity entity = file.orElse(null);
-                displayTitle = label != null && !label.isBlank()
-                        ? label
-                        : (entity != null ? entity.getOriginalName() : "已删除的文件");
-                displayMeta = entity != null
-                        ? entity.getContentType() + " · " + formatSize(entity.getSizeBytes()) + " · SHA-256 " + shortHash(entity.getSha256())
-                        : "引用目标已被删除";
-            }
-            case TASK -> {
-                Optional<InferenceTaskEntity> task = inferenceTaskRepository.findById(reference.getReferenceId());
-                accessible = task.isPresent();
-                InferenceTaskEntity entity = task.orElse(null);
-                displayTitle = label != null && !label.isBlank()
-                        ? label
-                        : (entity != null ? "推理任务 " + entity.getTraceId() : "已删除的推理任务");
-                displayMeta = entity != null
-                        ? entity.getModel().getName() + " · " + entity.getStatus()
-                            + (entity.getCostCny() != null ? " · ¥" + entity.getCostCny() : "")
-                            + " · traceId " + entity.getTraceId()
-                        : "引用目标已被删除";
-            }
-            case ENTRY -> {
-                Optional<KnowledgeEntryEntity> entry = knowledgeEntryRepository.findById(reference.getReferenceId());
-                accessible = entry.isPresent();
-                KnowledgeEntryEntity entity = entry.orElse(null);
-                displayTitle = label != null && !label.isBlank()
-                        ? label
-                        : (entity != null ? entity.getTitle() : "已删除的知识卡");
-                displayMeta = entity != null
-                        ? entity.getTopic().getDomain() + " · " + entity.getTopic().getName()
-                        : "引用目标已被删除";
-            }
-            default -> {
-                accessible = false;
-                displayTitle = label != null ? label : "未知引用";
-                displayMeta = "不支持的引用类型";
-            }
-        }
-
-        return new ApiDtos.NoteReferenceView(
-                reference.getId(), type.name(), reference.getReferenceId(), label,
-                displayTitle, displayMeta, accessible);
+        String fallbackTitle = switch (type) {
+            case FILE -> "已删除的文件";
+            case TASK -> "已删除的推理任务";
+            case ENTRY -> "已删除的知识卡";
+        };
+        String displayTitle = label != null && !label.isBlank() ? label : target != null ? target.title() : fallbackTitle;
+        // Resolve only targets the note owner may reference. Authorized note sharing grants
+        // this embedded metadata, never access to the underlying private file or task.
+        return new ApiDtos.NoteReferenceView(reference.getId(), type.name(), reference.getReferenceId(), label,
+                displayTitle, target != null ? target.meta() : "引用目标已被删除", target != null);
     }
+
+    private record ResolvedTarget(String title, String meta) {}
 
     private String shortHash(String sha256) {
         if (sha256 == null || sha256.length() < 12) return String.valueOf(sha256);

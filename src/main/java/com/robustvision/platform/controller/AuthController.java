@@ -5,6 +5,7 @@ import com.robustvision.platform.dto.ApiDtos;
 import com.robustvision.platform.service.AuthService;
 import com.robustvision.platform.service.UserService;
 import jakarta.validation.Valid;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -23,8 +24,8 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ApiResponse<ApiDtos.LoginResponse> login(@Valid @RequestBody ApiDtos.LoginRequest request) {
-        return ApiResponse.ok(authService.login(request));
+    public ApiResponse<ApiDtos.LoginResponse> login(@Valid @RequestBody ApiDtos.LoginRequest request, HttpServletRequest httpRequest) {
+        return ApiResponse.ok(authService.login(request, httpRequest.getHeader("User-Agent")));
     }
 
     @PostMapping("/register")

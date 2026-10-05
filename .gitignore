@@ -17,3 +17,21 @@ uploads/
 Thumbs.db
 *.pem
 *.key
+
+# Local dependency/data/log/benchmark state (never commit secrets or databases)
+.runtime/
+.tools/
+__pycache__/
+*.pyc
+
+# Private local recovery bundles (source scripts remain tracked)
+backups/
+*.backup.zip
+
+# Retired artwork and unused visual experiments are not distributed.
+/cle/public/art/
+/cle/src/styles/editorial.css
+/cle/src/components/FloatingEntryBadge.vue
+/cle/src/components/GearCluster.vue
+/cle/src/components/HomeExperiment.vue
+/cle/src/components/SyntheticScene.vue

@@ -9,11 +9,15 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '22.22.2'
           cache: npm
           cache-dependency-path: cle/package-lock.json
       - run: npm ci --prefix cle
+      - run: npm run test:unit --prefix cle
+      - run: npm run test:ui --prefix cle
       - run: npm run build --prefix cle
+      - name: Validate Nginx syntax and secret-free request logs
+        run: bash scripts/tests/nginx-log-smoke.sh
   backend:
     runs-on: ubuntu-latest
     steps:
@@ -24,4 +28,27 @@ jobs:
           java-version: '17'
           cache: maven
       - run: sudo apt-get update && sudo apt-get install -y ffmpeg
-      - run: mvn -B verify
+      - run: ./mvnw -B verify
+  mysql-contract:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: isolated-ci-only
+        ports: ["3306:3306"]
+        options: >-
+          --health-cmd="mysqladmin ping -h127.0.0.1 -pisolated-ci-only"
+          --health-interval=5s --health-timeout=3s --health-retries=30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - run: ./mvnw -B -Dtest=MySqlSchemaMigrationTest,BillingConcurrencyIntegrationTest,NoteReferenceBatchQueryTest,VocabularyMySqlIntegrationTest,AdminMutationConcurrencyIntegrationTest,PersonalPlatformHttpIntegrationTest,InferenceRecoveryIntegrationTest,PersonalAiPersistenceIntegrationTest test
+        env:
+          MYSQL_TEST_URL: jdbc:mysql://127.0.0.1:3306/?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
+          MYSQL_TEST_USERNAME: root
+          MYSQL_TEST_PASSWORD: isolated-ci-only

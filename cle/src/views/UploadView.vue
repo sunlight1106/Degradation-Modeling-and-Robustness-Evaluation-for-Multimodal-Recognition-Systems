@@ -6,6 +6,7 @@ import type { FileView, ModelRuntimeView, ModelView, TaskType } from '@/types/ap
 import UploadDropzone from '@/components/UploadDropzone.vue'
 import AppIcon from '@/components/AppIcon.vue'
 import DocRow from '@/components/DocRow.vue'
+import PersonalRecognitionPanel from '@/components/PersonalRecognitionPanel.vue'
 import { toastStore } from '@/stores/toast'
 
 const route = useRoute()
@@ -33,7 +34,8 @@ const canRun = computed(() => Boolean(
   (selectedFile.value || uploadedFile.value)
   && modelId.value
   && mediaMatchesTask.value
-  && busyStage.value === 'idle',
+  && busyStage.value === 'idle'
+  && runtime.value?.mode === 'demo',
 ))
 
 onMounted(async () => {
@@ -111,12 +113,13 @@ async function run() {
 
 <template>
   <div class="lab-docs workspace-reader">
-    <DocRow id="experiment" title="新建识别实验" intro>
-      <p>从一个样本开始，观察模型看到了什么。</p>
-      <p class="experiment-caption">上传素材、选择模型，再对照原始与优化后的结果。</p>
-      <template #detail><nav class="experiment-index" aria-label="实验步骤"><a href="#sample">01 输入样本</a><a href="#configuration">02 选择模型</a><a href="#run">03 运行实验</a></nav></template>
+    <DocRow id="experiment" title="识别实验" intro>
+      <p>用个人模型识别图片，或运行本地演示。</p>
+      <p class="experiment-caption">个人 AI 使用你自己的配置；下方双路实验提供 DEMO 合成结果。</p>
+      <template #detail><nav class="experiment-index" aria-label="实验步骤"><a href="#personal-vision">个人图片识别</a><a href="#sample">DEMO 样本</a><a href="#configuration">02 选择模型</a><a href="#run">03 运行实验</a></nav></template>
     </DocRow>
-    <DocRow id="sample" title="输入样本">
+        <section id="personal-vision" class="reader-personal"><PersonalRecognitionPanel /></section>
+    <DocRow id="sample" title="DEMO · 输入样本">
       <p>选择一张图片，或一段视频。你也可以把文件直接拖入右侧。</p>
       <p class="experiment-caption">JPEG、PNG、WEBP / MP4、WEBM<br />单个文件最大 20 MB</p>
       <template #detail>
@@ -147,7 +150,7 @@ async function run() {
       <template #detail>
         <div class="experiment-run">
           <label class="experiment-check"><input v-model="enhancementEnabled" :disabled="busyStage !== 'idle'" type="checkbox" /><span>启用质量感知优化<small>{{ taskType === 'VIDEO_ANALYSIS' ? '视频降噪与音轨处理' : '原始图片与增强图片对照' }}</small></span></label>
-          <p class="experiment-runtime">{{ runtime?.mode === 'demo' ? '演示模式 · 结果仅用于体验流程，不代表真实模型性能。' : runtime?.credentialConfigured ? '已连接模型服务，将按所选模型运行。' : '模型服务尚未就绪，请检查服务配置。' }}</p>
+          <p class="experiment-runtime">{{ runtime?.mode === 'demo' ? '演示模式 · 结果仅用于体验流程，不代表真实模型性能。' : '共享模型调用已停用。真实图片识别请使用上方个人 AI 入口。' }}</p>
           <p v-if="(selectedFile || uploadedFile) && !mediaMatchesTask" class="inline-alert inline-alert--error">视频请选择“视频分析”，图片请选择车牌或票据任务。</p>
           <p v-if="error" class="inline-alert inline-alert--error" role="alert">{{ error }}</p>
           <div class="experiment-action">

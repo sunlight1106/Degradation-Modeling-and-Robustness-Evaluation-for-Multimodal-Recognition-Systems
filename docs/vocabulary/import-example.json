@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "title": "我的第一本词书",
+  "description": "四个词的原创导入示例，可替换为有权使用的内容。",
+  "attribution": "本人原创或已获授权",
+  "rightsConfirmed": false,
+  "words": [
+    {
+      "term": "apple",
+      "ipa": "/ˈæpəl/",
+      "pos": "n.",
+      "meaning": "苹果",
+      "example": "I put an apple in my bag.",
+      "exampleTranslation": "我把一个苹果放进包里。",
+      "distractors": [
+        "窗户",
+        "厨房",
+        "雨伞"
+      ]
+    },
+    {
+      "term": "window",
+      "ipa": "/ˈwɪndoʊ/",
+      "pos": "n.",
+      "meaning": "窗户",
+      "example": "Please open the window.",
+      "exampleTranslation": "请打开窗户。",
+      "distractors": [
+        "苹果",
+        "厨房",
+        "雨伞"
+      ]
+    },
+    {
+      "term": "kitchen",
+      "ipa": "/ˈkɪtʃən/",
+      "pos": "n.",
+      "meaning": "厨房",
+      "example": "Our kitchen has a small table.",
+      "exampleTranslation": "我们的厨房里有一张小桌子。",
+      "distractors": [
+        "苹果",
+        "窗户",
+        "雨伞"
+      ]
+    },
+    {
+      "term": "umbrella",
+      "ipa": "/ʌmˈbrelə/",
+      "pos": "n.",
+      "meaning": "雨伞",
+      "example": "Take an umbrella with you.",
+      "exampleTranslation": "带上一把雨伞。",
+      "distractors": [
+        "苹果",
+        "窗户",
+        "厨房"
+      ]
+    }
+  ]
+}

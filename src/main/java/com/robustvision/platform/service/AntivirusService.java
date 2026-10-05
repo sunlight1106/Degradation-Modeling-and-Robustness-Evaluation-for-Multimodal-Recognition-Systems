@@ -55,12 +55,16 @@ public class AntivirusService {
 
             ByteArrayOutputStream response = new ByteArrayOutputStream();
             int value;
-            while ((value = socket.getInputStream().read()) >= 0 && value != 0) response.write(value);
+            while ((value = socket.getInputStream().read()) >= 0 && value != 0) {
+                if (response.size() >= 4096) throw new IllegalStateException("Invalid scanner response");
+                response.write(value);
+            }
+            if (value != 0) throw new IllegalStateException("Incomplete scanner response");
             String result = response.toString(StandardCharsets.UTF_8);
-            if (result.contains(" FOUND")) {
+            if (result.startsWith("stream: ") && result.endsWith(" FOUND") && !result.contains("\n") && !result.contains("\r")) {
                 throw new BusinessException(HttpStatus.UNPROCESSABLE_ENTITY, "FILE_INFECTED", "文件未通过病毒扫描，已拒绝保存");
             }
-            if (!result.contains(" OK")) throw new IllegalStateException(result);
+            if (!result.equals("stream: OK")) throw new IllegalStateException("Invalid scanner response");
             return new ScanResult(FileScanStatus.CLEAN, "ClamAV clamd");
         } catch (BusinessException exception) {
             throw exception;

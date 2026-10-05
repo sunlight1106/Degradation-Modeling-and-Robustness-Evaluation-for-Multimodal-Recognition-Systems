@@ -106,6 +106,7 @@ export interface InferenceView {
   outputFile: FileView | null
   model: ModelView
   requestedBy: string
+  requestedById: number
   baselineConfidence: number | null
   optimizedConfidence: number | null
   baselineLatencyMs: number | null

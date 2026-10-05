@@ -138,6 +138,7 @@ public final class ApiDtos {
             FileView outputFile,
             ModelView model,
             String requestedBy,
+            Long requestedById,
             Double baselineConfidence,
             Double optimizedConfidence,
             Long baselineLatencyMs,
@@ -346,14 +347,14 @@ public final class ApiDtos {
 
     public record CreateNoteRequest(
             @NotBlank @Size(max = 180) String title,
-            @NotBlank String body,
+            @NotBlank @Size(max = 200000) String body,
             @Size(max = 500) String tags,
             String status
     ) {}
 
     public record UpdateNoteRequest(
             @Size(min = 1, max = 180) String title,
-            String body,
+            @Size(max = 200000) String body,
             @Size(max = 500) String tags,
             String status
     ) {}
@@ -375,7 +376,7 @@ public final class ApiDtos {
      */
     public record NoteAssistRequest(
             @NotBlank String action,
-            @Size(max = 4000) String body,
+            @Size(max = 24000, message = "单次整理最多 24000 个字符；不会截断正文") String body,
             String title
     ) {}
 

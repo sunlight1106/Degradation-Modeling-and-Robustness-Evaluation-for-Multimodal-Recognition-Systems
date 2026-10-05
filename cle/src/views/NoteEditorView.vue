@@ -1,13 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
-import { RouterLink, useRoute, useRouter } from 'vue-router'
+import { computed, onBeforeUnmount, onMounted, ref, watch, nextTick } from 'vue'
+import { RouterLink, useRoute, useRouter, onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router'
 import { api, ApiClientError } from '@/api/client'
+import { personalApi } from '@/api/personal'
 import type {
   FileView,
-  InferenceView,
   KnowledgeEntryView,
-  NoteAssistAction,
-  NoteAssistResponse,
   NoteExportFormat,
   NoteReferenceType,
   NoteReferenceView,
@@ -16,6 +14,7 @@ import type {
   NoteView,
 } from '@/types/api'
 import AppIcon from '@/components/AppIcon.vue'
+import NotePersonalTools from '@/components/NotePersonalTools.vue'
 import { authStore } from '@/stores/auth'
 import { toastStore } from '@/stores/toast'
 import { countWords, extractOutline, readingMinutes, renderMarkdown } from '@/lib/markdown'
@@ -83,32 +82,44 @@ function applyNote(note: NoteView) {
   dirty.value = false
 }
 
+let loadVersion = 0
 async function load() {
+  const version = ++loadVersion
   const raw = route.params.id
   if (typeof raw !== 'string' || !raw) {
+    await nextTick()
+    dirty.value = false
     ready.value = true
     return
   }
   loading.value = true
+  ready.value = false
   error.value = ''
   try {
     const note = await api.note(raw)
+    if (version !== loadVersion) return
     applyNote(note)
-    shares.value = await api.noteShares(raw)
+    const loadedShares = await api.noteShares(raw)
+    if (version === loadVersion) shares.value = loadedShares
   } catch (reason) {
-    error.value = errText(reason, '笔记加载失败')
+    if (version === loadVersion) error.value = errText(reason, '笔记加载失败')
   } finally {
-    loading.value = false
-    ready.value = true
+    if (version === loadVersion) {
+      await nextTick()
+      loading.value = false
+      ready.value = !error.value
+      dirty.value = false
+    }
   }
 }
 
 async function save(): Promise<string | null> {
-  if (!canWrite.value) return currentId.value
+  if (!canWrite.value || saving.value || loading.value || !ready.value) return currentId.value
   if (!title.value.trim()) {
     toastStore.error('请先填写标题')
     return null
   }
+  const version = loadVersion
   saving.value = true
   try {
     const payload = {
@@ -121,12 +132,15 @@ async function save(): Promise<string | null> {
     const saved = currentId.value
       ? await api.updateNote(currentId.value, payload)
       : await api.createNote(payload)
+    if (version !== loadVersion || !ready.value) return null
     applyNote(saved)
+    await nextTick()
+    dirty.value = false
     toastStore.success('已保存')
     if (wasNew) await router.replace({ name: 'note-edit', params: { id: saved.id } })
     return saved.id
   } catch (reason) {
-    toastStore.error(errText(reason, '保存失败'))
+    if (version === loadVersion) toastStore.error(errText(reason, '保存失败'))
     return null
   } finally {
     saving.value = false
@@ -192,62 +206,9 @@ function onBodyKeydown(event: KeyboardEvent) {
   }
 }
 
-// --- AI 整理 ----------------------------------------------------------------
-const assistBusy = ref<NoteAssistAction | null>(null)
-const assist = ref<NoteAssistResponse | null>(null)
-
-const assistActions: Array<{ action: NoteAssistAction; label: string; icon: string }> = [
-  { action: 'summarize', label: '摘要', icon: 'ai' },
-  { action: 'outline', label: '大纲', icon: 'logs' },
-  { action: 'tags', label: '标签', icon: 'link' },
-  { action: 'tidy', label: '格式整理', icon: 'edit' },
-]
-
-const assistEngineLabel = computed(() => {
-  const engine = assist.value?.engine
-  if (!engine) return ''
-  return engine === 'LOCAL_RULES' ? '本地规则算法' : engine.replace('MODEL:', '模型 ')
-})
-
-const assistIsLocal = computed(() => assist.value?.engine === 'LOCAL_RULES')
-
-async function runAssist(action: NoteAssistAction) {
-  if (!body.value.trim()) {
-    toastStore.error('笔记正文为空，无法整理')
-    return
-  }
-  assistBusy.value = action
-  try {
-    assist.value = await api.assistDraft({
-      action,
-      body: body.value,
-      title: title.value.trim() || undefined,
-    })
-  } catch (reason) {
-    toastStore.error(errText(reason, '整理失败'))
-  } finally {
-    assistBusy.value = null
-  }
-}
-
-function applyAssist() {
-  const result = assist.value
-  if (!result) return
-  if (result.action === 'tags') {
-    const merged = new Set(tagList.value)
-    for (const item of result.items) merged.add(item)
-    tagsInput.value = Array.from(merged).join(', ')
-    toastStore.success('标签已合并')
-  } else if (result.action === 'tidy') {
-    body.value = result.result
-    toastStore.success('已应用格式整理')
-  } else {
-    const heading = result.action === 'summarize' ? '摘要' : '大纲'
-    body.value = `${body.value.replace(/\s*$/, '')}\n\n## ${heading}\n\n${result.result}\n`
-    toastStore.success('已插入到文末')
-  }
-  assist.value = null
-}
+// Assistance changes only the local editor. Saving stays explicit.
+function appendToBody(text: string) { body.value = `${body.value.trimEnd()}\n\n${text.trim()}\n`.trimStart() }
+function applyTags(items: string[]) { tagsInput.value = Array.from(new Set([...tagList.value, ...items])).join(', ') }
 
 // --- 导出 -------------------------------------------------------------------
 const exporting = ref<NoteExportFormat | null>(null)
@@ -330,6 +291,7 @@ const refType = ref<NoteReferenceType>('ENTRY')
 const refPick = ref('')
 const refLabel = ref('')
 const refBusy = ref(false)
+let refVersion = 0
 const refOptions = ref<Array<{ value: string; label: string }>>([])
 
 const refTypeOptions: Array<{ code: NoteReferenceType; label: string }> = [
@@ -346,18 +308,22 @@ async function openReferences() {
 watch(refType, () => { void loadRefOptions() })
 
 async function loadRefOptions() {
+  const version = ++refVersion
   refPick.value = ''
   refOptions.value = []
   try {
     if (refType.value === 'ENTRY') {
       const list: KnowledgeEntryView[] = await api.knowledgeEntries({})
+      if (version !== refVersion) return
       refOptions.value = list.map(item => ({ value: item.id, label: `${item.title}（${item.domain} · ${item.topicName}）` }))
     } else if (refType.value === 'FILE') {
       const list: FileView[] = await api.files()
+      if (version !== refVersion) return
       refOptions.value = list.map(item => ({ value: item.id, label: item.originalName }))
     } else {
-      const list: InferenceView[] = await api.tasks()
-      refOptions.value = list.map(item => ({ value: item.id, label: `${item.taskType} · ${item.traceId.slice(0, 8)}` }))
+      const list = await personalApi.experiments()
+      if (version !== refVersion) return
+      refOptions.value = list.map(item => ({ value: item.taskId, label: item.title }))
     }
   } catch (reason) {
     toastStore.error(errText(reason, '引用目标加载失败'))
@@ -402,7 +368,23 @@ async function removeReference(reference: NoteReferenceView) {
 
 const refTypeLabel: Record<string, string> = { FILE: '文件', TASK: '任务', ENTRY: '知识卡' }
 
-onMounted(load)
+function confirmLeave() {
+  if (!authStore.state.user) return true
+  if (saving.value) { toastStore.info('正在保存，请稍候再离开'); return false }
+  return !dirty.value || window.confirm('笔记有未保存的更改。离开会丢弃这些更改，继续？')
+}
+onBeforeRouteLeave(confirmLeave)
+onBeforeRouteUpdate((to, from) => {
+  if (to.params.id !== from.params.id && to.params.id !== currentId.value && !confirmLeave()) return false
+})
+watch(() => route.params.id, (next, previous) => {
+  if (next === previous || (typeof next === 'string' && next === currentId.value)) return
+  ready.value = false; currentId.value = null; title.value = ''; body.value = ''; tagsInput.value = ''; status.value = 'DRAFT'; references.value = []; shares.value = []; shareCount.value = 0; updatedAt.value = null; dirty.value = false
+  void load()
+})
+function warnUnload(event: BeforeUnloadEvent) { if (dirty.value) { event.preventDefault(); event.returnValue = '' } }
+onMounted(() => { void load(); window.addEventListener('beforeunload', warnUnload) })
+onBeforeUnmount(() => { loadVersion++; refVersion++; window.removeEventListener('beforeunload', warnUnload) })
 </script>
 
 <template>
@@ -430,17 +412,17 @@ onMounted(load)
 
     <section class="panel note-editor-meta">
       <div class="note-editor-fields">
-        <input v-model="title" class="field-input note-title-input" maxlength="180" placeholder="无标题笔记" />
+        <input v-model="title" :disabled="loading || saving || !ready" class="field-input note-title-input" maxlength="180" placeholder="无标题笔记" />
         <div class="note-editor-row">
           <label class="field-label note-status-field">
             状态
-            <select v-model="status" class="field-input">
+            <select v-model="status" :disabled="loading || saving || !ready" class="field-input">
               <option v-for="option in statusOptions" :key="option.code" :value="option.code">{{ option.label }}</option>
             </select>
           </label>
           <label class="field-label note-tags-field">
             标签（逗号分隔）
-            <input v-model="tagsInput" class="field-input" maxlength="500" placeholder="糖代谢, 酶动力学" />
+            <input v-model="tagsInput" :disabled="loading || saving || !ready" class="field-input" maxlength="500" placeholder="糖代谢, 酶动力学" />
           </label>
         </div>
       </div>
@@ -458,59 +440,20 @@ onMounted(load)
       </div>
     </section>
 
-    <section class="panel note-ai-bar">
-      <div class="note-ai-head">
-        <span class="note-ai-icon"><AppIcon name="ai" :size="18" /></span>
-        <div>
-          <strong>AI 整理</strong>
-          <small>结果来源会如实标注：未配置模型密钥时使用本地规则，不冒充模型输出。</small>
-        </div>
-      </div>
-      <div class="note-ai-actions">
-        <button
-          v-for="item in assistActions"
-          :key="item.action"
-          class="button button--ghost button--small"
-          :disabled="assistBusy !== null"
-          @click="runAssist(item.action)"
-        >
-          <AppIcon :name="item.icon" :size="15" />
-          {{ assistBusy === item.action ? '整理中…' : item.label }}
-        </button>
-      </div>
-    </section>
-
-    <section v-if="assist" class="panel note-ai-result" :class="{ 'note-ai-result--local': assistIsLocal }">
-      <header>
-        <div>
-          <p class="page-kicker">{{ assist.action.toUpperCase() }}</p>
-          <strong>{{ assistEngineLabel }}</strong>
-        </div>
-        <div class="note-ai-result-actions">
-          <button class="button button--small button--dark" @click="applyAssist">
-            <AppIcon name="check" :size="14" /> 应用
-          </button>
-          <button class="icon-button" title="关闭" @click="assist = null"><AppIcon name="close" :size="17" /></button>
-        </div>
-      </header>
-      <ul v-if="assist.action === 'tags' || assist.action === 'outline'" class="note-ai-items">
-        <li v-for="(item, index) in assist.items" :key="index">{{ item }}</li>
-      </ul>
-      <pre v-else class="note-ai-text">{{ assist.result }}</pre>
-      <p v-if="assist.note" class="note-ai-note">{{ assist.note }}</p>
-    </section>
+    <NotePersonalTools :key="currentId || 'new'" :title="title" :body="body" :disabled="loading || saving || !ready || !canWrite" @append="appendToBody" @replace="body = $event" @tags="applyTags" />
 
     <section class="note-editor-layout" :class="{ 'note-editor-layout--outline': outline.length > 0 }">
       <article class="panel note-editor-pane">
         <header class="note-pane-head">
           <strong>编辑</strong>
           <div class="note-md-tools">
-            <button v-for="tool in tools" :key="tool.title" type="button" :title="tool.title" @click="tool.run">{{ tool.label }}</button>
+            <button v-for="tool in tools" :key="tool.title" type="button" :disabled="loading || saving || !ready" :title="tool.title" @click="tool.run">{{ tool.label }}</button>
           </div>
         </header>
         <textarea
           ref="bodyEl"
           v-model="body"
+          :disabled="loading || saving || !ready"
           class="note-editor-textarea"
           spellcheck="false"
           placeholder="开始记录。支持 Markdown：## 标题、- 列表、**加粗**、`代码`、> 引用、表格与代码块。"
@@ -521,7 +464,7 @@ onMounted(load)
       <article class="panel note-preview-pane">
         <header class="note-pane-head">
           <strong>预览</strong>
-          <span class="note-preview-hint">内容已消毒后渲染</span>
+          <span class="note-preview-hint">已安全渲染 · 不自动加载图片</span>
         </header>
         <div v-if="previewHtml" class="markdown-body" v-html="previewHtml" />
         <p v-else class="note-preview-empty">预览会随左侧输入实时更新。</p>

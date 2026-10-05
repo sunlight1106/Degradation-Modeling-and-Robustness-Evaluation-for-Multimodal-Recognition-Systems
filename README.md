@@ -1,241 +1,227 @@
-# 多模态识别鲁棒性评测与个人知识平台
+# 多模态识别与个人知识平台
 
-面向"真实退化输入下的识别可靠性"研究场景的自托管全栈平台：上传被压缩、低光、反光、噪声干扰的图片/视频，经病毒扫描与媒体增强后调用多家视觉大模型，记录基线与优化双路的置信度、退化诊断、token 成本与可追溯的 `trace_id`；同时内置跨学科知识库与 Markdown 笔记，可用 AI 辅助整理并导出/分享。
+在自己的电脑运行一个研究工作台：写笔记、整理知识、学习词汇，使用自己的 AI 配置识别图片，或运行本地演示实验。
 
-业务数据存 MySQL，任务经 Redis 排队，媒体存 MinIO，上传前由 ClamAV 扫描，模型调用由可独立扩容的 Worker 执行。前端 Vue 3，后端 Spring Boot 3（Java 17），全部容器化，`docker compose` 一键启动。
+**首次使用按「下载 → 启动 → 登录」操作。Docker 部署不需要在本机安装 Java、Node.js 或 Maven。**
 
----
+[下载源码 ZIP](https://github.com/sunlight1106/Degradation-Modeling-and-Robustness-Evaluation-for-Multimodal-Recognition-Systems/archive/refs/heads/main.zip) · [首次启动](#首次启动) · [日常使用](#日常使用) · [更新版本](#更新版本) · [常见问题](#常见问题) · [许可与设计说明](#许可与设计说明)
 
-## 快速开始
+## 能做什么
 
-### 部署方式一：Docker 一键部署（推荐）
-
-**这种方式下你不需要在本机安装 Java、Node、Maven**——它们只在容器内使用。
-
-| 项 | 最低要求 | 说明 |
+| 我想要 | 从哪里开始 | 是否需要模型密钥 |
 | --- | --- | --- |
-| 操作系统 | Windows 10/11（64 位）、macOS 12+、主流 Linux 发行版 | Windows 需启用 WSL 2 |
-| Docker | Docker Desktop 4.x+（切换到 **Linux containers**），或 Linux Docker Engine 24+ 配 Compose v2（`docker compose` 子命令，不是旧版 `docker-compose`） | 用 `docker compose version` 自检，应输出 v2.x |
-| 内存 | 为 Docker 分配 **≥ 4 GB** | 7 个容器同时运行：MySQL、Redis、MinIO、ClamAV、API、Worker、前端 |
-| 磁盘 | 预留 **≥ 6 GB** 空闲 | 镜像约 2.5 GB + ClamAV 病毒库约 0.3 GB + 构建缓存与数据卷 |
-| CPU | 2 核可用 | 首次构建后端（Maven 编译 + 测试）较吃 CPU |
-| 网络 | 首次构建需联网 | 拉取 Maven/npm 依赖、基础镜像、ClamAV 病毒库；之后可离线运行 |
+| 写笔记、整理知识 | 我的笔记 / 知识库 | 不需要；可使用本地规则整理 |
+| 背单词 | 目录与账户 → 背单词 | 不需要 |
+| 识别票据或车牌图片 | 设置 → 个人 AI，再进入实验台 | 需要自己的视觉模型和部署端远程开关 |
+| 体验图片 / 视频双路流程 | 实验台 → DEMO | 不需要；输出为合成演示结果 |
+| 下载素材与报告 | 目录与账户 → 下载中心 | 不需要 |
+| 下载自己的账户数据 | 设置 → 隐私与数据 | 不需要，需要确认本人密码 |
 
-启动命令见下一节。
+个人 AI 会先展示发送预览，由你确认后才调用供应商；默认关闭远程执行。DEMO 置信度和识别结果不能用于准确率或论文结论，真实视频模型调用尚未开放。
 
-### 部署方式二：不用 Docker，纯本机开发
+## 下载项目
 
-若你要改代码并直接在本机跑（不用容器），需要装齐下列工具。**版本需与 CI 一致**（`.github/workflows/verify.yml`）：
+### 直接下载 ZIP
 
-| 软件 | 版本 | 用途 | 自检命令 |
-| --- | --- | --- | --- |
-| JDK | **17**（Temurin/Oracle 均可） | 编译与运行 Spring Boot 后端 | `java -version` |
-| Maven | **3.9+** | 依赖管理与构建 | `mvn -version` |
-| Node.js | **22.x**（LTS） | 前端构建与开发服务器 | `node -v` |
-| npm | 随 Node 22 附带（≥ 10） | 前端依赖安装 | `npm -v` |
-| FFmpeg | 4.x 或 5.x/6.x/7.x，需在 `PATH` 中 | 视频音轨降噪与媒体测试 | `ffmpeg -version` |
-| MySQL | **8.4** | 业务数据库（Docker 方式无需自装） | `mysql --version` |
-| Redis | **7.4+** | 任务队列（Docker 方式无需自装） | `redis-server --version` |
+1. 点击上方「下载源码 ZIP」，或在 GitHub 选择 **Code → Download ZIP**。
+2. 将 ZIP **完整解压**到固定目录，例如 `D:\ResearchPlatform`。
+3. 打开解压后的项目目录，确认能看到 `compose.yaml`、`deploy.ps1` 和 `cle` 文件夹。
 
-> FFmpeg 是硬依赖：后端测试与视频降噪分支都会调用它。缺了它 `mvn verify` 的媒体测试会失败。Windows 可用 `winget install Gyan.FFmpeg` 安装并确认 `ffmpeg` 在 PATH。
+ZIP 是源码包，不是安装程序；不能直接双击里面的网页运行。
 
-### 软件版本清单（仓库实际锁定值）
-
-以下是构建文件里**真实声明**的版本，便于排查兼容性问题：
-
-| 组件 | 版本 | 来源 |
-| --- | --- | --- |
-| Spring Boot | 3.3.5 | `pom.xml` |
-| Java（字节码目标） | 17 | `pom.xml` |
-| 后端构建镜像 | `maven:3.9.9-eclipse-temurin-17` | `src/Dockerfile` |
-| 后端运行镜像 | `eclipse-temurin:17-jre` | `src/Dockerfile` |
-| Vue | 3.5.13 | `cle/package.json` |
-| Vite | ^6.4.3 | `cle/package.json` |
-| 前端构建镜像 | `node:22-alpine` | `cle/Dockerfile` |
-| 前端服务镜像 | `nginx:1.27-alpine` | `cle/Dockerfile` |
-| MySQL | 8.4 | `compose.yaml` |
-| Redis | 7.4-alpine | `compose.yaml` |
-| MinIO | 固定 sha256 摘要（不可变） | `compose.yaml` |
-| ClamAV | stable | `compose.yaml` |
-| 浏览器 | Chrome / Edge / Firefox / Safari 近两年版本 | 前端未用实验性 API |
-
-### 启动命令
+### 使用 Git，方便以后更新
 
 ```sh
-git clone https://github.com/sunlight1106/Degradation-Modeling-and-Robustness-Evaluation-for-Multimodal-Recognition-Systems.git
+git clone --depth 1 https://github.com/sunlight1106/Degradation-Modeling-and-Robustness-Evaluation-for-Multimodal-Recognition-Systems.git
 cd Degradation-Modeling-and-Robustness-Evaluation-for-Multimodal-Recognition-Systems
 ```
 
-Windows（PowerShell）：
+## 首次启动
 
-```powershell
-powershell -ExecutionPolicy Bypass -File .\deploy.ps1
+### 1. 准备 Docker
+
+Windows / macOS 安装并启动 [Docker Desktop](https://docs.docker.com/desktop/)；Windows 使用 WSL 2 和 **Linux containers**。Linux 安装 Docker Engine 与 Compose 插件。Compose 需要 **2.20.2 或更新版本**。
+
+首次启动需要联网下载镜像、依赖与病毒库。建议为 Docker 分配 8 GB 内存，并预留镜像、构建缓存和数据空间。当前 MinIO 构建目标为 `linux/amd64`；ARM 电脑需要 Docker 的相应仿真能力。
+
+在终端检查：
+
+```sh
+docker info
+docker compose version
 ```
 
-已经部署过的 Windows 用户可以双击 `start.cmd` 启动，复用已有镜像；修改源码后请重新运行 `deploy.ps1` 构建。
-Windows 启动脚本会自动打开 Docker Desktop。若本次启动日志明确报告残留通信文件无法访问，会停止故障进程、将两处仅含已知空通信文件的运行目录改名留存，再重试一次。不会重置 Docker 或移动数据库、镜像和数据卷；其他错误会停止并提示检查。
+### 2. 在项目目录运行脚本
 
-Linux / macOS：
+**Windows：**在项目文件夹地址栏输入 `powershell` 并回车，然后执行：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\deploy.ps1
+```
+
+**Linux / macOS：**在项目目录打开终端，执行：
 
 ```sh
 sh deploy.sh
 ```
 
-脚本首次运行会：检测 Docker → 生成 `.env`（含随机强密码与密钥）→ `docker compose up -d --build --wait`。等待各服务健康检查通过后即完成。
+脚本生成私有 `.env`、构建镜像并等待服务就绪。看到 `Ready: http://localhost:4173` 后打开该地址。首次构建较慢，以终端显示的完成状态为准。
 
-### 访问与账号
+Windows 脚本会尝试启动 Docker Desktop；仅识别到特定残留通信文件故障时执行一次受限恢复。其他故障会停止并提示检查。Linux / macOS 需先启动 Docker 引擎。
 
-| 用途 | 地址 / 账号 |
+**不要把空白 `.env.example` 直接当作 `.env`，也不要覆盖已有 `.env`。** 脚本自动生成管理员密码、数据库密码与服务密钥；已有配置会复用。
+
+### 3. 登录
+
+| 内容 | 默认值 / 获取方式 |
 | --- | --- |
-| 平台首页 | **http://localhost:4173** |
-| 管理员 | 用户名 `admin`，密码 `1926648785ljz`（仓库默认值；公网或共享部署前请在 `.env` 改为强密码并重启后端） |
-| 体验账号 | 用户名 `test`，密码 `Test1234`（供访客试用，权限为研究员，无管理能力） |
-| 自助注册 | 首页登录区 → 注册，填写用户名/邮箱/密码即可，管理员后台即时可见 |
+| 平台地址 | [http://localhost:4173](http://localhost:4173)，自定义端口以脚本输出为准 |
+| 管理员用户名 | `admin`，对应 `.env` 的 `BOOTSTRAP_ADMIN_USERNAME` |
+| 首次管理员密码 | 用文本编辑器打开本机 `.env`，查看 `BOOTSTRAP_ADMIN_PASSWORD=` 后的值 |
+| 普通账户 | 登录页选择「注册」 |
+| 体验账户 | 新部署默认不创建；需要时由部署者单独配置 |
+| 操作指南 | 顶部「操作文档」，地址 `/docs` |
+| API 文档 | `/swagger-ui.html`；接口描述 `/v3/api-docs` |
 
-端口被占用时：Windows 首次运行传 `-Port 4273`；已部署则改 `.env` 的 `WEB_PORT` 后重跑脚本。
+旧部署不会因更新自动更换已有管理员密码。`.env` 包含私密配置，不要上传 GitHub 或截图公开。
 
-> ⚠️ **不要**手动把空白的 `.env.example` 复制成 `.env`——那样密钥为空会导致后端启动失败。请务必用 `deploy` 脚本生成。
+4173 被占用时，Windows **首次部署**可指定端口：
 
----
-
-## 功能总览
-
-### 识别评测（核心）
-
-- **多模态上传**：JPEG / PNG / WEBP / MP4 / WEBM；文件头校验、SHA-256 去重、ClamAV 病毒扫描、MinIO 对象存储、鉴权下载。
-- **退化诊断**：对每张输入给出质量分与退化维度（低照度、模糊、反光、压缩、背景噪声等）。
-- **双路对比**：同一模型对"原始输入"和"增强后输入"各跑一次，并排展示置信度、延迟、路由策略差异。
-- **异步队列**：API 立即返回 `PENDING`，任务入 Redis 队列，由独立 `model-worker` 消费，可水平扩容。
-- **媒体增强**：图片做对比度/锐化增强；视频保留画面流，对音轨执行 `highpass + lowpass + afftdn + loudnorm` 降噪后再次分析（依赖 FFmpeg，已装于镜像内）。
-- **可追溯**：每次调用记录模型版本、供应商、输入输出 token、人民币估算成本与 `trace_id`，全链路可查日志。
-
-### 知识库与笔记
-
-- **知识库**：跨学科主题树（内置生物化学与医学 6 主题 18 张知识卡，可自行增删改），知识卡支持 Markdown、标签、与笔记双向链接。
-- **笔记**：Markdown 编辑器 + 实时预览；可引用已上传的图片/视频、某次推理任务的输出与 `trace_id` 作为可复现证据。
-- **AI 辅助整理**：摘要、大纲、标签、格式润色四种动作。配了模型密钥走真实模型；未配则走本地规则引擎，并在结果中**如实标注** `engine=LOCAL_RULES`，不伪装成模型输出。
-- **导出**：Markdown / PDF / Word 三种格式。PDF 与 Word 均正确支持中文（PDF 内嵌 STSong CJK 字体，非 ASCII 不会被替换为 `?`）。
-- **分享**：生成平台内只读分享链接，可设有效期、统计浏览次数、随时撤销（撤销后返回 410）。
-
-### 平台治理
-
-- **RBAC 权限**：管理员 / 研究员 / 查看者三种角色，权限码以角色为单位统一管理，管理员可在后台创建用户、改角色、启停账号。
-- **计费沙箱**：个人钱包、月度配额、用量账本；支付宝/微信/银行卡**本地充值沙箱**（扫码确认、短信验证码、到账轮询均为演示，不发生真实扣款）。
-- **供应商预算**：管理员维护各供应商预算与已用/剩余额度，API 密钥以 AES-256-GCM 加密入库，支持逗号分隔密钥环与 401/429 自动轮换。
-- **协作**：GitHub 风格工作空间、成员角色、带病毒扫描附件的站内信箱。
-
----
-
-## 模型接入
-
-默认 `MODEL_MODE=demo`：返回**明确标注**的合成演示结果（结果体带 `adapter: DEMO`、`warnings: "DEMO 结果不得用于论文结论"`），不产生真实调用费用，**不能**作为准确率或论文结论。
-
-要接入真实模型，编辑 `.env`：
-
-```env
-MODEL_MODE=live
-DEEPSEEK_API_KEYS=sk-xxx,sk-yyy      # 多个密钥逗号分隔，自动轮换
-KIMI_API_KEYS=
-QWEN_API_KEYS=
-# 模型 ID 改成你账户实际可用的名称
-DEEPSEEK_MODEL=deepseek-v4-flash-vision-exp
-KIMI_MODEL=kimi-k3
-QWEN_MODEL=qwen3-vl-plus
-QWEN_VIDEO_MODEL=qwen3.5-omni-plus
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\deploy.ps1 -Port 4273
 ```
 
-改完 `docker compose up -d backend model-worker` 重启生效。
+已有 `.env` 时，修改其中 `WEB_PORT` 后重跑脚本；`-Port` 只用于生成新配置。
 
-| 供应商 | 默认模型 | 图片 | 视频/音频 | 接入方式 |
-| --- | --- | --- | --- | --- |
-| DeepSeek | `deepseek-v4-flash-vision-exp` | ✅ | ❌ | OpenAI 兼容图片消息 |
-| Kimi | `kimi-k3` | ✅ | ✅ | 图片内联；视频先传 Files API 再传 `ms://` ID |
-| 千问 | `qwen3-vl-plus` | ✅ | — | OpenAI 兼容图片消息 |
-| 千问 | `qwen3.5-omni-plus` | — | ✅ | 音视频消息；Base64 请求约 7 MB 上限 |
+## 日常使用
 
-自建/本地模型：设 `MODEL_MODE=http` + `MODEL_BASE_URL`，按 `ai/` 目录内适配器实现的 HTTP 契约对接。本仓库**不含任何模型权重**。
+### 写笔记与导出
 
----
+1. 从「目录与账户 → 我的笔记」进入，新建笔记，填写标题和正文并保存。
+2. 需要整理时，选择「整理与写作 → 本地规则」，检查预览后应用。
+3. 在笔记页面导出 Markdown、PDF 或 Word；需要分享时主动创建只读链接，可设置有效期并撤销。
 
-## 目录结构
+### 运行一次演示实验
 
-| 路径 | 内容 |
+1. 打开「实验台」，找到 **DEMO** 区域。
+2. 上传 JPEG、PNG、WEBP 图片，或 MP4、WEBM 视频；单文件不超过 20 MB。
+3. 选择任务与模型，按需开启优化，点击「运行实验」。
+4. 完成后查看对照结果。在「下载中心」切换文件或报告，下载素材和 JSON 报告。
+
+DEMO 用于检查上传、扫描、媒体处理、队列和报告流程。它不调用真实模型，不能证明识别效果提升。
+
+### 使用自己的 AI
+
+1. 打开「设置 → 个人 AI」，填写供应商、账户实际可用的模型 ID、API 地址和自己的密钥，启用并保存。
+2. 部署者准备好后，将 `.env` 的 `PERSONAL_AI_REMOTE_ENABLED` 改为 `true`，执行 `docker compose up -d backend model-worker` 使配置生效。
+3. 在笔记中整理文字，或使用实验台上方的「个人 AI 图片识别」。
+4. 查看完整发送预览，确认后才发送，结果需要人工核对。
+
+图片限本人上传、扫描通过的 PNG / JPEG / WebP，最大 5 MiB。当前不提供真实视频调用；DeepSeek 图片路径尚未验证，暂不开放。协议已做模拟验证，真实模型可用性、费用和地区权限以自己的供应商账户为准。
+
+个人 AI 使用本人供应商额度，与平台沙箱钱包、历史共享预算分开。失败或停止等待仍可能计费；重试前先查看「设置 → 使用情况」。详见 [个人 AI 说明](docs/PERSONAL_AI.md)。
+
+### 背单词与下载个人资料
+
+- **背单词：**保存时区和每日目标，选词书练习。内置 3 本原创入门词书，共 60 词；支持导入和导出自己的词书。详见 [词汇学习指南](docs/VOCABULARY.md)。
+- **账户数据：**在「设置 → 隐私与数据」确认密码后下载本人 JSON 副本，不含密码、会话令牌和 AI 密钥。
+- **素材与报告：**在「下载中心」下载有权访问的文件和实验报告。个人图片识别结果在实验台查看，也可插入笔记后导出。
+
+## 再次启动与停止
+
+Windows 完成首次部署后，双击 **start.cmd**，复用已有镜像。各系统也可运行：
+
+```sh
+docker compose up -d --wait --wait-timeout 600
+docker compose ps
+```
+
+停止服务并保留数据：
+
+```sh
+docker compose stop
+```
+
+`docker compose down` 也保留数据卷；**不要在普通停止、重启或更新时使用 `docker compose down -v`，它会删除数据卷。**
+
+## 更新版本
+
+### Git 下载的用户
+
+先保存本地代码改动，并备份 `.env`、数据库与上传对象。然后在原项目目录执行：
+
+```sh
+git pull --ff-only
+```
+
+Windows 重新运行 `deploy.ps1`；Linux / macOS 重新运行 `sh deploy.sh`。源码更新必须重建镜像，`start.cmd` 仅用于日常启动。Git 提示冲突时先处理本地改动，不要强制覆盖。Flyway 会在后端启动时应用新增数据库迁移。
+
+### ZIP 下载的用户
+
+1. 下载最新 ZIP 并解压到临时目录。
+2. 停止当前服务，将新版源码覆盖到**原项目目录**。
+3. 保留原 `.env`，不要替换为空配置；不要删除 Docker 数据卷。
+4. 在原目录重新运行部署脚本，完成后刷新网页。
+
+Compose 项目名固定为 `robust-vision`。同一台电脑上的多个源码目录默认共用这组服务和数据，第二次解压不代表独立测试环境。
+
+## 常见问题
+
+| 看到什么 | 下一步 |
 | --- | --- |
-| `cle/` | Vue 3 客户端：页面、样式、静态资源、Nginx 配置 |
-| `src/main/` | Spring Boot API、业务逻辑、鉴权、配置、Flyway 引导 |
-| `src/test/` | 登录、权限、上传、实验、报告、媒体处理的集成测试 |
-| `ai/src/main/java/` | 模型适配器、密钥轮转、媒体处理、笔记 AI 辅助；由根 Maven 统一编译 |
-| `database/migrations/` | Flyway 版本迁移（V1–V6），**唯一的建表来源** |
-| `models/` | 模型扩展占位目录；不提交权重 |
-| `compose.yaml` | MySQL、Redis、MinIO、ClamAV、API、Worker、客户端的服务编排 |
-| `deploy.ps1` / `deploy.sh` | 一键生成 `.env` 并部署 |
+| 找不到 Docker / Docker 未就绪 | 确认已安装、Linux 引擎已启动，等待 Desktop 就绪后重跑脚本 |
+| 网页打不开 | 看 `Ready` 地址并检查 `docker compose ps`；Docker 入口不是开发端口 5173 |
+| 首次下载很久或服务未健康 | 查看 `docker compose logs --tail 100 clamav backend`；网络恢复后重跑脚本 |
+| 登录失败或 500 | 查看 `docker compose logs --tail 100 backend`；旧账户使用原密码，升级后可能需要重新登录 |
+| 能预览，不能发送 AI | 远程执行默认关闭；部署者开启开关并重新创建后端容器后才生效 |
+| 没有可选个人模型 | 保存并启用个人 AI 配置，回识别页刷新 |
+| 页面还是旧样式 | 确认已经重新构建前端，然后 Ctrl+F5 刷新 |
+| 改变已有管理员密码 | 优先在设置中修改；运维重置需配置新密码及 `RESET_ADMIN_PASSWORD=true`，重建后端完成后改回 `false` 并再次重建 |
 
-实际用户数据保存在 Docker 命名卷（`mysql_data`、`object_data`、`upload_data` 等）中，不写入 Git。**备份数据库和对象存储时务必同时保存 `.env`**——已加密的供应商密钥依赖其中的主密钥才能解密。
+提供错误信息时，只提供脱敏错误码或 `trace_id`，不要附 `.env`、密钥或私人原文。
 
----
+## 目录与数据存储
 
-## 日常运维
+| 目录 / 文件 | 用途 |
+| --- | --- |
+| `cle/` | Vue 3 客户端；公开静态资源在 `cle/static/` |
+| `src/main/` | Spring Boot 后端、账户、权限、个人 AI 和业务接口 |
+| `src/test/` | 后端测试 |
+| `ai/` | DEMO 适配、本地笔记规则、媒体处理与历史配置兼容 |
+| `database/migrations/` | Flyway 迁移，唯一建表来源 |
+| `docs/` | 配置、功能、验证与维护文档 |
+| `scripts/` | Docker 恢复、组件运行、备份及验证工具 |
+| `compose.yaml` | 7 个运行服务的编排 |
+| `deploy.ps1` / `deploy.sh` | 首次部署及更新时构建 |
+| `start.cmd` | Windows 已部署项目的启动入口 |
 
-```sh
-docker compose ps                                  # 查看服务状态
-docker compose logs --tail 100 backend model-worker # 查看日志
-docker compose stop                                # 停止（保留数据）
-docker compose up -d --wait                        # 启动
-```
+`database/` 存结构与工具，不是运行时数据目录。MySQL、Redis、MinIO 和 ClamAV 使用 Docker 命名卷。备份需覆盖数据库、对象存储及原 `.env`，加密密钥依赖原主密钥解密。
 
-- `docker compose down` 保留数据卷；`docker compose down -v` 会**删除全部数据**，不能用于普通重启。
-- 首次 ClamAV 病毒库下载较慢，用 `docker compose logs clamav` 查看进度；网络恢复后重跑部署脚本即可。
-- 客户端依赖后端健康检查通过后才启动。
+[数据库与迁移](database/README.md) · [组件与持久化](docs/STACK.md) · [备份工具与适用范围](scripts/backup/README.md) · [队列恢复](docs/QUEUE_RECOVERY.md)
 
-### 网络暴露
+默认仅监听本机前端地址 `127.0.0.1:4173`，其余服务不开放宿主机端口。浏览器经 Nginx 同源代理访问后端。向其他设备提供服务需另行配置网络、HTTPS 与访问控制。
 
-默认**只监听本机**，且仅暴露前端端口 `127.0.0.1:${WEB_PORT:-4173}`。数据库（3306）、Redis（6379）、MinIO（9000/9001）、后端（8080）均**不向宿主机暴露**，只在容器内网互通，前端经 Nginx 同源代理 `/api/` 到后端。
+## 开发与验证
 
-> 接口文档（Swagger UI）随后端提供，但默认不暴露到宿主机。需要时用 `docker compose exec backend sh` 进入容器，或临时为 backend 增加端口映射后访问 `http://localhost:8080/swagger-ui.html`。
-
----
-
-## 本地开发（不走 Docker）
-
-需要 Node.js 22+、JDK 17、Maven 3.9+、FFmpeg（媒体测试依赖）。
+前端使用 Node.js 22.22.2+（22.x），后端使用 JDK 17、Maven Wrapper 和 FFmpeg。数据库与其他依赖按 [组件栈说明](docs/STACK.md) 准备；只启动前端不能完成登录。
 
 ```sh
-npm ci --prefix cle            # 安装前端依赖
-npm run build --prefix cle     # 类型检查 + 构建
-mvn verify                     # 后端编译 + 集成测试（含 FFmpeg 媒体处理）
+npm ci --prefix cle
+npm run test:unit --prefix cle
+npm run test:ui --prefix cle
+npm run build --prefix cle
 ```
 
-前端开发服务器（API 转发到本机 `127.0.0.1:8080`）：
+后端：Linux / macOS 使用 `./mvnw -B verify`，Windows 使用 `.\mvnw.cmd -B verify`。完整本地开发见组件栈文档；测试用 H2 不用于正式数据库。
 
-```sh
-npm run dev --prefix cle
-```
+[GitHub Actions](https://github.com/sunlight1106/Degradation-Modeling-and-Robustness-Evaluation-for-Multimodal-Recognition-Systems/actions) 在推送后执行前端测试与构建、后端测试和 MySQL 契约测试。自动化测试不等于真实供应商联调或所有部署环境验证。
 
-后端可直接 `mvn spring-boot:run`，默认 `demo` 模式、文件系统存储、内联队列，便于离线开发。完整 Docker 模式则通过 Nginx 同源转发，无需开发服务器。
+[性能与复现](docs/PERFORMANCE.md) · [验证范围](docs/VALIDATION.md) · [账户安全](docs/SECURITY.md) · [上传内容检查](docs/CONTENT_SECURITY.md)
 
-CI（`.github/workflows/verify.yml`）在每次推送时执行前端 `npm ci && npm run build` 与后端 `mvn -B verify`（自动安装 FFmpeg）。
+## 许可与设计说明
 
----
-
-## 数据与隐私边界
-
-- 模型成本按供应商返回的 token 与 `.env` 中可配置单价**估算**；"官方余额"仅在供应商提供可查询端点时显示，否则明确标记为不可读取或本地预算。
-- 充值是**本地沙箱**：二维码、短信验证码仅演示订单状态与账本入账，不请求真实支付宝/微信/银行，不真实扣款。接入真实支付须使用支付机构托管页、签名回调与正式短信网关。
-- 平台已实现真实推理、教师标签、可审查数据集导出与稳定 train/validation/test 划分；但当前供应商适配器**未实现**训练 job、checkpoint 或权重微调，页面会如实显示这些能力不可用，不伪造"一键微调成功"。
-- demo 模式的置信度由输入文件哈希确定性生成，基线路与优化路使用不同文件，**不存在**"优化后必然更高"的关系；任何准确率结论都需人工真值与固定评测集。
-
----
-
-## 安全提醒
-
-- 不要把 API Key 写入 `VITE_*` 环境变量、前端源码、截图或 Git 历史。
-- 在聊天等公开位置出现过的密钥，应立即在供应商控制台撤销并重建。
-- `.env` 不进入版本控制；生产部署应使用 Secret Manager、TLS、强管理员密码，并收敛 Swagger/Actuator 暴露面。
-- 上传限制、ClamAV、限流与配额属于纵深防御，不能替代网络隔离、备份与依赖漏洞管理。
-- 体验账号 `test/Test1234` 是**公开共享**账号，仅供功能试用，请勿在其中存放真实数据；正式使用前应在 `.env` 改密或置空 `BOOTSTRAP_TEST_PASSWORD` 以禁用。
-
----
-
-## 素材与许可
-
-原创代码适用根目录 `LICENSE`（MIT）。当前前端使用原创排版和界面组件，不包含第三方游戏宣传素材。
+- **项目代码：**按 [MIT License](LICENSE) 使用、修改和分发，保留许可证及版权声明。
+- **界面设计：**参考研究笔记网站的信息组织方式，页面组件、样式和交互由本项目实现。设计参考见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+- **当前分发内容：**当前源码快照和前端构建不包含此前的第三方游戏图片、角色素材与宣传视频。旧素材目录已退出版本跟踪并排除打包。
+- **历史版本：**旧 Git 提交仍可能含有第三方素材；MIT 许可不授予这些素材的使用权。获取当前版本请使用本页 ZIP 或浅克隆命令。
+- **依赖与用户内容：**第三方依赖、服务组件和自行上传的内容遵循各自许可或权利归属，不能以本项目 MIT 许可替代。

@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { sectionLinks as vSectionLinks } from '@/directives/sectionLinks'
 import AppIcon from './AppIcon.vue'
 import { authStore } from '@/stores/auth'
 import { themeStore } from '@/stores/theme'
+import { toastStore } from '@/stores/toast'
+import { ApiClientError } from '@/api/client'
 
 interface NavItem {
   label: string
@@ -16,12 +18,16 @@ interface NavItem {
 
 const route = useRoute()
 const router = useRouter()
+function handleSessionExpired() { void router.replace('/login') }
+onMounted(() => window.addEventListener('personal-platform:session-expired', handleSessionExpired))
+onBeforeUnmount(() => window.removeEventListener('personal-platform:session-expired', handleSessionExpired))
 const menu = ref<HTMLDetailsElement | null>(null)
 function closeMenu() { menu.value?.removeAttribute('open') }
 watch(() => route.fullPath, closeMenu)
 const mainItems: NavItem[] = [
   { label: '工作台', to: '/app/home', icon: 'home', permission: 'dashboard:read' },
   { label: '知识库', to: '/app/knowledge', icon: 'book', permission: 'knowledge:read' },
+  { label: '背单词', to: '/app/vocabulary', icon: 'book' },
   { label: '我的笔记', to: '/app/notes', icon: 'note', permission: 'note:read' },
   { label: '实验台', to: '/app/upload', icon: 'spark', permission: 'experiment:run' },
   { label: '模型中心', to: '/app/models', icon: 'model', permission: 'model:read' },
@@ -50,7 +56,7 @@ function visible(items: NavItem[]) {
 }
 
 const navGroups = computed(() => [
-  { label: '探索与创作', items: visible(mainItems.filter(item => ['/app/home', '/app/knowledge', '/app/notes'].includes(item.to))) },
+  { label: '探索与创作', items: visible(mainItems.filter(item => ['/app/home', '/app/knowledge', '/app/vocabulary', '/app/notes'].includes(item.to))) },
   { label: '识别与评测', items: visible(mainItems.filter(item => ['/app/upload', '/app/models', '/app/images', '/app/comparisons'].includes(item.to))) },
   { label: '记录与账户', items: visible(mainItems.filter(item => ['/app/logs', '/app/downloads', '/app/billing', '/app/mail'].includes(item.to))) },
 ])
@@ -61,9 +67,16 @@ const title = computed(() => {
 
 const quickItems = computed(() => visible(mainItems.filter(item => ['/app/home', '/app/upload', '/app/knowledge'].includes(item.to))))
 
-function logout() {
-  authStore.logout()
-  router.push('/')
+const loggingOut = ref(false)
+async function logout() {
+  if (loggingOut.value) return
+  loggingOut.value = true
+  try { await authStore.logout(); await router.push('/') }
+  catch (reason) {
+    if (reason instanceof ApiClientError && reason.code === 'SESSION_CHANGED') return
+    if (reason instanceof ApiClientError && reason.status === 401 && !authStore.state.user) await router.push('/login')
+    else toastStore.error('退出失败，会话尚未确认撤销。请重试。')
+  } finally { loggingOut.value = false }
 }
 </script>
 
@@ -87,11 +100,11 @@ function logout() {
                 <RouterLink v-for="item in group.items" :key="item.to" :to="item.to">{{ item.label }}</RouterLink>
               </section>
             </nav>
-            <footer><span>{{ authStore.state.user?.displayName }}</span><button type="button" @click="logout">退出登录</button></footer>
+            <footer><span>{{ authStore.state.user?.displayName }}</span><button type="button" :disabled="loggingOut" @click="logout">退出登录</button></footer>
           </div>
         </details>
       </div>
     </header>
-    <main id="workspace-content" v-section-links class="app-content" :class="{'app-content--reader':route.path === '/app/upload'}" tabindex="-1"><RouterView /></main>
+    <main id="workspace-content" v-section-links class="app-content" :class="{'app-content--reader':route.path === '/app/upload'}" tabindex="-1"><RouterView v-if="authStore.state.user" :key="authStore.state.user.id" /></main>
   </div>
 </template>

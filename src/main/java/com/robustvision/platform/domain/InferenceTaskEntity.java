@@ -1,5 +1,8 @@
 package com.robustvision.platform.domain;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -20,9 +23,11 @@ import java.util.UUID;
 public class InferenceTaskEntity {
     @Id
     @Column(length = 36)
+    @JdbcTypeCode(SqlTypes.CHAR)
     private String id;
 
     @Column(name = "trace_id", nullable = false, unique = true, length = 36)
+    @JdbcTypeCode(SqlTypes.CHAR)
     private String traceId;
 
     @Enumerated(EnumType.STRING)

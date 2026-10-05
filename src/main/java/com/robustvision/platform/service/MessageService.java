@@ -14,6 +14,7 @@ import java.util.*;
 
 @Service
 public class MessageService {
+    private static final int LIST_BATCH_SIZE = 500;
     private final MessageRepository messageRepository;
     private final MessageRecipientRepository recipientRepository;
     private final MessageAttachmentRepository attachmentRepository;
@@ -39,13 +40,13 @@ public class MessageService {
     @Transactional(readOnly = true)
     public List<ApiDtos.MessageView> inbox() {
         UserEntity current = currentUserService.requireCurrent();
-        return recipientRepository.findByRecipientIdOrderByMessageCreatedAtDesc(current.getId()).stream().map(item -> toView(item.getMessage(), current)).toList();
+        return toViews(messageRepository.findInboxRows(current.getId()), current);
     }
 
     @Transactional(readOnly = true)
     public List<ApiDtos.MessageView> sent() {
         UserEntity current = currentUserService.requireCurrent();
-        return messageRepository.findBySenderIdOrderByCreatedAtDesc(current.getId()).stream().map(item -> toView(item, current)).toList();
+        return toViews(messageRepository.findSentRows(current.getId()), current);
     }
 
     @Transactional
@@ -88,6 +89,36 @@ public class MessageService {
         if (!sender && !recipient && !currentUserService.isSuperAdmin(current))
             throw new BusinessException(HttpStatus.FORBIDDEN, "MESSAGE_ACCESS_DENIED", "无权查看这封站内信");
         return message;
+    }
+
+    /** Two child queries per bounded batch, with no per-message entity loading. */
+    private List<ApiDtos.MessageView> toViews(List<MessageRepository.MessageRow> messages, UserEntity current) {
+        if (messages.isEmpty()) return List.of();
+        List<ApiDtos.MessageView> result = new ArrayList<>(messages.size());
+        for (int start = 0; start < messages.size(); start += LIST_BATCH_SIZE) {
+            List<MessageRepository.MessageRow> batch = messages.subList(start, Math.min(start + LIST_BATCH_SIZE, messages.size()));
+            List<String> ids = batch.stream().map(MessageRepository.MessageRow::getId).toList();
+            Map<String, List<ApiDtos.UserDirectoryView>> recipients = new HashMap<>();
+            Set<String> readMessages = new HashSet<>();
+            for (MessageRecipientRepository.RecipientRow row : recipientRepository.findRowsByMessageIds(ids)) {
+                recipients.computeIfAbsent(row.getMessageId(), ignored -> new ArrayList<>()).add(
+                        new ApiDtos.UserDirectoryView(row.getRecipientId(), row.getUsername(), row.getDisplayName(), row.getEmail()));
+                if (row.getRecipientId().equals(current.getId()) && row.getReadAt() != null) readMessages.add(row.getMessageId());
+            }
+            Map<String, List<ApiDtos.MessageAttachmentView>> attachments = new HashMap<>();
+            for (MessageAttachmentRepository.AttachmentRow row : attachmentRepository.findRowsByMessageIds(ids)) {
+                attachments.computeIfAbsent(row.getMessageId(), ignored -> new ArrayList<>()).add(
+                        new ApiDtos.MessageAttachmentView(row.getId(), row.getFileName(), row.getContentType(), row.getSizeBytes(),
+                                "/api/v1/messages/" + row.getMessageId() + "/attachments/" + row.getId()));
+            }
+            for (MessageRepository.MessageRow message : batch) {
+                result.add(new ApiDtos.MessageView(message.getId(), message.getSenderId(), message.getSenderName(),
+                        message.getSubject(), message.getBody(), recipients.getOrDefault(message.getId(), List.of()),
+                        attachments.getOrDefault(message.getId(), List.of()),
+                        message.getSenderId().equals(current.getId()) || readMessages.contains(message.getId()), message.getCreatedAt()));
+            }
+        }
+        return List.copyOf(result);
     }
 
     private ApiDtos.MessageView toView(MessageEntity message, UserEntity current) {
