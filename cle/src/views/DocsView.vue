@@ -11,6 +11,7 @@ const copied = ref(false)
 const activeSection = ref('quickstart')
 const search = ref('')
 const searchInput = ref<HTMLInputElement | null>(null)
+const directory = ref<HTMLDetailsElement | null>(null)
 let observer: IntersectionObserver | null = null
 let scrollFrame = 0
 let copyTimer = 0
@@ -37,6 +38,18 @@ const docLinks = [
   { id: 'acceptance', label: '首次验收清单', keywords: '测试 检查 acceptance' },
   { id: 'errors', label: '常见问题', keywords: '报错 失败 排查 error' },
 ]
+const docGroups = [
+  { label: '入门与部署', ids: ['quickstart', 'requirements', 'acceptance'] },
+  { label: '个人 AI', ids: ['model-contract', 'ai-memory', 'first-request', 'quality-route'] },
+  { label: '学习与笔记', ids: ['knowledge-notes', 'code-notes', 'vocabulary'] },
+  { label: '协作与账户', ids: ['online-platform', 'group-collaboration', 'account-switch', 'permissions'] },
+  { label: '训练与记录', ids: ['local-training', 'training-data', 'analysis-output'] },
+  { label: '帮助与说明', ids: ['architecture', 'errors'] },
+].map(group => ({ label: group.label, items: group.ids.map(id => docLinks.find(item => item.id === id)!) }))
+function closeDirectory() { if (directory.value) directory.value.open = false; search.value = '' }
+function outsideDirectory(event: PointerEvent) {
+  if (directory.value?.open && event.target instanceof Node && !directory.value.contains(event.target)) closeDirectory()
+}
 const searchMatches = computed(() => !search.value.trim() ? [] : docLinks.filter(item =>
   `${item.label} ${item.keywords}`.toLowerCase().includes(search.value.trim().toLowerCase())))
 
@@ -65,7 +78,7 @@ function openFirstSearch() {
   const first = searchMatches.value[0]
   if (!first) return
   document.getElementById(first.id)?.scrollIntoView({ behavior: 'smooth' })
-  search.value = ''
+  closeDirectory()
 }
 
 function keyboard(event: KeyboardEvent) {
@@ -82,6 +95,7 @@ function syncActiveSection() {
     const sections = docLinks
       .map(item => ({ id: item.id, node: document.getElementById(item.id) }))
       .filter((item): item is { id: string; node: HTMLElement } => Boolean(item.node))
+      .sort((a, b) => a.node.getBoundingClientRect().top - b.node.getBoundingClientRect().top)
     const passed = sections.filter(item => item.node.getBoundingClientRect().top <= targetLine)
     activeSection.value = (passed.at(-1) || sections[0])?.id || 'quickstart'
   })
@@ -98,6 +112,7 @@ onMounted(async () => {
     }, { rootMargin: '-18% 0px -66% 0px', threshold: [0, 0.1, 0.5] })
     docLinks.forEach(item => { const node = document.getElementById(item.id); if (node) observer?.observe(node) })
   }
+  document.addEventListener('pointerdown', outsideDirectory)
   window.addEventListener('keydown', keyboard)
   window.addEventListener('scroll', syncActiveSection, { passive: true })
   syncActiveSection()
@@ -105,6 +120,7 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   mounted = false
   observer?.disconnect()
+  document.removeEventListener('pointerdown', outsideDirectory)
   window.removeEventListener('keydown', keyboard)
   window.removeEventListener('scroll', syncActiveSection)
   if (scrollFrame) window.cancelAnimationFrame(scrollFrame)
@@ -127,7 +143,20 @@ async function copyCode() {
   <header class="lab-header">
     <nav aria-label="当前位置"><RouterLink to="/">HOME</RouterLink><span>/</span><span>GUIDE</span></nav>
     <div class="lab-header-links"><RouterLink to="/app/home">工作台</RouterLink><RouterLink to="/app/upload">实验台</RouterLink><a href="/swagger-ui.html" target="_blank" rel="noreferrer">API Reference</a></div>
-    <details class="lab-contents"><summary>查找与目录</summary><div class="guide-directory"><label class="guide-search"><input ref="searchInput" v-model="search" aria-label="搜索使用文档" placeholder="搜索操作或问题 · Ctrl K" @keydown.enter="openFirstSearch" /></label><div v-if="searchMatches.length" class="docs-search-results" aria-label="文档搜索结果"><a v-for="item in searchMatches" :key="item.id" :href="`#${item.id}`" @click="search = ''">{{ item.label }}</a></div><p v-else-if="search.trim()" role="status">没有匹配章节，请换一个关键词。</p><nav aria-label="使用文档章节"><a v-for="item in docLinks" :key="item.id" :href="`#${item.id}`">{{ item.label }}</a></nav></div></details>
+    <details ref="directory" class="lab-contents" @keydown.esc="closeDirectory(); directory?.querySelector('summary')?.focus()">
+      <summary>查找与目录</summary>
+      <div class="guide-directory">
+        <label class="guide-search"><input ref="searchInput" v-model="search" aria-label="搜索使用文档" placeholder="搜索操作或问题 · Ctrl K" @keydown.enter="openFirstSearch" /></label>
+        <div v-if="searchMatches.length" class="docs-search-results" aria-label="文档搜索结果"><a v-for="item in searchMatches" :key="item.id" :href="`#${item.id}`" @click="closeDirectory">{{ item.label }}</a></div>
+        <p v-else-if="search.trim()" class="guide-search-empty" role="status">没有匹配章节，请换一个关键词。</p>
+        <nav v-else class="guide-directory-groups" aria-label="使用文档章节">
+          <section v-for="group in docGroups" :key="group.label" :aria-label="group.label">
+            <p class="guide-directory-label">{{ group.label }}</p>
+            <a v-for="item in group.items" :key="item.id" :href="`#${item.id}`" :aria-current="activeSection === item.id ? 'location' : undefined" @click="closeDirectory">{{ item.label }}</a>
+          </section>
+        </nav>
+      </div>
+    </details>
   </header>
   <article aria-label="个人知识库与 AI 识别评测使用指南">
     <DocRow id="quickstart" title="使用指南" intro><p>从你现在想做的事情开始。</p><p>第一次使用？先<RouterLink to="/register">注册</RouterLink>或<RouterLink to="/login">登录</RouterLink>。普通笔记、词汇学习和 DEMO 实验不需要模型密钥。</p><template #detail><nav class="guide-start" aria-label="选择操作"><a href="#knowledge-notes"><span>01</span><strong>记录与整理</strong><small>写笔记、导出文件</small></a><a href="#quality-route"><span>02</span><strong>识别与实验</strong><small>上传样本、查看结果</small></a><a href="#vocabulary"><span>03</span><strong>学习词汇</strong><small>选词书、练习与复习</small></a></nav></template></DocRow>
