@@ -23,6 +23,8 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     Optional<UserEntity> findLockedByUsername(@Param("username") String username);
 
     boolean existsByUsername(String username);
+    @Query("select u.id from UserEntity u where u.username = :username")
+    Optional<Long> findIdByUsername(@Param("username") String username);
     boolean existsByEmail(String email);
     boolean existsByEmailAndIdNot(String email, Long id);
     Optional<UserEntity> findByEmail(String email);

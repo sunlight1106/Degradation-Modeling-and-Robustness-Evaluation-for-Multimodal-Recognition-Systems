@@ -1,25 +1,36 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import AppLogo from '@/components/AppLogo.vue'
 import AppIcon from '@/components/AppIcon.vue'
+import RememberedAccounts from '@/components/RememberedAccounts.vue'
+import { rememberedAccounts } from '@/stores/rememberedAccounts'
+import { toastStore } from '@/stores/toast'
 import { authStore } from '@/stores/auth'
 import { ApiClientError } from '@/api/client'
 
 const router = useRouter()
 const route = useRoute()
-const username = ref(typeof route.query.username === 'string' ? route.query.username : 'admin')
+const username = ref(typeof route.query.username === 'string' ? route.query.username : '')
 const password = ref('')
 const error = ref('')
-const visible = ref(false)
+const visible = ref(false), remember = ref(false)
+const passwordInput = ref<HTMLInputElement | null>(null)
+async function choose(name: string) { username.value = name; password.value = ''; error.value = ''; await nextTick(); passwordInput.value?.focus() }
+watch(() => authStore.state.user?.id, () => { password.value = '' }, { flush: 'sync' })
+onBeforeUnmount(() => { password.value = '' })
 
 async function submit() {
+  if (authStore.state.loading) return
   error.value = ''
   try {
-    await authStore.login(username.value, password.value)
+    const user = authStore.state.user ? await authStore.switchAccount(username.value.trim(), password.value) : await authStore.login(username.value.trim(), password.value)
+    if (remember.value && !rememberedAccounts.remember(user)) toastStore.info('登录成功；浏览器没有允许保存账号名称。')
+    password.value = ''
     const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : ''
-    await router.push(redirect.startsWith('/') && !redirect.startsWith('//') ? redirect : '/app/home')
+    await router.push(redirect.startsWith('/app/') && !redirect.includes('\\') || redirect.startsWith('/shared/') && !redirect.includes('\\') ? redirect : '/app/home')
   } catch (reason) {
+    password.value = ''
     error.value = reason instanceof ApiClientError ? reason.message : '暂时无法登录，请检查后端服务'
   }
 }
@@ -34,16 +45,20 @@ async function submit() {
         <h1>欢迎回来</h1>
         <p>登录后继续管理数据、模型与鲁棒性实验。</p>
       </div>
+      <p v-if="route.query.loggedOut === '1'" class="login-footnote" role="status">当前会话已退出，你可以选择其他账号登录。</p>
+      <p v-if="authStore.state.user" class="login-footnote">当前已登录 @{{ authStore.state.user.username }}。<RouterLink to="/account/switch">切换其他账号 →</RouterLink></p>
+      <RememberedAccounts :current="authStore.state.user?.username" :disabled="authStore.state.loading" @choose="choose" />
       <form class="login-form" @submit.prevent="submit">
         <label class="field-label">用户名
-          <input v-model="username" class="field-input" autocomplete="username" required maxlength="60" placeholder="请输入用户名" />
+          <input v-model="username" class="field-input" autocomplete="username" required maxlength="60" :disabled="authStore.state.loading" placeholder="请输入用户名" />
         </label>
         <label class="field-label">密码
           <span class="password-field">
-            <input v-model="password" class="field-input" :type="visible ? 'text' : 'password'" autocomplete="current-password" required placeholder="请输入密码" />
+            <input ref="passwordInput" v-model="password" class="field-input" :type="visible ? 'text' : 'password'" autocomplete="current-password" required :disabled="authStore.state.loading" placeholder="请输入密码" />
             <button type="button" @click="visible = !visible">{{ visible ? '隐藏' : '显示' }}</button>
           </span>
         </label>
+        <label class="account-remember"><input v-model="remember" type="checkbox" :disabled="authStore.state.loading" />在此浏览器记住这个账号名称</label>
         <p v-if="error" class="form-error">{{ error }}</p>
         <button class="button button--dark button--full" type="submit" :disabled="authStore.state.loading">
           {{ authStore.state.loading ? '正在验证…' : '登录平台' }} <AppIcon v-if="!authStore.state.loading" name="arrow" :size="17" />

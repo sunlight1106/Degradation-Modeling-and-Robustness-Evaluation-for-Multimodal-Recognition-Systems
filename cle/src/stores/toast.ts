@@ -21,5 +21,6 @@ export const toastStore = {
   error: (message: string) => push('error', message),
   info: (message: string) => push('info', message),
   remove,
+  clear: () => { state.items.splice(0) },
 }
 

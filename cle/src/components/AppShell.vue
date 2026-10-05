@@ -5,8 +5,6 @@ import { sectionLinks as vSectionLinks } from '@/directives/sectionLinks'
 import AppIcon from './AppIcon.vue'
 import { authStore } from '@/stores/auth'
 import { themeStore } from '@/stores/theme'
-import { toastStore } from '@/stores/toast'
-import { ApiClientError } from '@/api/client'
 
 interface NavItem {
   label: string
@@ -60,7 +58,7 @@ function visible(items: NavItem[]) {
 const navGroups = computed(() => [
   { label: '探索与创作', items: visible(mainItems.filter(item => ['/app/home', '/app/knowledge', '/app/vocabulary', '/app/notes'].includes(item.to))) },
   { label: '识别与评测', items: visible(mainItems.filter(item => ['/app/upload', '/app/models', '/app/images', '/app/comparisons'].includes(item.to))) },
-  { label: '记录与账户', items: visible(mainItems.filter(item => ['/app/logs', '/app/downloads', '/app/billing', '/app/mail', '/app/groups'].includes(item.to))) },
+  { label: '记录与账户', items: visible(mainItems.filter(item => ['/app/logs', '/app/downloads', '/app/billing', '/app/contacts', '/app/mail', '/app/groups'].includes(item.to))) },
 ])
 const title = computed(() => {
   const all = [...mainItems, ...adminItems, ...supportItems]
@@ -69,17 +67,9 @@ const title = computed(() => {
 
 const quickItems = computed(() => visible(mainItems.filter(item => ['/app/home', '/app/upload', '/app/knowledge'].includes(item.to))))
 
-const loggingOut = ref(false)
-async function logout() {
-  if (loggingOut.value) return
-  loggingOut.value = true
-  try { await authStore.logout(); await router.push('/') }
-  catch (reason) {
-    if (reason instanceof ApiClientError && reason.code === 'SESSION_CHANGED') return
-    if (reason instanceof ApiClientError && reason.status === 401 && !authStore.state.user) await router.push('/login')
-    else toastStore.error('退出失败，会话尚未确认撤销。请重试。')
-  } finally { loggingOut.value = false }
-}
+function outside(event: PointerEvent) { if (menu.value?.open && event.target instanceof Node && !menu.value.contains(event.target)) closeMenu() }
+onMounted(() => document.addEventListener('pointerdown', outside))
+onBeforeUnmount(() => document.removeEventListener('pointerdown', outside))
 </script>
 
 <template>
@@ -102,7 +92,16 @@ async function logout() {
                 <RouterLink v-for="item in group.items" :key="item.to" :to="item.to">{{ item.label }}</RouterLink>
               </section>
             </nav>
-            <footer><span>{{ authStore.state.user?.displayName }}</span><button type="button" :disabled="loggingOut" @click="logout">退出登录</button></footer>
+            <footer class="workspace-account">
+              <div class="workspace-account-identity"><span class="account-monogram">{{ authStore.state.user?.displayName?.slice(0, 1) || 'U' }}</span><div><strong>{{ authStore.state.user?.displayName }}</strong><small>@{{ authStore.state.user?.username }}</small></div><span class="account-role">{{ authStore.state.user?.roleName }}</span></div>
+              <nav class="workspace-account-links" aria-label="账户操作">
+                <RouterLink to="/app/settings?section=profile"><AppIcon name="users" :size="15" />个人资料</RouterLink>
+                <RouterLink to="/app/settings?section=security"><AppIcon name="shield" :size="15" />密码与登录设备</RouterLink>
+                <RouterLink to="/app/settings?section=privacy"><AppIcon name="key" :size="15" />隐私与数据</RouterLink>
+                <RouterLink to="/app/settings?section=appearance"><AppIcon name="eye" :size="15" />外观设置</RouterLink>
+              </nav>
+              <div class="workspace-account-exit"><RouterLink to="/account/switch"><AppIcon name="users" :size="15" />切换账号</RouterLink><RouterLink to="/account/logout"><AppIcon name="logout" :size="15" />退出登录</RouterLink></div>
+            </footer>
           </div>
         </details>
       </div>

@@ -156,6 +156,7 @@ export const api = {
   login: (username: string, password: string) => request<LoginResponse>('/auth/login', {
     method: 'POST', body: JSON.stringify({ username, password }),
   }),
+  switchAccount: (username: string, password: string) => request<LoginResponse>('/account/switch', { method: 'POST', body: JSON.stringify({ username, password }) }),
   register: (payload: { username: string; email: string; password: string }) =>
     request<UserView>('/auth/register', { method: 'POST', body: JSON.stringify(payload) }),
   me: () => request<UserView>('/auth/me'),

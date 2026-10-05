@@ -13,6 +13,9 @@ public interface UserSessionRepository extends JpaRepository<UserSessionEntity, 
     List<UserSessionEntity> findByUserIdAndRevokedAtIsNullAndExpiresAtAfterOrderByCreatedAtDesc(Long userId, Instant now);
     boolean existsByIdAndUserId(String id, Long userId);
     @Modifying
+    @Query("update UserSessionEntity s set s.revokedAt = :now where s.id = :id and s.user.id = :userId and s.revokedAt is null and s.expiresAt > :now")
+    int revokeActive(@Param("id") String id, @Param("userId") Long userId, @Param("now") Instant now);
+    @Modifying
     @Query("update UserSessionEntity s set s.revokedAt = :now where s.user.id = :userId and s.revokedAt is null")
     int revokeAll(@Param("userId") Long userId, @Param("now") Instant now);
     @Modifying

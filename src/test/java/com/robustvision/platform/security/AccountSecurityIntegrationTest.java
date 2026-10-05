@@ -88,6 +88,35 @@ class AccountSecurityIntegrationTest {
         mvc.perform(get("/api/v1/account/profile").header("Authorization", "Bearer " + token)).andExpect(status().isUnauthorized());
     }
 
+    @Test void accountSwitchVerifiesTargetRevokesOnlySourceSessionAndDropsAdminPermissions() throws Exception {
+        String source = login(admin), otherSource = login(admin), existingTarget = login(bob);
+        JsonNode result = body(mvc.perform(json(post("/api/v1/account/switch"), source,
+                Map.of("username", bob.getUsername(), "password", PASSWORD)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.user.id").value(bob.getId()))
+                .andReturn().getResponse().getContentAsByteArray());
+        String switched = result.path("token").asText();
+        revoked(source); active(otherSource); active(existingTarget); active(switched);
+        mvc.perform(get("/api/v1/users").header("Authorization", "Bearer " + switched)).andExpect(status().isForbidden());
+        mvc.perform(json(post("/api/v1/account/switch"), source, Map.of("username", alice.getUsername(), "password", PASSWORD))).andExpect(status().isUnauthorized());
+        mvc.perform(json(post("/api/v1/account/switch"), null, Map.of("username", bob.getUsername(), "password", PASSWORD))).andExpect(status().isUnauthorized());
+    }
+
+    @Test void failedSwitchRollsBackRevocationAndDoesNotCreateTargetSessions() throws Exception {
+        String source = login(alice);
+        long before = jdbc.queryForObject("SELECT COUNT(*) FROM user_session WHERE user_id = ?", Long.class, bob.getId());
+        mvc.perform(json(post("/api/v1/account/switch"), source, Map.of("username", bob.getUsername(), "password", "WrongPassword123!")))
+                .andExpect(status().isForbidden()).andExpect(jsonPath("$.error.code").value("ACCOUNT_SWITCH_FAILED"));
+        active(source);
+        mvc.perform(json(post("/api/v1/account/switch"), source, Map.of("username", "missing" + suffix, "password", PASSWORD))).andExpect(status().isForbidden());
+        active(source);
+        mvc.perform(json(post("/api/v1/account/switch"), source, Map.of("username", alice.getUsername(), "password", PASSWORD))).andExpect(status().isBadRequest());
+        active(source);
+        bob.setStatus(UserStatus.DISABLED); users.save(bob);
+        mvc.perform(json(post("/api/v1/account/switch"), source, Map.of("username", bob.getUsername(), "password", PASSWORD))).andExpect(status().isForbidden());
+        active(source);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM user_session WHERE user_id = ?", Long.class, bob.getId())).isEqualTo(before);
+    }
+
     @Test void profilesAreSelfScopedAndEmailChangesRequireCurrentPassword() throws Exception {
         String token = login(alice);
         mvc.perform(json(patch("/api/v1/account/profile"), token,

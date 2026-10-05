@@ -96,6 +96,40 @@ a:hover { color:var(--green); }
 .workspace-directory-body a:hover,.workspace-directory-body a.router-link-active { text-decoration:underline;color:var(--green); }
 .workspace-directory-body footer { display:flex;justify-content:space-between;border-top:1px solid var(--line);margin-top:20px;padding-top:15px;color:var(--muted); }
 .workspace-directory-body footer button { border:0;background:none;color:var(--green);cursor:pointer; }
+.workspace-directory-body { max-height:calc(100vh - 96px);overflow:auto;overscroll-behavior:contain; }
+.workspace-directory-body .workspace-account { display:block; }
+.workspace-account-identity { display:flex;align-items:center;gap:12px;margin-bottom:16px; }
+.account-monogram { display:inline-grid;place-items:center;width:36px;height:36px;flex-shrink:0;border:1px solid var(--line);border-radius:50%;color:var(--ink);font-size:13px; }
+.workspace-account-identity>div { min-width:0;flex:1;overflow-wrap:anywhere; }
+.workspace-account-identity strong { display:block;color:var(--ink);font-weight:600;font-size:13px; }
+.workspace-account-identity small { display:block;font:11px ui-monospace,monospace;margin-top:4px; }
+.account-role { font-size:11px;border:1px solid var(--line);padding:4px 8px;max-width:130px;overflow-wrap:anywhere; }
+.workspace-directory-body nav.workspace-account-links { display:grid;grid-template-columns:1fr 1fr;gap:4px 22px; }
+.workspace-account-links a,.workspace-account-exit a { display:flex;align-items:center;gap:9px;padding:9px 0;font-size:12px; }
+.workspace-account-exit { display:flex;justify-content:space-between;margin-top:12px;padding-top:10px;border-top:1px solid var(--line); }
+.workspace-account-exit a { color:var(--green); }
+.workspace-account a:focus-visible,.remembered-accounts button:focus-visible { outline:2px solid var(--green);outline-offset:3px; }
+.account-access-panel { max-width:490px; }
+.account-current { display:flex;align-items:center;gap:14px;border-block:1px solid var(--line);padding:18px 0;margin:24px 0; }
+.account-remember-current { margin-left:auto;background:none;border:0;color:var(--green);font-size:11px;cursor:pointer; }
+.account-current small,.account-current strong,.account-current div>span { display:block; }
+.account-current small { font-size:10px;color:var(--muted);margin-bottom:5px; }
+.account-current strong { font-size:14px; }
+.account-current div>span { color:var(--muted);font-size:12px;margin-top:5px; }
+.account-remember { display:flex;align-items:center;gap:9px;font-size:12px;color:var(--muted); }
+.account-return { display:block;margin-top:20px;text-align:center;font-size:13px;color:var(--green); }
+.remembered-accounts { border-block:1px solid var(--line);padding:16px 0;margin:24px 0; }
+.remembered-accounts header { display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:12px; }
+.remembered-accounts button { border:0;background:transparent;color:var(--green);cursor:pointer;font:inherit; }
+.remembered-account { display:flex;align-items:center;gap:14px; }
+.remembered-account:hover { background:var(--hover-paper); }
+.remembered-account-pick { display:flex;align-items:center;text-align:left;gap:10px;flex:1;min-width:0;padding:10px 0; }
+.remembered-account-pick>span:nth-child(2) { flex:1;min-width:0;overflow-wrap:anywhere; }
+.remembered-account-pick strong { font-size:13px;font-weight:500;color:var(--ink); }
+.remembered-account-pick small { display:block;font-size:11px;color:var(--muted);margin-top:4px; }
+.remembered-account-pick:disabled { opacity:.65;cursor:default; }
+.remembered-accounts .remembered-account-remove { font-size:11px;padding:6px; }
+.remembered-accounts>p { font-size:11px;line-height:1.8;color:var(--muted);margin:12px 0 0; }
 .portal-app .app-content { width:100%;max-width:1400px;padding:40px 50px 70px;margin:auto; }
 .portal-app .app-content--reader { padding:0!important;max-width:none; }
 .portal-skip { position:fixed;top:-80px;left:20px;z-index:100;background:var(--paper);padding:10px }.portal-skip:focus{top:10px}

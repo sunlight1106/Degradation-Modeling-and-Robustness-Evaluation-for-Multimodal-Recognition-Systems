@@ -11,6 +11,8 @@ const router = createRouter({
     { path: '/', name: 'home', component: HomeView },
     { path: '/login', name: 'login', component: LoginView },
     { path: '/register', name: 'register', component: () => import('@/views/RegisterView.vue') },
+    { path: '/account/switch', name: 'account-switch', component: () => import('@/views/AccountAccessView.vue'), meta: { requiresAuth: true } },
+    { path: '/account/logout', name: 'account-logout', component: () => import('@/views/AccountAccessView.vue'), meta: { requiresAuth: true } },
     { path: '/models', name: 'models', component: () => import('@/views/ModelsView.vue') },
     { path: '/docs', name: 'docs', component: () => import('@/views/DocsView.vue') },
     { path: '/pay/:token', name: 'payment-scan', component: () => import('@/views/PaymentScanView.vue') },
