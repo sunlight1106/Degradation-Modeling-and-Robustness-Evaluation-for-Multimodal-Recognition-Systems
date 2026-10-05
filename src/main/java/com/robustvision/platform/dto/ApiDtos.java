@@ -335,13 +335,13 @@ public final class ApiDtos {
     public record NoteView(
             String id, String title, String body, List<String> tags,
             NoteStatusView status, List<NoteReferenceView> references,
-            int shareCount, Instant createdAt, Instant updatedAt, String library, String contentFormat
+            int shareCount, Instant createdAt, Instant updatedAt, String library, String contentFormat, String parentId
     ) {}
 
     /** 笔记列表使用的精简视图，不含正文，减少传输体积。 */
     public record NoteSummaryView(
             String id, String title, String excerpt, List<String> tags,
-            NoteStatusView status, int shareCount, Instant createdAt, Instant updatedAt, String library, String contentFormat
+            NoteStatusView status, int shareCount, Instant createdAt, Instant updatedAt, String library, String contentFormat, String parentId
     ) {}
 
     public record NoteStatusView(String code, String label) {}
@@ -352,7 +352,8 @@ public final class ApiDtos {
             @Size(max = 500) String tags,
             String status,
             @Size(max = 40) String library,
-            @jakarta.validation.constraints.Pattern(regexp = "MARKDOWN|HTML") String contentFormat
+            @jakarta.validation.constraints.Pattern(regexp = "MARKDOWN|HTML") String contentFormat,
+            @Size(max = 36) String parentId
     ) {}
 
     public record UpdateNoteRequest(
@@ -361,7 +362,8 @@ public final class ApiDtos {
             @Size(max = 500) String tags,
             String status,
             @Size(max = 40) String library,
-            @jakarta.validation.constraints.Pattern(regexp = "MARKDOWN|HTML") String contentFormat
+            @jakarta.validation.constraints.Pattern(regexp = "MARKDOWN|HTML") String contentFormat,
+            @Size(max = 36) String parentId
     ) {}
 
     public record NoteReferenceView(

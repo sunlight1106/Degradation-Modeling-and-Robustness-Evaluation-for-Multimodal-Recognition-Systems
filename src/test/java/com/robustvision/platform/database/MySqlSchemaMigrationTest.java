@@ -51,7 +51,7 @@ class MySqlSchemaMigrationTest {
     void freshMigrationsCoverAllEntitiesAndConstraintsOnMySql84() throws Exception {
         try (TestDatabase database = new TestDatabase()) {
             Flyway flyway = database.flyway(null);
-            assertThat(flyway.migrate().migrationsExecuted).isGreaterThanOrEqualTo(14);
+            assertThat(flyway.migrate().migrationsExecuted).isGreaterThanOrEqualTo(15);
             flyway.validate();
             assertThat(flyway.migrate().migrationsExecuted).isZero();
             try (Connection connection = database.connect()) {
@@ -126,7 +126,7 @@ class MySqlSchemaMigrationTest {
         assertThat(scalar(c, "SELECT balance_cny FROM user_wallet WHERE user_id = 101")).isEqualTo("12.3456");
         assertThat(scalar(c, "SELECT cost_cny FROM inference_task WHERE id = 'task-1'")).isEqualTo("0.123456");
         assertThat(scalar(c, "SELECT COUNT(*) FROM information_schema.referential_constraints WHERE constraint_schema = DATABASE()"))
-                .isEqualTo("42");
+                .isEqualTo("43");
         assertDuplicateRejected(c, "INSERT INTO workspace_member (workspace_id, user_id, member_role) VALUES (201, 101, 'MEMBER')");
         assertDuplicateRejected(c, "INSERT INTO note_reference (note_id, reference_type, reference_id) VALUES ('note-1', 'FILE', 'file-1')");
         assertDuplicateRejected(c, "INSERT INTO note_share (id, note_id, shared_by, token) VALUES ('duplicate-share', 'note-1', 101, '0123456789abcdef0123456789abcdef')");
@@ -189,7 +189,7 @@ class MySqlSchemaMigrationTest {
     private static Map<String, List<String>> snapshot(Connection c) throws SQLException {
         Map<String, List<String>> result = new LinkedHashMap<>();
         for (String table : new TreeSet<>(LEGACY_DOMAIN_TABLES)) {
-            // Compare original columns across V13 message and V14 note additions.
+            // Compare original columns across V13 message and V14/V15 note additions.
             String columns = table.equals("internal_message") ? "id,sender_id,subject,body,created_at"
                     : table.equals("note") ? "id,owner_id,title,body,tags,status,created_at,updated_at" : "*";
             List<String> values = rows(c, "SELECT " + columns + " FROM `" + table + "`");

@@ -102,4 +102,15 @@ class NoteLibraryIntegrationTest {
             mvc.perform(get("/api/v1/notes/{id}/export", id).param("format", format).header("Authorization", "Bearer " + otherToken)).andExpect(status().isNotFound());
         mvc.perform(get("/api/v1/notes/{id}/export", id).param("format", "html")).andExpect(status().isUnauthorized());
     }
+    @Test void nestedPagesRejectCyclesAndForeignParentsAndKeepChildrenOnDelete() throws Exception {
+        String root = create(Map.of("title", "Root", "body", "Page")).path("id").asText();
+        String child = create(Map.of("title", "Child", "body", "Page", "parentId", root)).path("id").asText();
+        mvc.perform(patch("/api/v1/notes/{id}", root).header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON)
+                .content(mapper.writeValueAsBytes(Map.of("parentId", child)))).andExpect(status().isBadRequest());
+        mvc.perform(post("/api/v1/notes").header("Authorization", "Bearer " + otherToken).contentType(MediaType.APPLICATION_JSON)
+                .content(mapper.writeValueAsBytes(Map.of("title", "Foreign", "body", "Page", "parentId", root)))).andExpect(status().isNotFound());
+        mvc.perform(get("/api/v1/notes/{id}", child).header("Authorization", "Bearer " + token)).andExpect(jsonPath("$.data.parentId").value(root));
+        mvc.perform(delete("/api/v1/notes/{id}", root).header("Authorization", "Bearer " + token)).andExpect(status().isOk());
+        mvc.perform(get("/api/v1/notes/{id}", child).header("Authorization", "Bearer " + token)).andExpect(status().isOk()).andExpect(jsonPath("$.data.parentId").isEmpty());
+    }
 }

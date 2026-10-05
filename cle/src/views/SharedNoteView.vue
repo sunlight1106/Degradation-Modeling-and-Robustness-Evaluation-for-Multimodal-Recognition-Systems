@@ -4,7 +4,8 @@ import { RouterLink, useRoute } from 'vue-router'
 import { api, ApiClientError } from '@/api/client'
 import type { SharedNoteView } from '@/types/api'
 import AppIcon from '@/components/AppIcon.vue'
-import { countWords, readingMinutes, renderNote } from '@/lib/markdown'
+import NotePreview from '@/components/NotePreview.vue'
+import { countWords, readingMinutes } from '@/lib/markdown'
 
 const route = useRoute()
 
@@ -12,7 +13,7 @@ const note = ref<SharedNoteView | null>(null)
 const loading = ref(true)
 const error = ref('')
 
-const html = computed(() => renderNote(note.value?.body, note.value?.contentFormat))
+
 const words = computed(() => countWords(note.value?.body))
 const minutes = computed(() => readingMinutes(note.value?.body))
 
@@ -75,7 +76,7 @@ onMounted(load)
           </div>
         </header>
 
-        <div class="markdown-body shared-note-body" v-html="html" />
+        <NotePreview class="shared-note-body" :body="note.body" :format="note.contentFormat" />
 
         <footer v-if="note.references.length" class="shared-refs">
           <h3>引用</h3>

@@ -15,6 +15,9 @@ import type {
   NoteView,
 } from '@/types/api'
 import AppIcon from '@/components/AppIcon.vue'
+import NotePreview from '@/components/NotePreview.vue'
+import { codeFences, codeLanguages, fencedCode, replaceFence } from '@/lib/codeBlocks'
+import type { NoteSummaryView } from '@/types/api'
 import NotePersonalTools from '@/components/NotePersonalTools.vue'
 import { authStore } from '@/stores/auth'
 import { toastStore } from '@/stores/toast'
@@ -39,6 +42,54 @@ const tagsInput = ref('')
 const library = ref('综合学习')
 const contentFormat = ref<NoteContentFormat>('MARKDOWN')
 const status = ref<NoteStatusCode>('DRAFT')
+const parentId = ref('')
+const pageOptions = ref<NoteSummaryView[]>([])
+const pageOptionsError = ref('')
+const selectedCodeIndex = ref(-1)
+const commentStyle = ref('auto')
+const blockMenuOpen = ref(false)
+const blocks = computed(() => contentFormat.value === 'MARKDOWN' ? codeFences(body.value) : [])
+const selectedBlock = computed(() => blocks.value[selectedCodeIndex.value])
+const editorText = computed({
+  get: () => selectedBlock.value?.code ?? body.value,
+  set: value => { body.value = selectedBlock.value ? replaceFence(body.value, selectedBlock.value, value) : value },
+})
+const parentPage = computed(() => pageOptions.value.find(page => page.id === parentId.value))
+const childPages = computed(() => currentId.value ? pageOptions.value.filter(page => page.parentId === currentId.value) : [])
+const annotationUndo = ref<{ before: string; after: string } | null>(null)
+async function loadPageOptions() {
+  try { pageOptions.value = await api.notes(); pageOptionsError.value = '' }
+  catch { pageOptionsError.value = '页面目录暂时无法加载，请刷新后重试。' }
+}
+function setCodeLanguage(event: Event) {
+  if (selectedBlock.value) body.value = replaceFence(body.value, selectedBlock.value, selectedBlock.value.code, (event.target as HTMLSelectElement).value)
+}
+function insertBlock(kind: string) {
+  const snippets: Record<string, string> = {
+    heading: '## 小节标题\n', list: '- 列表项\n', todo: '- [ ] 待办事项\n', quote: '> 提示或引用\n',
+    table: '| 项目 | 说明 |\n| --- | --- |\n| 内容 | 内容 |\n', divider: '---\n',
+    code: fencedCode('int total = 2 + 3;\nSystem.out.println(total);', 'java'),
+  }
+  const insertion = snippets[kind]
+  if (!insertion) return
+  const start = selectedBlock.value?.end ?? bodyEl.value?.selectionStart ?? body.value.length
+  const end = selectedBlock.value?.end ?? bodyEl.value?.selectionEnd ?? start
+  const text = '\n\n' + insertion + '\n'
+  body.value = body.value.slice(0, start) + text + body.value.slice(end)
+  selectedCodeIndex.value = -1; blockMenuOpen.value = false
+  if (kind === 'code') selectedCodeIndex.value = codeFences(body.value).findIndex(block => block.start >= start)
+  nextTick(() => { bodyEl.value?.focus() })
+}
+function applyAssisted(text: string) {
+  const block = selectedBlock.value
+  if (block) {
+    const updated = replaceFence(body.value, block, text, block.language === 'json' ? 'jsonc' : block.language)
+    if (updated.length > 200000) { toastStore.error('添加注释后超过笔记长度限制，请拆分笔记'); return }
+    annotationUndo.value = { before: body.value, after: updated }
+    body.value = updated
+  } else body.value = text
+}
+watch(contentFormat, () => { selectedCodeIndex.value = -1; blockMenuOpen.value = false })
 const references = ref<NoteReferenceView[]>([])
 const shareCount = ref(0)
 const updatedAt = ref<string | null>(null)
@@ -70,12 +121,13 @@ function formatDate(value: string | null) {
   return new Date(value).toLocaleString('zh-CN', { hour12: false })
 }
 
-watch([title, body, tagsInput, status, library, contentFormat], () => {
+watch([title, body, tagsInput, status, library, contentFormat, parentId], () => {
   if (ready.value) dirty.value = true
 })
 
 function applyNote(note: NoteView) {
   currentId.value = note.id
+  parentId.value = note.parentId || ''
   library.value = note.library || "综合学习"
   contentFormat.value = note.contentFormat || "MARKDOWN"
   title.value = note.title
@@ -93,6 +145,7 @@ async function load() {
   const version = ++loadVersion
   const raw = route.params.id
   if (typeof raw !== 'string' || !raw) {
+    parentId.value = typeof route.query.parent === 'string' ? route.query.parent : ''
     library.value = typeof route.query.library === 'string' ? route.query.library.slice(0, 40) : '综合学习'
     if (route.query.template === 'study') useTemplate()
     if (typeof route.query.entry === 'string') {
@@ -134,6 +187,7 @@ async function save(): Promise<string | null> {
     toastStore.error('请先填写标题')
     return null
   }
+  if (body.value.length > 200000) { toastStore.error("正文超过 200,000 字符，请拆分笔记"); return null }
   const version = loadVersion
   saving.value = true
   try {
@@ -144,6 +198,7 @@ async function save(): Promise<string | null> {
       status: status.value,
       library: library.value.trim() || "综合学习",
       contentFormat: contentFormat.value,
+      parentId: parentId.value,
     }
     const wasNew = isNew.value
     const saved = currentId.value
@@ -225,6 +280,14 @@ function useTemplate() {
 }
 
 function onBodyKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape') blockMenuOpen.value = false
+  if (event.key === '/' && contentFormat.value === 'MARKDOWN' && !selectedBlock.value) {
+    const start = bodyEl.value?.selectionStart ?? 0
+    if (!body.value.slice(body.value.lastIndexOf('\n', start - 1) + 1, start).trim()) {
+      event.preventDefault(); blockMenuOpen.value = true; return
+    }
+  }
+
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
     event.preventDefault()
     void save()
@@ -405,11 +468,11 @@ onBeforeRouteUpdate((to, from) => {
 })
 watch(() => route.params.id, (next, previous) => {
   if (next === previous || (typeof next === 'string' && next === currentId.value)) return
-  ready.value = false; currentId.value = null; title.value = ''; body.value = ''; tagsInput.value = ''; status.value = 'DRAFT'; references.value = []; shares.value = []; shareCount.value = 0; updatedAt.value = null; dirty.value = false
+  annotationUndo.value = null; selectedCodeIndex.value = -1; parentId.value = ''; ready.value = false; currentId.value = null; title.value = ''; body.value = ''; tagsInput.value = ''; status.value = 'DRAFT'; references.value = []; shares.value = []; shareCount.value = 0; updatedAt.value = null; dirty.value = false
   void load()
 })
 function warnUnload(event: BeforeUnloadEvent) { if (dirty.value) { event.preventDefault(); event.returnValue = '' } }
-onMounted(() => { void load(); window.addEventListener('beforeunload', warnUnload) })
+onMounted(() => { void load(); void loadPageOptions(); window.addEventListener('beforeunload', warnUnload) })
 onBeforeUnmount(() => { loadVersion++; refVersion++; window.removeEventListener('beforeunload', warnUnload) })
 </script>
 
@@ -434,6 +497,10 @@ onBeforeUnmount(() => { loadVersion++; refVersion++; window.removeEventListener(
       </div>
     </section>
 
+    <nav v-if="parentPage || childPages.length" class="note-page-path" aria-label="页面关联">
+      <RouterLink v-if="parentPage" :to="{ name: 'note-edit', params: { id: parentPage.id } }">上级：{{ parentPage.title }}</RouterLink>
+      <RouterLink v-for="child in childPages" :key="child.id" :to="{ name: 'note-edit', params: { id: child.id } }">子页：{{ child.title }}</RouterLink>
+    </nav>
     <p v-if="error" class="inline-alert inline-alert--error">{{ error }}</p>
 
     <section class="panel note-editor-meta">
@@ -454,6 +521,10 @@ onBeforeUnmount(() => { loadVersion++; refVersion++; window.removeEventListener(
           </label>
         </div>
       </div>
+      <label class="field-label note-parent-field">父页面
+        <select v-model="parentId" class="field-input" :disabled="loading || saving || !ready"><option value="">无 · 顶层页面</option><option v-for="page in pageOptions.filter(page => page.id !== currentId)" :key="page.id" :value="page.id">{{ page.title }} · {{ page.library }}</option></select>
+        <span v-if="pageOptionsError" class="field-hint">{{ pageOptionsError }}</span>
+      </label>
       <div class="note-editor-stats">
         <span><b>{{ wordCount }}</b> 字</span>
         <span>约 <b>{{ readMinutes }}</b> 分钟</span>
@@ -477,13 +548,20 @@ onBeforeUnmount(() => { loadVersion++; refVersion++; window.removeEventListener(
         <header class="note-pane-head">
           <strong>{{ contentFormat === "HTML" ? "HTML 源码" : "Markdown" }}</strong>
           <button class="button button--ghost button--small" :disabled="loading || saving || !ready" @click="useTemplate">插入学习模板</button>
-          <div v-if="contentFormat === 'MARKDOWN'" class="note-md-tools">
+          <div v-if="contentFormat === 'MARKDOWN' && !selectedBlock" class="note-md-tools">
             <button v-for="tool in tools" :key="tool.title" type="button" :disabled="loading || saving || !ready" :title="tool.title" @click="tool.run">{{ tool.label }}</button>
           </div>
         </header>
+        <div v-if="contentFormat === 'MARKDOWN'" class="code-editor-toolbar">
+          <label>编辑范围<select v-model.number="selectedCodeIndex" :disabled="loading || saving || !ready" aria-label="选择代码块"><option :value="-1">整篇笔记</option><option v-for="(block, index) in blocks" :key="index" :value="index">代码块 {{ index + 1 }} · {{ block.language }}</option></select></label>
+          <label v-if="selectedBlock">语言<select :value="selectedBlock.language" :disabled="saving || loading" aria-label="代码语言" @change="setCodeLanguage"><option v-for="[value, label] in codeLanguages" :key="value" :value="value">{{ label }}</option></select></label>
+          <button type="button" class="button button--ghost button--small" :disabled="saving || loading || !ready" @click="blockMenuOpen = !blockMenuOpen">＋ 插入块 <small>/</small></button>
+        </div>
+        <div v-if="blockMenuOpen" class="note-block-menu" aria-label="插入内容块"><button v-for="(label, kind) in { heading: '标题', list: '列表', todo: '待办', quote: '引用', table: '表格', divider: '分割线', code: '代码块' }" :key="kind" @click="insertBlock(kind)">{{ label }}</button><button @click="blockMenuOpen = false">取消</button></div>
+        <p v-if="selectedBlock" class="code-editor-hint">只编辑此代码块；下方可选择个人模型生成注释。鼠标停在右侧标识符上可查看同名高亮。</p>
         <textarea
           ref="bodyEl"
-          v-model="body"
+          v-model="editorText"
           :disabled="loading || saving || !ready"
           class="note-editor-textarea"
           spellcheck="false"
@@ -499,7 +577,7 @@ onBeforeUnmount(() => { loadVersion++; refVersion++; window.removeEventListener(
           <strong>预览</strong>
           <span class="note-preview-hint">实时更新 · 仅排版，不执行脚本</span>
         </header>
-        <div v-if="previewHtml" class="markdown-body" v-html="previewHtml" />
+        <NotePreview v-if="previewHtml" :body="body" :format="contentFormat" />
         <p v-else class="note-preview-empty">预览会随左侧输入实时更新。</p>
       </article>
 
@@ -511,7 +589,8 @@ onBeforeUnmount(() => { loadVersion++; refVersion++; window.removeEventListener(
       </aside>
     </section>
 
-    <NotePersonalTools v-if="contentFormat === 'MARKDOWN'" :key="currentId || 'new'" :title="title" :body="body" :disabled="loading || saving || !ready || !canWrite" @append="appendToBody" @replace="body = $event" @tags="applyTags" />
+    <div v-if="selectedBlock" class="code-analysis-settings"><label>AI 注释方式<select v-model="commentStyle"><option value="auto">按语言自动选择</option><option value="line">单行注释</option><option value="block">多行注释</option></select></label><span>不支持多行注释的语言使用连续单行注释；JSON 注释后标为 JSONC。</span><button v-if="annotationUndo && body === annotationUndo.after" class="button button--ghost button--small" @click="body = annotationUndo.before; annotationUndo = null">撤销本次注释</button></div>
+    <NotePersonalTools v-if="contentFormat === 'MARKDOWN'" :key="`${currentId || 'new'}:${selectedCodeIndex}`" :title="title" :body="selectedBlock?.code ?? body" :code-language="selectedBlock?.language" :comment-style="commentStyle" :disabled="loading || saving || !ready || !canWrite" @append="appendToBody" @replace="applyAssisted" @tags="applyTags" />
 
     <section class="panel note-refs-panel">
       <header class="panel-header">

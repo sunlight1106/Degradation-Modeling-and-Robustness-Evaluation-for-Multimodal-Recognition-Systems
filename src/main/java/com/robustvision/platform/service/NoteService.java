@@ -30,6 +30,7 @@ public class NoteService {
 
     private static final int EXCERPT_LENGTH = 160;
 
+    private final com.robustvision.platform.repository.UserRepository users;
     private final NoteRepository noteRepository;
     private final NoteReferenceRepository referenceRepository;
     private final NoteShareRepository shareRepository;
@@ -40,7 +41,8 @@ public class NoteService {
                        NoteReferenceRepository referenceRepository,
                        NoteShareRepository shareRepository,
                        NoteReferenceService referenceService,
-                       CurrentUserService currentUserService) {
+                       CurrentUserService currentUserService, com.robustvision.platform.repository.UserRepository users) {
+        this.users = users;
         this.noteRepository = noteRepository;
         this.referenceRepository = referenceRepository;
         this.shareRepository = shareRepository;
@@ -83,9 +85,11 @@ public class NoteService {
     @Transactional
     public ApiDtos.NoteView create(ApiDtos.CreateNoteRequest request) {
         UserEntity user = currentUserService.requireCurrent();
+        users.lockNoteOwner(user.getId());
         NoteEntity note = noteRepository.save(new NoteEntity(
                 user, request.title().trim(), request.body(),
                 trimToNull(request.tags()), parseStatusOrDefault(request.status())));
+        assignParent(note, request.parentId(), user);
         note.setLibrary(normalizeLibrary(request.library()));
         if (request.contentFormat() != null) note.setContentFormat(request.contentFormat());
         return toView(note);
@@ -94,7 +98,9 @@ public class NoteService {
     @Transactional
     public ApiDtos.NoteView update(String id, ApiDtos.UpdateNoteRequest request) {
         UserEntity user = currentUserService.requireCurrent();
+        if (request.parentId() != null) users.lockNoteOwner(user.getId());
         NoteEntity note = requireOwn(id, user);
+        if (request.parentId() != null) assignParent(note, request.parentId(), user);
         if (request.title() != null && !request.title().isBlank()) note.setTitle(request.title().trim());
         if (request.body() != null) note.setBody(request.body());
         if (request.library() != null) note.setLibrary(normalizeLibrary(request.library()));
@@ -109,7 +115,9 @@ public class NoteService {
     public void delete(String id) {
         UserEntity user = currentUserService.requireCurrent();
         NoteEntity note = requireOwn(id, user);
+        users.lockNoteOwner(user.getId());
         // 引用与分享随 note 级联删除（数据库 ON DELETE CASCADE）
+        noteRepository.detachChildren(id, user.getId());
         noteRepository.delete(note);
     }
 
@@ -169,7 +177,7 @@ public class NoteService {
                 KnowledgeService.splitTags(note.getTags()),
                 statusView(note.getStatus()),
                 shareCount,
-                note.getCreatedAt(), note.getUpdatedAt(), note.getLibrary(), note.getContentFormat());
+                note.getCreatedAt(), note.getUpdatedAt(), note.getLibrary(), note.getContentFormat(), note.getParentId());
     }
 
     private ApiDtos.NoteView toView(NoteEntity note) {
@@ -179,7 +187,7 @@ public class NoteService {
                 statusView(note.getStatus()),
                 referenceService.resolveForNote(note.getId()),
                 shareRepository.findByNoteIdOrderByCreatedAtDesc(note.getId()).size(),
-                note.getCreatedAt(), note.getUpdatedAt(), note.getLibrary(), note.getContentFormat());
+                note.getCreatedAt(), note.getUpdatedAt(), note.getLibrary(), note.getContentFormat(), note.getParentId());
     }
 
     /** 去掉 Markdown 语法标记后取前若干字符作为列表摘要。 */
@@ -225,6 +233,18 @@ public class NoteService {
             throw new BusinessException(HttpStatus.BAD_REQUEST, "REFERENCE_TYPE_INVALID",
                     "引用类型只能是 FILE、TASK 或 ENTRY");
         }
+    }
+
+    private void assignParent(NoteEntity note, String requested, UserEntity user) {
+        String id = requested == null || requested.isBlank() ? null : requested.trim();
+        String next = id;
+        java.util.Set<String> visited = new java.util.HashSet<>();
+        while (next != null) {
+            if (next.equals(note.getId()) || !visited.add(next) || visited.size() > 50)
+                throw new BusinessException(HttpStatus.BAD_REQUEST, "NOTE_HIERARCHY_INVALID", "不能把页面移入自身或其子页面，或选择过深的父级链路");
+            next = noteRepository.lockOwned(next, user.getId()).orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "NOTE_NOT_FOUND", "父页面不存在或无权访问")).getParentId();
+        }
+        note.setParentId(id);
     }
 
     private String normalizeLibrary(String value) {

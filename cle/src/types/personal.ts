@@ -10,7 +10,7 @@ export interface ExperimentSource {
   traceId: string
 }
 export interface ExperimentPreview { markdown: string; sourceIds: string[] }
-export type PersonalAiAction = NoteAssistAction | 'draft'
+export type PersonalAiAction = NoteAssistAction | 'draft' | 'code-annotate'
 export interface PersonalAiProvider {
   provider: string
   displayName: string

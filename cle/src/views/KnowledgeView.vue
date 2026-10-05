@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { api, ApiClientError } from '@/api/client'
 import type { KnowledgeEntryView, KnowledgeTopicView } from '@/types/api'
+import NotePreview from '@/components/NotePreview.vue'
 import AppIcon from '@/components/AppIcon.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { toastStore } from '@/stores/toast'
@@ -31,7 +32,7 @@ const domains = computed(() => {
 })
 
 const totalEntries = computed(() => topics.value.reduce((sum, item) => sum + item.entryCount, 0))
-const entryHtml = computed(() => renderMarkdown(activeEntry.value?.body))
+
 
 async function load() {
   loading.value = true
@@ -315,7 +316,7 @@ onMounted(load)
           <span>更新于 {{ new Date(activeEntry.updatedAt).toLocaleDateString('zh-CN') }}</span>
           <span v-if="activeEntry.noteReferences"><b>{{ activeEntry.noteReferences }}</b> 篇笔记引用</span>
         </div>
-        <div class="markdown-body" v-html="entryHtml" />
+        <NotePreview :body="activeEntry.body" />
         <footer v-if="activeEntry.tags.length" class="kb-reader-tags">
           <i v-for="tag in activeEntry.tags" :key="tag" @click="filterByTag(tag)">{{ tag }}</i>
         </footer>

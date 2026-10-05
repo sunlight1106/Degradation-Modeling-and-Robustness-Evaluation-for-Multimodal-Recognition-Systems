@@ -31,7 +31,7 @@ public class PersonalAiService {
     private final Clock clock = Clock.systemUTC();
     private final Map<String, Pending> pending = new HashMap<>();
     private record Pending(Long owner, String settingId, long revision, AiProvider provider, String model,
-                           String action, PersonalAiTransport.Payload payload, List<String> selectedTaskIds, Instant expiresAt) {}
+                           String action, PersonalAiTransport.Payload payload, List<String> selectedTaskIds, Instant expiresAt, String code, String codeLanguage, String commentStyle) {}
     public PersonalAiService(CurrentUserService currentUser, PersonalAiSettingRepository settings,
                              PersonalAiPersistenceService persistence, SecretEncryptionService encryption,
                              PersonalAiEndpointPolicy endpoints, PersonalAiTransport transport,
@@ -45,10 +45,15 @@ public class PersonalAiService {
         Long owner = currentUser.requireCurrent().getId();
         limits.preview(owner);
         String action = request.action() == null ? "" : request.action().trim().toLowerCase(Locale.ROOT);
-        if (!Set.of("summarize", "outline", "tags", "tidy", "draft").contains(action))
+        if (!Set.of("summarize", "outline", "tags", "tidy", "draft", "code-annotate").contains(action))
             throw invalid("PERSONAL_AI_ACTION_INVALID", "不支持此整理动作");
         PersonalAiSettingEntity setting = configured(owner, request.provider());
         List<String> selectedTaskIds = request.selectedTaskIds() == null ? List.of() : List.copyOf(request.selectedTaskIds());
+        boolean codeAction = action.equals("code-annotate");
+        if (codeAction) {
+            CodeAnnotations.validate(request.codeLanguage(), request.commentStyle());
+            if (!selectedTaskIds.isEmpty()) throw invalid("CODE_CONTEXT_INVALID", "代码分析仅发送选中的代码块");
+        }
         String sourceContext = sources.buildContext(selectedTaskIds);
         String body = request.body() == null ? "" : request.body();
         if (body.isBlank() && sourceContext.isBlank()) throw invalid("PERSONAL_AI_CONTEXT_EMPTY", "请提供笔记内容或选择自己的实验结果");
@@ -57,8 +62,10 @@ public class PersonalAiService {
             throw invalid("PERSONAL_AI_CONTEXT_TOO_LARGE", "所选上下文过长，请减少内容后重新预览");
         String context = "任务：" + instruction(action) + "\n标题：" + title + "\n\n笔记正文：\n" + body
                 + (sourceContext.isBlank() ? "" : "\n\n经权限验证的实验结果：\n" + sourceContext);
+        String system = codeAction ? CodeAnnotations.SYSTEM : SYSTEM;
+        if (codeAction) context = "语言：" + request.codeLanguage() + "\n注释方式：" + request.commentStyle() + "\n请静态分析以下代码（不执行）：\n" + body;
         String base = endpoints.validateBase(setting.getProvider(), setting.getBaseUrl());
-        PersonalAiTransport.Payload payload = transport.prepare(setting.getProvider(), base, setting.getModel(), SYSTEM, context);
+        PersonalAiTransport.Payload payload = transport.prepare(setting.getProvider(), base, setting.getModel(), system, context);
         int bytes = payload.json().getBytes(StandardCharsets.UTF_8).length;
         if (bytes > 160000) throw invalid("PERSONAL_AI_CONTEXT_TOO_LARGE", "所选上下文过长，请减少内容后重新预览");
         String token = UUID.randomUUID().toString() + UUID.randomUUID().toString();
@@ -70,9 +77,9 @@ public class PersonalAiService {
             if (pending.values().stream().filter(p -> p.owner().equals(owner)).count() >= 3)
                 pending.entrySet().removeIf(e -> e.getValue().owner().equals(owner));
             pending.put(token, new Pending(owner, setting.getId(), setting.getRevision(), setting.getProvider(),
-                    setting.getModel(), action, payload, selectedTaskIds, expires));
+                    setting.getModel(), action, payload, selectedTaskIds, expires, codeAction ? body : null, request.codeLanguage(), request.commentStyle()));
         }
-        return new PreviewView(token, expires, setting.getProvider(), setting.getModel(), payload.url(), action, context, SYSTEM, bytes);
+        return new PreviewView(token, expires, setting.getProvider(), setting.getModel(), payload.url(), action, context, system, bytes);
     }
     public ResultView execute(ExecuteRequest request) {
         Long owner = currentUser.requireCurrent().getId();
@@ -113,7 +120,8 @@ public class PersonalAiService {
                 persistenceStatus = "UNCONFIRMED";
                 warning = PersonalAiPersistenceService.USAGE_WARNING;
             }
-            return new ResultView(approved.action(), "PERSONAL_AI:" + approved.provider(), result.text(), items(approved.action(), result.text()),
+            String output = approved.code() == null ? result.text() : CodeAnnotations.apply(approved.code(), approved.codeLanguage(), approved.commentStyle(), result.text());
+            return new ResultView(approved.action(), "PERSONAL_AI:" + approved.provider(), output, items(approved.action(), result.text()),
                     "由你的个人供应商密钥调用生成。费用由供应商计收；平台未估算费用，也未扣除平台钱包。请核对后再应用。",
                     MDC.get("traceId"), result.inputTokens(), result.outputTokens(), persistenceStatus, warning);
         }

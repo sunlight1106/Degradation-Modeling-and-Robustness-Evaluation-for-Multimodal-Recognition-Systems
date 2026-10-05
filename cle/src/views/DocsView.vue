@@ -22,6 +22,7 @@ const docLinks = [
   { id: 'model-contract', label: '个人 AI 配置', keywords: 'BYOK key 密钥 供应商 模型 remote' },
   { id: 'first-request', label: '发送预览与确认', keywords: 'API JSON preview execute 取消' },
   { id: 'quality-route', label: '票据与车牌图片识别', keywords: 'image recognition 视频 5 MiB' },
+  { id: 'code-notes', label: '代码块与 AI 注释', keywords: 'Java Python main 代码 语法高亮 变量 注释 父子页面 Notion' },
   { id: 'knowledge-notes', label: '学习库与在线笔记', keywords: 'LOCAL_RULES 本地规则 知识库 英语 计算机 HTML PDF 导出 24000 24,000' },
   { id: 'group-collaboration', label: '群组与站内信', keywords: 'group 群主 成员 管理员 回复 附件 分享 资料 私信' },
   { id: 'permissions', label: '账户与隐私设置', keywords: '资料 密码 会话 导出 权限 外观' },
@@ -131,6 +132,7 @@ async function copyCode() {
           <p>「选择实验结果」只列出本人已完成实验和本人个人图片识别结果，每次最多选 20 份。先点「预览选中结果」，再「插入编辑区」，最后手动保存。服务端按当前账户校验来源，即使管理员也不能在个人来源选择器中读取别人的结果。</p>
           <p>若还要把所选来源交给个人模型，需另外勾选「同时发送上方选中的实验结果」，并核对发送预览。已把相同结果插入正文时，避免再重复勾选。个人 AI 的正文加来源合计最多 24,000 字符，超过会拒绝，不会静默截断。</p>
           <div class="docs-callout"><AppIcon name="spark" :size="20" /><div><strong>本地规则是单独的处理方式</strong><p>在「整理与写作」选「本地规则 · 无外部模型调用」，可做摘要、大纲、标签、格式整理，响应明确标记 <code>LOCAL_RULES</code>。它在平台服务端处理，不向模型供应商发送内容，也不使用个人密钥；报告草稿需要个人模型。正文超过 24,000 字符会报错并保留原文，不会截断或自动替换。</p></div></div></div></details></template></DocRow>
+<DocRow id="code-notes" title="代码块与 AI 注释"><p>记录代码、解读逻辑，并用父子页面组织知识。</p><template #detail><div class="guide-instructions"><ol><li>新建 Markdown 笔记，点击「＋ 插入块 → 代码块」，选择代码语言。</li><li>在「编辑范围」切到代码块，左侧编辑，右侧查看语法高亮。悬停标识符可关联同名位置，移开清除。</li><li>选择注释方式和个人模型，点击「AI 解释并生成注释」。检查代码发送预览并确认，获得结果后手动应用、保存。</li><li>在笔记列表点击「＋ 子页面」，或在编辑器设置「父页面」；删除父页会保留子页。</li></ol><RouterLink to="/app/notes/new?library=计算机学习&amp;template=study">打开代码笔记模板 →</RouterLink><p>AI 仅静态推断，不执行代码。Java 缺少 main 时仍解释代码，并说明入口条件；伪代码解释用途，不编造运行输出。模型说明以注释加在原代码之前，原代码保留。</p></div><details class="guide-more"><summary>注释方式与权限</summary><p>Python / Shell / YAML 使用连续单行注释，HTML / CSS 使用对应合法格式，JSON 注释后变为 JSONC。只发送当前代码块，不发送整篇笔记。修改代码或语言会使旧的确认失效。同名高亮不做编译器级作用域解析。父子页面均为本人私有；分享父页不自动分享子页。</p></details></template></DocRow>
 <DocRow id="quality-route" title="识别一张图片"><p>个人图片识别需要你自己的模型配置。只想体验上传与结果页，可以先运行 DEMO。</p><template #detail><div class="guide-instructions"><ol><li>打开实验台上方的「个人 AI 图片识别」。</li><li>选择模型与任务，上传票据或车牌图片。</li><li>点击「上传并预览发送内容」，检查原图和指令。</li><li>确认发送后查看结果；回到笔记也能插入这次结果。</li></ol><RouterLink to="/app/upload">打开实验台 →</RouterLink><p class="guide-outcome">暂时没有密钥？使用实验台下方的 DEMO 流程；它的结果是演示数据。</p></div><details class="guide-more"><summary>更多说明与注意事项</summary><div><p>前往<RouterLink to="/app/upload">上传页面上方的「个人 AI 图片识别」</RouterLink>，选择个人配置与票据 / 车牌任务。先确认所填模型支持图片输入；供应商名称相同并不表示其所有模型都有视觉能力。</p>
           <p>只接受属于本人、扫描状态为 <code>CLEAN</code> 的 PNG / JPEG / WebP 图片，最大 5 MiB（5,242,880 字节）。图片先上传到本平台；预览显示原图、文件名、MIME、大小、SHA-256、供应商 / 模型和完整指令，单独确认后才发送给供应商。</p>
           <div class="docs-callout docs-callout--warning"><AppIcon name="images" :size="20" /><div><strong>真实视频调用暂未开放</strong><p>此入口只支持票据和车牌图片。DeepSeek 视觉兼容性尚未验证，当前拒绝该图片路径。下方 DEMO 视频流程仍可用于检查平台链路，不代表真实视频识别能力。</p></div></div>

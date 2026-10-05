@@ -19,7 +19,11 @@ public final class PersonalAiDtos {
                               boolean configured, long revision, Instant updatedAt) {}
     public record PreviewRequest(@NotNull AiProvider provider, @NotBlank @Size(max = 20) String action,
             @Size(max = 180) String title, @Size(max = 24000) String body,
-            @Size(max = 20) List<@NotBlank @Size(max = 38) String> selectedTaskIds) {
+            @Size(max = 20) List<@NotBlank @Size(max = 38) String> selectedTaskIds,
+            @Size(max = 20) String codeLanguage, @Size(max = 10) String commentStyle) {
+        public PreviewRequest(AiProvider provider, String action, String title, String body, List<String> selectedTaskIds) {
+            this(provider, action, title, body, selectedTaskIds, null, null);
+        }
         @Override public String toString() { return "PreviewRequest[REDACTED]"; }
     }
     public record PreviewView(String previewToken, Instant expiresAt, AiProvider provider, String model,

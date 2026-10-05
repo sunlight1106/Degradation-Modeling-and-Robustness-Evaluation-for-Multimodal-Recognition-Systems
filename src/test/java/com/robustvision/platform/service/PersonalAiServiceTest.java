@@ -177,4 +177,25 @@ class PersonalAiServiceTest {
         var local = new NoteAssistService().assist(new com.robustvision.platform.dto.ApiDtos.NoteAssistRequest("tidy", "#标题\n内容", ""));
         assertThat(local.engine()).isEqualTo("LOCAL_RULES");
     }
+    @Test void codeAnalysisUsesOnlyApprovedBlockAndWrapsModelOutputAsComments() throws Exception {
+        String code = "int result = 2 + 3;\nSystem.out.println(result);";
+        var preview = service.preview(new PreviewRequest(AiProvider.OPENAI, "code-annotate", "Notes", code, List.of(), "java", "block"));
+        assertThat(preview.systemPrompt()).contains("静态分析", "main", "返回值", "禁止宣称已经执行");
+        assertThat(preview.context()).contains(code, "java").doesNotContain("经权限验证的实验结果");
+        verify(transport, never()).execute(any(), any(), any());
+        doReturn(new PersonalAiTransport.Completion("用途：加法。\n静态推测结果：5。\n入口：未提供 main，需调用方。\n*/ evil()", 10, 4)).when(transport).execute(any(), any(), anyString());
+        var result = service.execute(new ExecuteRequest(preview.previewToken(), true));
+        assertThat(result.result()).startsWith("/*\nAI 静态分析（未执行代码").endsWith("*/\n" + code).contains("* / evil()");
+        assertThat(result.result().split("\\*/", -1)).hasSize(2);
+        assertThatThrownBy(() -> service.preview(new PreviewRequest(AiProvider.OPENAI, "code-annotate", "", code, List.of("task"), "java", "line"))).isInstanceOf(BusinessException.class);
+        assertThatThrownBy(() -> service.preview(new PreviewRequest(AiProvider.OPENAI, "code-annotate", "", code, List.of(), "injected", "line"))).isInstanceOf(BusinessException.class);
+    }
+    @Test void commentWrappersPreserveSourceAndLanguageDirectives() {
+        String python = "#!/usr/bin/env python3\n# coding: utf-8\nprint(1)";
+        String annotated = CodeAnnotations.apply(python, "python", "block", "用途\n结果");
+        assertThat(annotated).startsWith("#!/usr/bin/env python3\n# coding: utf-8\n# AI").endsWith("print(1)");
+        String javaComment = CodeAnnotations.apply("return 1;", "java", "line", "line\n" + "\\" + "u000a injected()");
+        assertThat(javaComment).contains("// line\n// ＼u000a injected()").endsWith("return 1;");
+        assertThat(CodeAnnotations.apply("<p>hi</p>", "html", "line", "--> bad")).contains("—> bad").endsWith("-->\n<p>hi</p>");
+    }
 }

@@ -37,6 +37,10 @@ public class NoteEntity {
     @Column(nullable = false, columnDefinition = "LONGTEXT")
     private String body;
 
+    @Column(name = "parent_id", length = 36, columnDefinition = "CHAR(36)")
+    @JdbcTypeCode(SqlTypes.CHAR)
+    private String parentId;
+
     @Column(length = 500)
     private String tags;
 
@@ -70,6 +74,9 @@ public class NoteEntity {
     void ensureId() {
         if (id == null) id = UUID.randomUUID().toString();
     }
+
+    public String getParentId() { return parentId; }
+    public void setParentId(String id) { parentId = id; }
 
     public String getLibrary() { return library; }
     public void setLibrary(String library) { this.library = library; }

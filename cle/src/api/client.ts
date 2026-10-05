@@ -276,9 +276,9 @@ export const api = {
     return request<NoteSummaryView[]>(`/notes${query ? `?${query}` : ''}`)
   },
   note: (id: string) => request<NoteView>(`/notes/${encodeURIComponent(id)}`),
-  createNote: (payload: { title: string; body: string; tags?: string; status?: NoteStatusCode; library?: string; contentFormat?: "MARKDOWN" | "HTML" }) =>
+  createNote: (payload: { title: string; body: string; tags?: string; status?: NoteStatusCode; parentId?: string; library?: string; contentFormat?: "MARKDOWN" | "HTML" }) =>
     request<NoteView>('/notes', { method: 'POST', body: JSON.stringify(payload) }),
-  updateNote: (id: string, payload: Partial<{ title: string; body: string; tags: string; status: NoteStatusCode; library: string; contentFormat: "MARKDOWN" | "HTML" }>) =>
+  updateNote: (id: string, payload: Partial<{ title: string; body: string; tags: string; status: NoteStatusCode; parentId: string; library: string; contentFormat: "MARKDOWN" | "HTML" }>) =>
     request<NoteView>(`/notes/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(payload) }),
   deleteNote: (id: string) => request<void>(`/notes/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   addNoteReference: (id: string, payload: { referenceType: NoteReferenceType; referenceId: string; label?: string }) =>

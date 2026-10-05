@@ -311,6 +311,7 @@ export interface NoteReferenceView {
 }
 
 export interface NoteView {
+  parentId: string | null
   library: string
   contentFormat: NoteContentFormat
   id: string
@@ -325,6 +326,7 @@ export interface NoteView {
 }
 
 export interface NoteSummaryView {
+  parentId: string | null
   library: string
   contentFormat: NoteContentFormat
   id: string

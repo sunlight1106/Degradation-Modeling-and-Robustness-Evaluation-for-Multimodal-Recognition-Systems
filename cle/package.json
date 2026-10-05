@@ -9,16 +9,18 @@
     "preview": "vite preview",
     "typecheck": "vue-tsc -b",
     "test:unit": "node --experimental-strip-types --test src/tests/requestGuard.test.mjs",
-    "test:ui": "node src/tests/run-personal-ui.mjs && node src/tests/run-personal-ui.mjs docs-ui.mjs && node src/tests/run-personal-ui.mjs vocabulary-ui.mjs && node src/tests/run-personal-ui.mjs queue-recovery-ui.mjs && node src/tests/run-personal-ui.mjs groups-ui.mjs && node src/tests/run-personal-ui.mjs learning-ui.mjs"
+    "test:ui": "node src/tests/run-personal-ui.mjs && node src/tests/run-personal-ui.mjs docs-ui.mjs && node src/tests/run-personal-ui.mjs vocabulary-ui.mjs && node src/tests/run-personal-ui.mjs queue-recovery-ui.mjs && node src/tests/run-personal-ui.mjs groups-ui.mjs && node src/tests/run-personal-ui.mjs learning-ui.mjs && node src/tests/run-personal-ui.mjs code-notes-ui.mjs"
   },
   "dependencies": {
     "dompurify": "^3.4.15",
     "marked": "^18.0.13",
+    "prismjs": "1.30.0",
     "vue": "3.5.13",
     "vue-router": "4.5.0"
   },
   "devDependencies": {
     "@types/node": "22.10.2",
+    "@types/prismjs": "^1.26.6",
     "@vitejs/plugin-vue": "5.2.1",
     "jsdom": "30.1.1",
     "typescript": "5.7.2",

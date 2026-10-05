@@ -53,5 +53,9 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     @Query(value = "SELECT id FROM app_user WHERE role_id = :roleId AND status = 'ACTIVE' ORDER BY id FOR UPDATE", nativeQuery = true)
     List<Long> findLockedActiveAdminIds(@Param("roleId") Long roleId);
 
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("select u from UserEntity u where u.id = :id")
+    Optional<UserEntity> lockNoteOwner(@Param("id") Long id);
+
     long countByRoleCodeAndStatus(String roleCode, com.robustvision.platform.domain.UserStatus status);
 }

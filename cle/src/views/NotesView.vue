@@ -19,6 +19,21 @@ const canWrite = computed(() => authStore.has('note:write'))
 const tabs = [{ code: 'ALL', label: '全部' }, { code: 'DRAFT', label: '草稿' }, { code: 'ACTIVE', label: '已定稿' }, { code: 'ARCHIVED', label: '已归档' }] as const
 const libraryNotes = computed(() => notes.value.filter(note => !library.value || (note.library || '综合学习') === library.value))
 const filteredNotes = computed(() => libraryNotes.value.filter(note => status.value === 'ALL' || note.status.code === status.value))
+const folded = ref(new Set<string>())
+const treeRows = computed(() => {
+  const result: Array<{ note: NoteSummaryView; depth: number }> = []
+  const visible = new Map(filteredNotes.value.map(note => [note.id, note]))
+  const visited = new Set<string>()
+  const visit = (note: NoteSummaryView, depth: number) => {
+    if (visited.has(note.id)) return
+    visited.add(note.id); result.push({ note, depth: Math.min(depth, 8) })
+    if (!folded.value.has(note.id) || keyword.value) for (const child of filteredNotes.value) if (child.parentId === note.id) visit(child, depth + 1)
+  }
+  for (const note of filteredNotes.value) if (!note.parentId || !visible.has(note.parentId)) visit(note, 0)
+  return result
+})
+function togglePage(id: string) { const next = new Set(folded.value); next.has(id) ? next.delete(id) : next.add(id); folded.value = next }
+const hasChildren = (id: string) => filteredNotes.value.some(note => note.parentId === id)
 const libraries = computed(() => [...new Set([...knownLibraries.value, ...(library.value ? [library.value] : [])])])
 const libraryCount = (name: string) => notes.value.filter(note => (note.library || '综合学习') === name).length
 const tabCount = (code: string) => libraryNotes.value.filter(note => code === 'ALL' || note.status.code === code).length
@@ -73,13 +88,13 @@ onBeforeUnmount(() => { version++; clearTimeout(timer) })
           <EmptyState icon="note" :title="keyword ? '没有匹配的笔记' : '从一篇学习记录开始'" :description="keyword ? '试试其他关键词或切换学习库。' : '使用模板记录目标、例子、理解与复习问题。'" />
           <RouterLink v-if="canWrite && !keyword" class="button button--ghost" :to="{ name: 'note-create', query: { library: library || '综合学习', template: 'study' } }">用学习模板开始 →</RouterLink>
         </template>
-        <article v-for="note in filteredNotes" v-else :key="note.id" class="learning-note-row">
-          <div><span class="learning-note-meta">{{ note.library || '综合学习' }} <span> / </span> {{ note.status.label }} <span> / </span> {{ note.contentFormat === 'HTML' ? 'HTML' : 'Markdown' }}</span>
-            <h3><RouterLink :to="{ name: 'note-edit', params: { id: note.id } }">{{ note.title }}</RouterLink></h3>
-            <p>{{ note.excerpt || '暂无正文' }}</p>
-            <div class="learning-note-tags"><button v-for="tag in note.tags" :key="tag" @click="keyword = tag">{{ tag }}</button></div>
+        <article v-for="row in treeRows" v-else :key="row.note.id" class="learning-note-row" :style="{ paddingLeft: `${row.depth * 22 + 8}px` }">
+          <div><span class="learning-note-meta">{{ row.note.library || '综合学习' }} <span> / </span> {{ row.note.status.label }} <span> / </span> {{ row.note.contentFormat === 'HTML' ? 'HTML' : 'Markdown' }}</span>
+            <h3><button v-if="hasChildren(row.note.id)" class="page-tree-toggle" :aria-expanded="!folded.has(row.note.id)" :aria-label="folded.has(row.note.id) ? '展开子页面' : '收起子页面'" @click="togglePage(row.note.id)">{{ folded.has(row.note.id) ? "▸" : "▾" }}</button><RouterLink :to="{ name: 'note-edit', params: { id: row.note.id } }">{{ row.note.title }}</RouterLink></h3>
+            <p>{{ row.note.excerpt || '暂无正文' }}</p>
+            <div class="learning-note-tags"><button v-for="tag in row.note.tags" :key="tag" @click="keyword = tag">{{ tag }}</button></div>
           </div>
-          <div class="learning-note-end"><time>{{ new Date(note.updatedAt).toLocaleDateString('zh-CN') }}</time><button v-if="canWrite" class="icon-button" :aria-label="`删除 ${note.title}`" @click="remove(note)"><AppIcon name="trash" :size="15" /></button></div>
+          <div class="learning-note-end"><RouterLink v-if="canWrite" :to="{ name: 'note-create', query: { library: row.note.library, parent: row.note.id } }" class="page-child-link">＋ 子页面</RouterLink><time>{{ new Date(row.note.updatedAt).toLocaleDateString('zh-CN') }}</time><button v-if="canWrite" class="icon-button" :aria-label="`删除 ${row.note.title}`" @click="remove(row.note)"><AppIcon name="trash" :size="15" /></button></div>
         </article>
         <footer class="learning-list-footer">{{ keyword ? '搜索结果' : '当前列表' }} · {{ filteredNotes.length }} 篇笔记 <span>Markdown / HTML 编写 · MD / PDF / Word / HTML / TXT 导出</span></footer>
       </section>

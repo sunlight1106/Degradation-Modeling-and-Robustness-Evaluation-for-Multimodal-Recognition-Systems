@@ -18,6 +18,10 @@ public interface NoteRepository extends JpaRepository<NoteEntity, String> {
 
     Optional<NoteEntity> findByIdAndOwnerId(String id, Long ownerId);
 
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("select n from NoteEntity n where n.id = :id and n.owner.id = :ownerId")
+    Optional<NoteEntity> lockOwned(@Param("id") String id, @Param("ownerId") Long ownerId);
+
     /** 按标题、正文或标签模糊搜索当前用户的笔记。 */
     @Query("""
             SELECT n FROM NoteEntity n
@@ -36,6 +40,10 @@ public interface NoteRepository extends JpaRepository<NoteEntity, String> {
 
     @Query("select s.note.id as noteId, count(s) as shareCount from NoteShareEntity s where s.note.id in :noteIds group by s.note.id")
     List<ShareCount> countSharesByNoteIds(@Param("noteIds") Collection<String> noteIds);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("update NoteEntity n set n.parentId = null where n.parentId = :id and n.owner.id = :ownerId")
+    void detachChildren(@Param("id") String id, @Param("ownerId") Long ownerId);
 
     long countByOwnerId(Long ownerId);
 }
