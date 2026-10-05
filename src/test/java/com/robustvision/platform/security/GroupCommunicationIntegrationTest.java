@@ -74,8 +74,41 @@ class GroupCommunicationIntegrationTest {
         return mvc.perform(auth(request, token));
     }
     Set<Long> contacts(String token) throws Exception {
-        JsonNode result = data(mvc.perform(auth(get("/api/v1/messages/directory"), token)).andExpect(status().isOk()).andReturn());
-        Set<Long> ids = new HashSet<>(); result.forEach(item -> { ids.add(item.path("id").asLong()); assertThat(item.has("email")).isFalse(); }); return ids;
+        Set<Long> ids = new HashSet<>();
+        for (int page = 0; ; page++) {
+            JsonNode result = data(mvc.perform(auth(get("/api/v1/messages/directory").param("page", String.valueOf(page)), token)).andExpect(status().isOk()).andReturn());
+            result.forEach(item -> { ids.add(item.path("id").asLong()); assertThat(item.has("email")).isFalse(); });
+            if (result.size() < 25) return ids;
+        }
+    }
+
+    @Test void recipientSearchPagesDuplicateNamesAndRespectsPermissionsForIdentityLookups() throws Exception {
+        String name = "Same " + UUID.randomUUID();
+        List<UserEntity> peers = new ArrayList<>();
+        for (int i = 0; i < 26; i++) {
+            UserEntity peer = user("picker" + UUID.randomUUID().toString().replace("-", ""), member.getRole());
+            peer.setDisplayName(name); peers.add(users.save(peer));
+        }
+        assertThat(peers.stream().map(UserEntity::getIdentityCode).distinct().count()).isEqualTo(26);
+        JsonNode first = data(mvc.perform(auth(get("/api/v1/messages/directory").param("q", name), adminToken)).andExpect(status().isOk()).andReturn());
+        JsonNode last = data(mvc.perform(auth(get("/api/v1/messages/directory").param("q", name).param("page", "1"), adminToken)).andExpect(status().isOk()).andReturn());
+        assertThat(first.size()).isEqualTo(25); assertThat(last.size()).isEqualTo(1);
+        Set<Long> ids = new HashSet<>(); first.forEach(row -> ids.add(row.path("id").asLong()));
+        assertThat(ids).doesNotContain(last.get(0).path("id").asLong());
+        UserEntity target = peers.get(25);
+        mvc.perform(auth(get("/api/v1/messages/directory").param("q", target.getIdentityCode().toLowerCase(Locale.ROOT)), adminToken))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.length()").value(1))
+                .andExpect(jsonPath("$.data[0].id").value(target.getId()));
+        mvc.perform(auth(get("/api/v1/messages/directory").param("userId", target.getId().toString()), adminToken))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data[0].identityCode").value(target.getIdentityCode()));
+        for (String key : List.of("q", "userId")) {
+            mvc.perform(auth(get("/api/v1/messages/directory").param(key, key.equals("q") ? target.getIdentityCode() : target.getId().toString()), memberToken))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.data.length()").value(0));
+        }
+        mvc.perform(auth(get("/api/v1/messages/directory").param("q", name + "%"), adminToken))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.length()").value(0));
+        mvc.perform(auth(get("/api/v1/messages/directory").param("page", "-1"), adminToken)).andExpect(status().isBadRequest());
+        mvc.perform(auth(get("/api/v1/messages/directory").param("q", "a".repeat(81)), adminToken)).andExpect(status().isBadRequest());
     }
 
     @Test void basicAccountsCanContactAdminsAndReplyButCannotContactUnrelatedUsers() throws Exception {

@@ -16,7 +16,9 @@ import java.util.List;
 public class MessageController {
     private final MessageService service;
     public MessageController(MessageService service) { this.service = service; }
-    @GetMapping("/directory") public ApiResponse<List<ApiDtos.MessageContactView>> directory() { return ApiResponse.ok(service.directory()); }
+    @GetMapping("/directory") public ApiResponse<List<ApiDtos.MessageContactView>> directory(
+            @RequestParam(defaultValue = "") String q, @RequestParam(defaultValue = "0") int page,
+            @RequestParam(required = false) Long userId) { return ApiResponse.ok(service.directory(q, page, userId)); }
     @GetMapping("/inbox") public ApiResponse<List<ApiDtos.MessageView>> inbox() { return ApiResponse.ok(service.inbox()); }
     @GetMapping("/sent") public ApiResponse<List<ApiDtos.MessageView>> sent() { return ApiResponse.ok(service.sent()); }
     @GetMapping("/{id}") public ApiResponse<ApiDtos.MessageView> detail(@PathVariable String id) { return ApiResponse.ok(service.detail(id)); }

@@ -34,6 +34,7 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
             select u.id as id, u.identityCode as identityCode, u.username as username, u.displayName as displayName, u.role.code as roleCode
             from UserEntity u where u.status = com.robustvision.platform.domain.UserStatus.ACTIVE
             and u.id <> :currentId and (:allTargets = true or u.id in :targetIds)
+            and (:query = '' or u.identityCode = :identityCode or (:identityCode = '' and (lower(u.username) like :query escape '!' or lower(u.displayName) like :query escape '!')))
             and not exists (select c.id from ContactLinkEntity c where ((c.lowUserId = :currentId and c.highUserId = u.id) or (c.highUserId = :currentId and c.lowUserId = u.id)) and (c.lowBlocked = true or c.highBlocked = true))
             and (:admin = true or u.role.code = 'ADMIN' or exists (select c.id from ContactLinkEntity c where c.status = 'ACCEPTED' and ((c.lowUserId = :currentId and c.highUserId = u.id) or (c.highUserId = :currentId and c.lowUserId = u.id))) or exists (
                 select mine.id from WorkspaceMemberEntity mine, WorkspaceMemberEntity other
@@ -43,8 +44,13 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
                 and 'CONTENT_READ' member of other.permissions))
             order by u.displayName, u.id
             """)
-    List<MessageContactRow> findMessageContacts(@Param("currentId") Long currentId, @Param("admin") boolean admin,
-            @Param("allTargets") boolean allTargets, @Param("targetIds") java.util.Collection<Long> targetIds);
+    List<MessageContactRow> searchMessageContacts(@Param("currentId") Long currentId, @Param("admin") boolean admin,
+            @Param("allTargets") boolean allTargets, @Param("targetIds") java.util.Collection<Long> targetIds,
+            @Param("query") String query, @Param("identityCode") String identityCode, org.springframework.data.domain.Pageable pageable);
+
+    default List<MessageContactRow> findMessageContacts(Long currentId, boolean admin, boolean allTargets, java.util.Collection<Long> targetIds) {
+        return searchMessageContacts(currentId, admin, allTargets, targetIds, "", "", org.springframework.data.domain.Pageable.unpaged());
+    }
 
     @Query("""
         select u.id as id, u.identityCode as identityCode, u.username as username, u.displayName as displayName

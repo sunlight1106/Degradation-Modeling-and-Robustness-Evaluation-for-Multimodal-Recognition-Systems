@@ -33,9 +33,15 @@ public class MessageService {
     }
 
     @Transactional(readOnly = true)
-    public List<ApiDtos.MessageContactView> directory() {
+    public List<ApiDtos.MessageContactView> directory(String query, int page, Long userId) {
+        String text = query == null ? "" : query.trim();
+        if (text.length() > 80 || page < 0 || page > 10000 || userId != null && userId < 1)
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "DIRECTORY_QUERY_INVALID", "搜索条件无效，请使用 80 字以内的名称或完整身份码");
+        String pattern = text.isEmpty() ? "" : "%" + text.toLowerCase(Locale.ROOT).replace("!", "!!").replace("%", "!%").replace("_", "!_") + "%";
+        String identityCode = text.matches("(?i)PKB-[0-9A-F]{32}") ? text.toUpperCase(Locale.ROOT) : "";
         UserEntity current = currentUserService.requireCurrent();
-        return userRepository.findMessageContacts(current.getId(), currentUserService.isSuperAdmin(current), true, List.of(current.getId()))
+        return userRepository.searchMessageContacts(current.getId(), currentUserService.isSuperAdmin(current), userId == null,
+                        List.of(userId == null ? current.getId() : userId), pattern, identityCode, org.springframework.data.domain.PageRequest.of(page, 25))
                 .stream().map(user -> new ApiDtos.MessageContactView(user.getId(), user.getIdentityCode(), user.getUsername(), user.getDisplayName(),
                         "ADMIN".equals(user.getRoleCode()) ? "ADMIN" : currentUserService.isSuperAdmin(current) ? "USER" : "GROUP_MEMBER")).toList();
     }

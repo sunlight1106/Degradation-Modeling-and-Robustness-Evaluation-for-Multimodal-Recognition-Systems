@@ -219,7 +219,13 @@ export const api = {
     payload.files.forEach(file => body.append('files', file))
     return request<MessageView>(`/messages/groups/${id}`, { method: 'POST', body })
   },
-  messageDirectory: () => request<MessageContactView[]>('/messages/directory'),
+  messageDirectory: (options: { q?: string; page?: number; userId?: number } = {}) => {
+    const params = new URLSearchParams()
+    if (options.q) params.set('q', options.q)
+    if (options.page !== undefined) params.set('page', String(options.page))
+    if (options.userId !== undefined) params.set('userId', String(options.userId))
+    return request<MessageContactView[]>(`/messages/directory${params.size ? `?${params}` : ''}`)
+  },
   inbox: () => request<MessageView[]>('/messages/inbox'),
   sent: () => request<MessageView[]>('/messages/sent'),
   message: (id: string) => request<MessageView>(`/messages/${id}`),
