@@ -6,7 +6,7 @@ This is a **bounded local/development recovery tool**, not a production backup s
 
 A private ZIP contains:
 
-- A complete application-schema SQL dump: tables, indexes, constraints, every row, and the original `flyway_schema_history`. Current schema: 33 application tables plus Flyway, V1–V16, 48 foreign keys.
+- A complete application-schema SQL dump: tables, indexes, constraints, every row, and the original `flyway_schema_history`. Current schema: 34 application tables plus Flyway, V1–V18, 49 foreign keys.
 - All regular files under the explicitly selected **filesystem storage root**, including files not referenced by current metadata. Each relative path has a size and SHA-256 manifest entry; every `file_asset.storage_path`, size and SHA must match the actual bytes.
 - A table/engine/collation inventory, exact row counts, foreign-key inventory and migration versions/checksums.
 
@@ -98,3 +98,5 @@ Without both enabling variables the test is **skipped**, not passed. Require `Te
 `.github/workflows/recovery.yml` repeats the fast and MySQL tests using a disposable MySQL 8.4 service and SHA-256-pinned official 8.4.6 clients. It publishes no database, backup, credentials or test runtime artifacts.
 
 Official option references: [mysqldump](https://dev.mysql.com/doc/refman/8.4/en/mysqldump.html), [SQL dump database selection](https://dev.mysql.com/doc/refman/8.4/en/mysqldump-sql-format.html), [client option files](https://dev.mysql.com/doc/refman/8.4/en/option-file-options.html).
+
+Personal AI memories are included in the SQL backup. Local PyTorch jobs and weights use the separate `training_data` volume, which this script does not capture. Back it up with the training service stopped and restore it alongside the matching user database; see [the training guide](../../docs/PERSONAL_AI.md#保存与迁移).
