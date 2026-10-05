@@ -45,7 +45,7 @@ class PersonalAiIsolationIntegrationTest {
         var sources = mock(NoteExperimentSourceService.class); when(sources.buildContext(anyList())).thenReturn("");
         var transport = spy(new PersonalAiTransport(new ObjectMapper(), endpoints));
         doReturn(new PersonalAiTransport.Completion("synthetic result", 2, 3)).when(transport).execute(any(), any(), any());
-        var ai = new PersonalAiService(currentUser, settings, new PersonalAiPersistenceService(usage, mock(PersonalRecognitionResultRepository.class), mock(org.springframework.transaction.PlatformTransactionManager.class)), encryption, endpoints, transport, new PersonalAiRateLimiter(), sources, true);
+        var ai = new PersonalAiService(currentUser, settings, new PersonalAiPersistenceService(usage, mock(PersonalRecognitionResultRepository.class), mock(org.springframework.transaction.PlatformTransactionManager.class)), encryption, endpoints, transport, new PersonalAiRateLimiter(), sources, mock(PersonalAiMemoryService.class), true);
         var preview = ai.preview(new PreviewRequest(AiProvider.OPENAI, "draft", "title", "own content", List.of()));
         login(b.getUsername());
         assertThat(currentUser.isSuperAdmin(currentUser.requireCurrent())).isTrue();

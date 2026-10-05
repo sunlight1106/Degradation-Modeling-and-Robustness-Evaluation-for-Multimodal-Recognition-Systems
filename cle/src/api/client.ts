@@ -137,7 +137,7 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
   return envelope.data
 }
 
-async function fetchBlob(path: string): Promise<Blob> {
+export async function fetchBlob(path: string): Promise<Blob> {
   const session = captureSession()
   const headers = new Headers()
   if (session.token) headers.set('Authorization', `Bearer ${session.token}`)

@@ -24,6 +24,7 @@ class PersonalAiServiceTest {
     private final PersonalAiEndpointPolicy policy = new PersonalAiEndpointPolicy("");
     private final PersonalAiTransport transport = spy(new PersonalAiTransport(new ObjectMapper(), policy));
     private final NoteExperimentSourceService sources = mock(NoteExperimentSourceService.class);
+    private final PersonalAiMemoryService memories = mock(PersonalAiMemoryService.class);
     private final UserEntity a = mock(UserEntity.class), b = mock(UserEntity.class);
     private PersonalAiService service;
     private PersonalAiSettingEntity setting;
@@ -36,7 +37,7 @@ class PersonalAiServiceTest {
         when(settings.findByOwnerIdAndProvider(22L, AiProvider.OPENAI)).thenReturn(Optional.empty());
         when(sources.buildContext(anyList())).thenReturn("");
         doReturn(new PersonalAiTransport.Completion("mock result", 10, 4)).when(transport).execute(any(), any(), anyString());
-        service = new PersonalAiService(users, settings, persistence, encryption, policy, transport, new PersonalAiRateLimiter(), sources, true);
+        service = new PersonalAiService(users, settings, persistence, encryption, policy, transport, new PersonalAiRateLimiter(), sources, memories, true);
     }
     private PreviewRequest request() { return new PreviewRequest(AiProvider.OPENAI, "draft", "title", "approved body", List.of()); }
     @Test void previewIsExactImmutableSingleUseAndOwnerBoundEvenForAdmin() throws Exception {
@@ -71,7 +72,7 @@ class PersonalAiServiceTest {
         var expired = service.preview(request());
         ReflectionTestUtils.setField(service, "clock", Clock.offset(Clock.systemUTC(), Duration.ofMinutes(6)));
         assertThatThrownBy(() -> service.execute(new ExecuteRequest(expired.previewToken(), true))).isInstanceOf(BusinessException.class);
-        var disabled = new PersonalAiService(users, settings, persistence, encryption, policy, transport, new PersonalAiRateLimiter(), sources, false);
+        var disabled = new PersonalAiService(users, settings, persistence, encryption, policy, transport, new PersonalAiRateLimiter(), sources, memories, false);
         var disabledPreview = disabled.preview(request());
         assertThatThrownBy(() -> disabled.execute(new ExecuteRequest(disabledPreview.previewToken(), true))).isInstanceOf(BusinessException.class).hasMessageContaining("尚未启用");
         verify(transport, never()).execute(any(), any(), any());
@@ -197,5 +198,14 @@ class PersonalAiServiceTest {
         String javaComment = CodeAnnotations.apply("return 1;", "java", "line", "line\n" + "\\" + "u000a injected()");
         assertThat(javaComment).contains("// line\n// ＼u000a injected()").endsWith("return 1;");
         assertThat(CodeAnnotations.apply("<p>hi</p>", "html", "line", "--> bad")).contains("—> bad").endsWith("-->\n<p>hi</p>");
+    }
+
+    @Test void changedMemoriesBlockPreviouslyApprovedTextBeforeTransport() {
+        when(memories.snapshot(any())).thenReturn(new PersonalAiMemoryService.Snapshot("\nOnly my own enabled memory", "revision-1"));
+        var preview=service.preview(new PreviewRequest(AiProvider.OPENAI,"draft","Title","body",List.of()));
+        assertThat(preview.toString()).contains("Only my own enabled memory");
+        doThrow(new BusinessException(org.springframework.http.HttpStatus.CONFLICT,"AI_MEMORY_CHANGED","记忆已更改")).when(memories).verify(any(),eq("revision-1"));
+        assertThatThrownBy(()->service.execute(new ExecuteRequest(preview.previewToken(),true))).hasMessageContaining("记忆已更改");
+        verify(transport,never()).execute(any(),any(),any());
     }
 }

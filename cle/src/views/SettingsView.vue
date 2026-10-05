@@ -36,7 +36,7 @@ const usageTotals = computed(() => ({ count: usage.value.length, succeeded: usag
 const emailChanged = computed(() => profile.email.trim() !== authStore.state.user?.email)
 const fmt = (date?: string) => date ? new Date(date).toLocaleString('zh-CN', { hour12: false }) : '—'
 const formatBytes = (bytes: number) => bytes >= 1024 ** 3 ? `${(bytes / 1024 ** 3).toFixed(2)} GB` : bytes >= 1024 ** 2 ? `${(bytes / 1024 ** 2).toFixed(2)} MB` : `${(bytes / 1024).toFixed(1)} KB`
-const actionLabel: Record<string, string> = { summarize: '摘要', outline: '大纲', tags: '标签', tidy: '格式整理', draft: '报告草稿', recognize_receipt: '票据识别', recognize_plate: '车牌识别' }
+const actionLabel: Record<string, string> = { summarize: '摘要', outline: '大纲', tags: '标签', tidy: '格式整理', draft: '报告草稿', recognize_receipt: '票据识别', recognize_plate: '车牌识别', understand_image: '图片理解' }
 function clearSecrets() { profile.currentPassword = ''; passwords.current = ''; passwords.next = ''; passwords.confirm = ''; securityPassword.value = ''; exportPassword.value = '' }
 function syncProfile() { profile.displayName = authStore.state.user?.displayName || ''; profile.email = authStore.state.user?.email || ''; profile.currentPassword = '' }
 async function select(id: string) { if (busy.value) return; clearSecrets(); await router.replace({ query: { ...route.query, section: id } }) }

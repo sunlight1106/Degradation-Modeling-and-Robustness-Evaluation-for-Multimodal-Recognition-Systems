@@ -9,7 +9,8 @@ import { createRequestGuard, isPreviewExpired } from '@/lib/requestGuard'
 import { toastStore } from '@/stores/toast'
 
 const catalog = ref<PersonalAiProvider[]>([]), settings = ref<PersonalAiSetting[]>([])
-const provider = ref(''), taskType = ref<PersonalRecognitionTask>('RECEIPT')
+const provider = ref(''), taskType = ref<PersonalRecognitionTask>('IMAGE_UNDERSTANDING')
+const question = ref('')
 const file = ref<File | null>(null), uploaded = ref<FileView | null>(null), fileInput = ref<HTMLInputElement | null>(null)
 const imageUrl = ref(''), review = ref<RecognitionPreview | null>(null), consent = ref(false), visionConfirmed = ref(false)
 const busy = ref<'upload' | 'preview' | 'execute' | null>(null), loading = ref(false), error = ref('')
@@ -26,9 +27,9 @@ const remoteEnabled = computed(() => catalog.value.find(item => item.provider ==
 const selectedModel = computed(() => available.value.find(item => item.provider === provider.value)?.model)
 const now = ref(Date.now()), timer = window.setInterval(() => { now.value = Date.now() }, 1000)
 const expired = computed(() => review.value ? isPreviewExpired(review.value.expiresAt, now.value) : false)
-const taskLabel = (type: string) => type === 'RECEIPT' ? '票据识别' : '车牌识别'
+const taskLabel = (type: string) => type === 'IMAGE_UNDERSTANDING' ? '图片理解' : type === 'RECEIPT' ? '票据识别' : '车牌识别'
 function cancel() { requestGuard.cancel(); busy.value = null; review.value = null; consent.value = false }
-watch([provider, taskType, file], () => { cancel(); result.value = null; error.value = '' }, { flush: 'sync' })
+watch([provider, taskType, file, question], () => { cancel(); result.value = null; error.value = '' }, { flush: 'sync' })
 watch(provider, () => { visionConfirmed.value = false })
 function chooseFile(event: Event) {
   const picked = (event.target as HTMLInputElement).files?.[0]
@@ -64,7 +65,7 @@ async function prepare() {
       uploaded.value = stored
     }
     busy.value = 'preview'
-    const preview = await personalApi.recognitionPreview({ provider: provider.value, fileId: stored.id, taskType: taskType.value }, request.signal)
+    const preview = await personalApi.recognitionPreview({ provider: provider.value, fileId: stored.id, taskType: taskType.value, question: question.value }, request.signal)
     if (request.current()) { review.value = preview; consent.value = false }
   } catch (reason) { if (request.current()) error.value = reason instanceof ApiClientError ? reason.message : '上传或准备预览失败，请重试' }
   finally { if (request.current()) busy.value = null }
@@ -97,13 +98,14 @@ onBeforeUnmount(() => { cancel(); loadGuard.cancel(); historyGuard.cancel(); win
 </script>
 <template>
   <section class="panel note-personal-tools personal-recognition">
-    <header class="panel-header"><div><p class="page-kicker">PERSONAL VISION</p><h3>个人 AI 图片识别</h3><p>用自己的视觉模型识别票据或车牌，结果只保存到你的账户。</p></div><RouterLink to="/app/settings?section=ai" class="settings-inline-link">配置个人 AI →</RouterLink></header>
+    <header class="panel-header"><div><p class="page-kicker">PERSONAL VISION</p><h3>个人 AI 图片识别</h3><p>理解图片、提取文字、解读图表，或针对图片提问。结果保存到你的账户。</p></div><RouterLink to="/app/settings?section=ai" class="settings-inline-link">配置个人 AI →</RouterLink></header>
     <div class="note-tool-content">
       <p class="settings-notice">图片会先上传到本平台。只有你确认后，原图及下方指令才会发送到选定供应商，并使用你的个人 API 额度。此入口暂不支持视频或 DeepSeek 视觉识别。</p>
       <p v-if="error" class="inline-alert inline-alert--error" role="alert">{{ error }}</p>
-      <div class="settings-fields"><label class="field-label">我的供应商 / 模型<select v-model="provider" class="field-input" :disabled="loading || !!busy"><option value="" disabled>请选择已启用的个人配置</option><option v-for="item in available" :key="item.provider" :value="item.provider">{{ item.provider }} · {{ item.model }}</option></select></label><label class="field-label">识别任务<select v-model="taskType" class="field-input" :disabled="!!busy"><option value="RECEIPT">票据识别</option><option value="LICENSE_PLATE">车牌识别</option></select></label></div>
+      <div class="settings-fields"><label class="field-label">我的供应商 / 模型<select v-model="provider" class="field-input" :disabled="loading || !!busy"><option value="" disabled>请选择已启用的个人配置</option><option v-for="item in available" :key="item.provider" :value="item.provider">{{ item.provider }} · {{ item.model }}</option></select></label><label class="field-label">识别任务<select v-model="taskType" class="field-input" :disabled="!!busy"><option value="IMAGE_UNDERSTANDING">图片内容理解</option><option value="RECEIPT">票据识别</option><option value="LICENSE_PLATE">车牌识别</option></select></label></div>
       <div class="settings-button-row"><button class="button button--ghost button--small" :disabled="loading || !!busy" @click="load">刷新个人配置</button><span v-if="loading" role="status">正在加载…</span><span v-else-if="!available.length">尚未启用个人配置，请先前往设置。</span></div>
       <label class="field-label">选择图片（JPEG / PNG / WEBP，最多 5 MB）<input ref="fileInput" class="field-input" type="file" accept="image/jpeg,image/png,image/webp" :disabled="!!busy" @change="chooseFile" /></label>
+      <label class="field-label">想了解图片的什么内容？（可选）<textarea v-model="question" class="field-input" rows="3" maxlength="1000" :disabled="!!busy" placeholder="例如：提取图片中的文字；解释这张图表；描述照片中的场景。" /></label>
       <figure v-if="imageUrl && file" class="recognition-image"><img :src="imageUrl" alt="你选择的待识别图片" /><figcaption>{{ file.name }} · {{ (file.size / 1024).toFixed(1) }} KB</figcaption></figure>
       <label class="settings-check"><input v-model="visionConfirmed" type="checkbox" :disabled="!!busy || !provider" /> 我已确认模型 {{ selectedModel || '（未选择）' }} 支持图片输入。供应商可用性与权限未由平台验证。</label>
       <p v-if="provider && !remoteEnabled" class="inline-alert">此部署尚未开启外部模型调用。可上传及预览，实际发送需部署管理员启用。</p>

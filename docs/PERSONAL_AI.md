@@ -1,74 +1,69 @@
-# Personal AI (BYOK)
+# 个人 AI：图片、记忆与本地训练
 
-Each authenticated user manages their own encrypted provider settings. No administrator or pooled key is used by personal notebook AI. Administrator privileges do not grant access to another user's personal profile, history, or preview. Provider billing belongs to the user's provider account; this feature does not debit the platform wallet or invent cost estimates.
+入口为 **设置 → 个人 AI**。这里有「模型服务」「共享记忆」「本地训练」三个页签。
 
-## Safe deployment defaults
+## 理解一张图片
 
-- `PERSONAL_AI_REMOTE_ENABLED=false` is the default. Settings and previews work, but no remote execution occurs. Enable only when the deployment is ready for user-authorized provider calls.
-- `CREDENTIAL_MASTER_KEY` must be an independently generated secret of at least 32 UTF-8 bytes. Missing, short, and the former known development key fail startup. Preserve it securely across restarts; changing it without re-encrypting records invalidates existing credentials. AES-256-GCM uses a fresh random nonce per encryption.
-- Never place provider keys in source control, frontend environment files, browser local storage, logs, URLs, screenshots, or shared administrator configuration. Enter keys through the signed-in user's settings page over HTTPS. Key fields are write-only, blank updates retain the existing key, and responses reveal only `configured` metadata.
-- `PERSONAL_AI_ALLOWED_BASE_URLS` is an optional comma-separated list of exact HTTPS API bases. Empty by default. It permits a deployment-reviewed custom gateway or regional endpoint; wildcards and arbitrary domains are not supported. Allowlisting does not permit private/reserved addresses. Treat the configured endpoint operator as a recipient of both the user's API key and approved content.
+1. 在「模型服务」保存你自己的视觉模型名称、服务地址与 API 密钥，并启用。
+2. 进入「实验台」，在个人 AI 区域选择 **图片内容理解**。
+3. 选择 JPEG、PNG 或 WEBP 图片（不超过 5 MB）。可填写问题，例如「这张图表说明了什么？」。
+4. 准备预览，检查图片、模型、问题与启用的记忆。确认后才会发送。
+5. 查看结果，可保存为笔记。历史结果中会保留你的问题。
 
-## API workflow
+模型应支持所选供应商的图片接口。保存配置不代表供应商已验证密钥或模型权限；部署端 `PERSONAL_AI_REMOTE_ENABLED` 默认关闭。供应商费用使用你自己的 API 账户，本地训练不使用这个密钥。
 
-All paths are under `/api/v1/personal-ai` and require authentication. Preview and execution also require `note:write`.
+## 维护自己的共享记忆
 
-- `GET /providers`: provider, displayName, protocol, known baseUrls, customEndpointAllowed, remoteEnabled. Model IDs are user supplied; no model is silently selected.
-- `GET /settings`, `PUT /settings/{provider}`, `DELETE /settings/{provider}`: current user's profiles only. PUT accepts `{model, baseUrl, apiKey, enabled}`. A new profile requires a key. No owner ID is accepted.
-- `GET /usage`: current user's most recent 100 calls, with status, provider/model/action, token counts when returned, sanitized error code, and timestamp. No prompts, generated content, keys, or estimated costs are stored.
-- `POST /preview`: `{provider, action, title, body, selectedTaskIds}`. Actions: summarize, outline, tags, tidy, draft. At most 20 own completed experiment IDs are resolved on the server, including input-file ownership. Total body plus resolved sources is limited to 24,000 characters, with no silent truncation. The response displays the exact user context, system instructions, endpoint/model and outbound byte count.
-- `POST /execute`: `{previewToken, confirmed:true}`. A five-minute, single-use token binds the owner, exact serialized request, and setting identity/revision. Other users cannot consume it. Configuration changes or deletion invalidate it. Edits require a new preview. Selected resource ownership is rechecked at execution; rechecked content never replaces or expands the approved payload. Restarting the process invalidates pending previews.
-- Legacy `/notes/assist` and `/notes/{id}/assist` perform explicit `LOCAL_RULES` only and reject bodies over 24,000 characters without truncating or modifying the original. They never silently fall back from a provider call or access the pooled key ring.
+1. 打开「共享记忆」，输入标题与内容，例如标题「学习方式」、内容「我在学习 Java，请用中文、先举例再解释」。
+2. 勾选「在我的 AI 请求中使用」，点击「添加记忆」。
+3. 使用「编辑」修改内容；「停用」会保留内容但不再发送；「删除」会移除记录。
 
-Failed, refused, incomplete, oversized, or empty provider responses fail closed. The user can choose local rules separately. Generated text is untrusted and should be reviewed before applying; it must be rendered with Markdown sanitization and without automatic external image fetches.
+启用的记忆用于本人笔记 AI 与图片理解，不与其他账户共享，也不用于 DEMO 或本地训练。平台管理员没有跨用户读写接口。部署机器和数据库的运营者仍具有基础设施管理权限。
 
-## Protocols and endpoint policy
+最多保存 100 条，每条内容最多 1000 字；启用的标题与内容合计最多 6000 字。发送预览中可查看完整记忆；新增、编辑、停用、删除启用记忆后，旧预览不能继续发送。已经发给供应商的内容无法通过删除本地记忆撤回。
 
-- OpenAI, xAI, DeepSeek, Moonshot, Qwen, and hosted Llama/custom compatible endpoints use chat completions with Bearer authentication.
-- Anthropic uses `/messages`, `x-api-key`, `anthropic-version: 2023-06-01`, top-level `system`, and text content blocks.
-- Gemini uses `/models/{model}:generateContent`, `x-goog-api-key`, `systemInstruction`, `contents`, and `generationConfig`; thought parts are excluded from output.
-- Hosted Llama means a provider such as Groq or Together, not an assumed universal Meta endpoint. Model availability and vision support depend on the user's account and selected model.
-- Qwen region-bound keys and workspace endpoints must match. Known legacy DashScope bases remain selectable for existing accounts, but current workspace-specific regional addresses require explicit deployment allowlisting. No arbitrary `*.aliyuncs.com` suffix is trusted.
+在「设置 → 隐私与数据」导出账户数据，也会包含自己的记忆。
 
-DNS resolution is capped at five seconds in a bounded executor. Every answer must be public; mixed public/private results are rejected. The connection uses the immutable validated DNS snapshot, normal TLS/hostname verification, no proxy, no redirects, and no automatic retries. A new connection pool per request prevents an older pool from bypassing the selected endpoint snapshot. Reserved/private IPv4, loopback, multicast, link-local, IPv4-mapped IPv6, ULA, special-purpose IPv6 and transition ranges are rejected. DNS pinning protects against rebinding between validation and connection.
+## 第一次训练：从示例开始
 
-Calls have an absolute 30-second timeout, eight-second connect and 20-second read timeout, 256 KiB response limit, 24,000-character output limit, and provider token cap of 1,600. Per process: one active call per user, 12 executions and 30 previews per user/minute, 16 calls globally, and at most 256 pending previews. Multi-replica deployments must additionally enforce account/global quotas at a shared gateway or distributed limiter; in-memory limits are not a cluster-wide billing cap. Preview content stays only in bounded process memory until consumed/expired/restarted.
+1. 打开「本地训练」。顶部显示 **PyTorch … · CPU** 代表环境已就绪。
+2. 点击「下载示例」，取得一个 JSON 文件。
+3. 选择这个文件，保留默认 **15 轮 / 学习率 0.01**，点击「开始训练」。
+4. 观察右侧任务状态，训练完成后输入一段新文字，点击「预测类别」。
+5. 点击「下载模型与数据」，解压后按照包内 `MODEL_README.md` 离线预测。
 
-## Verification and limitations
+自己的数据采用下列结构（这里只演示格式，正式训练每类至少 4 条不同样本）：
 
-Development verification uses synthetic credentials and mocked upstream responses only. It covers all provider protocol families, owner isolation including administrator accounts, encrypted persistence, exact preview binding, rotation/deletion/expiry/replay, disabled/missing configuration, explicit local behavior, rate/concurrency limits, hostile endpoint inputs, private/mapped IPv6 and mixed DNS answers, DNS pinning, redirect/retry policy, bounded response/timeouts, malformed upstream output, token limits and sanitized errors. This is not a live certification of any account, model availability, regional routing, or provider billing behavior.
+```json
+[
+  {"text": "整理计算机课程笔记", "label": "学习"},
+  {"text": "周末去超市买水果", "label": "生活"}
+]
+```
 
-Primary protocol references:
-- [OpenAI chat completions](https://developers.openai.com/api/reference/resources/chat/subresources/completions/methods/create)
-- [Anthropic Messages API](https://platform.claude.com/docs/en/api/messages)
-- [Gemini generateContent](https://ai.google.dev/api/generate-content)
-- [xAI chat completions](https://docs.x.ai/developers/model-capabilities/text/generate-text)
-- [DeepSeek chat completions](https://api-docs.deepseek.com/api/create-chat-completion)
-- [Moonshot chat](https://platform.kimi.ai/docs/api/chat)
-- [Qwen compatibility and regions](https://www.alibabacloud.com/help/en/model-studio/compatibility-of-openai-with-dashscope)
-- [Groq API](https://console.groq.com/docs/api-reference)
-- [Together compatibility](https://docs.together.ai/docs/inference/openai-compatibility)
+- 支持 2–12 个类别、8–500 条样本；每类至少 4 条，每条文字最多 1000 字，类别名最多 40 字。
+- 上传文件不超过 140 KB，总文字不超过 30000 字。去除大小写、全半角与多余空白差异后，相同文字不能重复。
+- 使用固定随机种子 42，按类别留出约 20% 的样本验证，其余参与训练。模型使用字符/词语哈希特征与两层神经网络。
+- 训练损失通常越低越好；验证准确率来自没有参与训练的样本，但少量数据会有很大波动。分数不是经过校准的可信度。
+- 每个账户同时最多一个任务，最多保留 10 个；平台串行运行 CPU 训练，队列最多 8 个、总记录最多 1000 个。训练上限 50 轮 / 5 分钟。
+- 可以停止训练，停止后删除；删除同时移除样本、指标、模型。服务重启时未完成任务标记为失败，可重新创建。
 
-## Image recognition and stored results
+当前训练能力是**文本分类**，不是聊天大模型或 LoRA 微调；不能修改第三方供应商的模型。服务器只执行固定训练模板，不接受用户 Python 脚本、模型权重或任意命令。
 
-`POST /recognition/preview` accepts `{provider,fileId,taskType}` where taskType is RECEIPT or LICENSE_PLATE. It requires a CLEAN scanned, own PNG/JPEG/WebP image up to 5 MiB, plus an enabled own profile. The response identifies the exact image by ID, hash, MIME and size, and shows provider/model and both prompts. `POST /recognition/execute` accepts the one-use preview token and explicit confirmation; `GET /recognition/results` lists the owner's latest 100 saved results. The results can be selected in notebook sources using `r:<id>`. There is no real-video path and no claim that text-only models accept images; unverified DeepSeek vision is rejected.
+## 部署训练环境
 
-Image preview building reserves one per-owner and at most two global build slots before loading/encoding media; pending and building image snapshots together are bounded to 16. Preview expiry cleanup runs every 30 seconds. A user cancel stops the browser from applying a late response; a request already sent to a provider may complete and be billed within the server's bounded timeout.
+使用根目录的 `deploy.ps1`（Windows）或 `deploy.sh`（Linux/macOS）即可构建和启动。脚本为已有部署补齐独立的 `TRAINING_SERVICE_TOKEN`，不会覆盖其他密钥。首次下载 PyTorch CPU 依赖需要联网和额外磁盘空间；运行时不需要下载基座模型。
 
-Usage is nullable when the provider does not report valid counters or a network outcome is unknown. Reported usage is retained even for truncated/refused/unusable responses; Gemini thought tokens and Anthropic cache input tokens are included when reported. A failed call does not imply zero cost. Provider pricing categories may differ, so these counts are not a monetary bill. `/api/v1/account/usage` reports owner-only all-time counts and known tokens; `/usage` is the latest-100 history.
+训练服务不开放主机端口，由后端携带当前登录账户和内部令牌访问。容器使用非 root 用户、只读根目录、2 CPU / 2 GB 内存上限和独立数据卷。默认单个训练服务实例，不要并行挂载同一训练卷运行多个实例。
 
-## Completion persistence and partial outcomes
+仅从 IDE 启动 Java 后端时，要另外启动训练容器并配置服务地址与内部令牌；其他个人 AI 功能不依赖训练服务。推荐直接使用完整 Docker 部署。
 
-Provider I/O runs before short database transactions. Recognition output and its successful-usage row commit together; a rejected write rolls back both. Text completion records only usage metadata and never silently saves or changes the notebook. No database failure triggers another provider request or a second failed-usage write.
+出现「训练环境尚未就绪」时，重新运行部署脚本；再检查 `docker compose ps training` 与 `docker compose logs --tail 50 training`。不要把日志中的私人内容或 `.env` 发到公开仓库。
 
-Completion responses include `persistenceStatus` (`SAVED` or `UNCONFIRMED`) and nullable `warning`. `SAVED` means the usage transaction committed; for recognition it also means the result committed. An `UNCONFIRMED` response still returns the completed content and reported token counters, but a recognition result has no exposed ID and must not enter the saved-result history or offer a notebook source link. The UI displays a prominent warning and lets the user retain the text manually. A lost commit acknowledgement can mean the rows did save, so refresh history rather than assuming either outcome. Clients must inspect this status even when the HTTP response contains a completed result.
+## 保存与迁移
 
-If provider output was unusable or the network outcome was unknown and saving its failure metadata also fails, the API returns `PERSONAL_AI_USAGE_UNCONFIRMED`, keeps known token counters in the sanitized error message, and explicitly warns against resending. Unknown counters remain unknown. Provider charges may still apply; the platform's usage totals may be incomplete until reconciled with the provider. The one-use preview stays consumed in every case.
+记忆保存在 MySQL；训练样本、指标与权重保存在 `training_data` 数据卷，重建容器后保留。**现有数据库/对象存储备份不会自动包含训练卷**。迁移时先停止训练服务，使用 Docker 数据卷备份方式单独备份 `robust-vision_training_data`（自定义 Compose 项目名会改变前缀），与同一时刻的数据库一起恢复，避免账户 ID 对应错误。
 
-There is no automatic paid-call replay or durable provider-attempt/reconciliation table. A process crash or lost HTTP response can still prevent delivery of generated content. Refresh saved history and check the provider's records before deciding whether to authorize a new request.
+单个任务可直接下载 ZIP 归档，包含模型、样本、参数、指标与预测脚本。恢复平台任务列表需恢复整个训练卷，当前不提供导入模型 ZIP 的接口。分享 ZIP 前请检查其中的私人样本。
 
-`PersonalAiPersistenceIntegrationTest` runs the same six synthetic-only transaction cases on H2 by default and on a fresh, randomly named MySQL schema when `MYSQL_TEST_URL` is supplied: successful atomic writes, result/usage write rollback, commit-time constraint rollback, lost commit acknowledgement, and retained text/token counts. The test never calls a provider or adopts the database named by the supplied URL.
-
-## Deployment and state
-
-Compose forwards `PERSONAL_AI_REMOTE_ENABLED` and `PERSONAL_AI_ALLOWED_BASE_URLS` to API/worker with safe false/empty defaults. Editing an env file alone does not alter a running container; recreate it through the normal operator workflow. This implementation's previews and fine-grained AI concurrency limits are process-local. Use a single API replica or sticky routing for preview/execute, plus shared gateway quotas before scaling. Restarting an API invalidates its unconsumed previews safely. Existing sessionless JWTs require fresh login after the session migration. No live deployment or real API configuration was changed during development.
+开发者接口、请求限额与结果保存约定见 [API 参考](PERSONAL_AI_API.md)。

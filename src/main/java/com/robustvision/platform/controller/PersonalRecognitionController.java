@@ -13,9 +13,9 @@ import java.util.List;
 public class PersonalRecognitionController {
     private final PersonalRecognitionService service;
     public PersonalRecognitionController(PersonalRecognitionService service){this.service=service;}
-    @PostMapping("/preview") public ApiResponse<PersonalRecognitionService.Preview> preview(@Valid @RequestBody PreviewRequest request){return ApiResponse.ok(service.preview(request.provider(),request.fileId(),request.taskType()));}
+    @PostMapping("/preview") public ApiResponse<PersonalRecognitionService.Preview> preview(@Valid @RequestBody PreviewRequest request){return ApiResponse.ok(service.preview(request.provider(),request.fileId(),request.taskType(),request.question()));}
     @PostMapping("/execute") public ApiResponse<PersonalRecognitionService.Result> execute(@Valid @RequestBody ExecuteRequest request){return ApiResponse.ok(service.execute(request.previewToken(),request.confirmed()));}
     @GetMapping("/results") public ApiResponse<List<PersonalRecognitionService.Result>> results(){return ApiResponse.ok(service.list());}
-    public record PreviewRequest(@NotNull AiProvider provider,@NotBlank @Size(max=36) String fileId,@NotNull TaskType taskType){}
+    public record PreviewRequest(@NotNull AiProvider provider,@NotBlank @Size(max=36) String fileId,@NotNull TaskType taskType,@Size(max=1000) String question){}
     public record ExecuteRequest(@NotBlank @Size(max=100) String previewToken,boolean confirmed){}
 }

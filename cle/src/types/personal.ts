@@ -67,7 +67,7 @@ export interface AccountSession {
   lastSeenAt?: string
 }
 
-export type PersonalRecognitionTask = 'RECEIPT' | 'LICENSE_PLATE'
+export type PersonalRecognitionTask = 'RECEIPT' | 'LICENSE_PLATE' | 'IMAGE_UNDERSTANDING'
 export interface RecognitionPreview {
   previewToken: string
   expiresAt: string
@@ -106,3 +106,8 @@ export interface AccountUsage {
   noteCount: number
   recognitionCount: number
 }
+
+export interface PersonalAiMemory { id: string; title: string; body: string; enabled: boolean; revision: number; updatedAt: string }
+export interface TrainingSample { text: string; label: string }
+export interface TrainingEnvironment { ready: boolean; framework: string; version: string; device: string; template: string; maxSamples: number; maxEpochs: number }
+export interface TrainingJob { id: string; name: string; status: string; message: string; createdAt: number; epochs: number; epoch: number; samples: number; labels: string[]; trainSamples?: number; validationSamples?: number; metrics: { epoch: number; loss: number; accuracy: number }[] }

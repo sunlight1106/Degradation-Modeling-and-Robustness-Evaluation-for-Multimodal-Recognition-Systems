@@ -20,8 +20,10 @@ const docLinks = [
   { id: 'quickstart', label: '快速开始', keywords: '登录 注册 first run' },
   { id: 'requirements', label: '启动与部署', keywords: 'Docker localhost 4173 环境' },
   { id: 'model-contract', label: '个人 AI 配置', keywords: 'BYOK key 密钥 供应商 模型 remote' },
+  { id: 'ai-memory', label: '个人 AI 共享记忆', keywords: 'memory 偏好 修改 删除 隔离' },
+  { id: 'local-training', label: '本地 PyTorch 训练', keywords: 'CPU 分类 训练 JSON 标注 模型 下载' },
   { id: 'first-request', label: '发送预览与确认', keywords: 'API JSON preview execute 取消' },
-  { id: 'quality-route', label: '票据与车牌图片识别', keywords: 'image recognition 视频 5 MiB' },
+  { id: 'quality-route', label: '图片内容理解与识别', keywords: 'image recognition 视频 5 MiB' },
   { id: 'code-notes', label: '代码块与 AI 注释', keywords: 'Java Python main 代码 语法高亮 变量 注释 父子页面 Notion' },
   { id: 'knowledge-notes', label: '学习库与在线笔记', keywords: 'LOCAL_RULES 本地规则 知识库 英语 计算机 HTML PDF 导出 24000 24,000' },
   { id: 'online-platform', label: '多人平台与自动同步', keywords: '云端 联系人 好友 聊天 自动保存 公网 HTTPS 服务器 同步 冲突' },
@@ -46,7 +48,7 @@ const examples = [
   },
   {
     id: 'image', label: '图片预览 JSON', endpoint: 'POST /api/v1/personal-ai/recognition/preview',
-    description: 'fileId 必须替换为自己上传、已通过扫描且不超过 5 MiB 的图片 ID；taskType 可选 RECEIPT 或 LICENSE_PLATE。',
+    description: 'fileId 必须替换为自己上传、已通过扫描且不超过 5 MiB 的图片 ID；taskType 可选 IMAGE_UNDERSTANDING、RECEIPT 或 LICENSE_PLATE；question 可填写图片问题。',
     body: { provider: 'OPENAI', fileId: '<自己的已扫描图片 ID>', taskType: 'RECEIPT' },
   },
   {
@@ -148,6 +150,8 @@ async function copyCode() {
           <p>个人密钥由服务端以 AES-256-GCM 加密保存，接口只返回是否配置等元数据，不返回密钥。更新时留空保留原密钥。个人调用只使用本人的配置，不读取管理员或其他用户的共享密钥。</p>
           <p>通过受信任的 HTTPS 设置页输入密钥；不要放入源码、<code>VITE_*</code>、浏览器本地存储、URL、日志或截图。部署者须保管独立生成、至少 32 UTF-8 字节的 <code>CREDENTIAL_MASTER_KEY</code>；丢失或直接更换会使原有加密密钥无法解密。</p>
           <p>托管 Llama 需使用 Groq、Together 等实际托管服务。Qwen 区域和密钥必须匹配。自定义或区域地址由部署者通过 <code>PERSONAL_AI_ALLOWED_BASE_URLS</code> 审核精确 HTTPS API 地址；不允许任意域名、私网或环回地址。网关运营方会接收你的密钥和获准内容。</p></div></details></template></DocRow>
+<DocRow id="ai-memory" title="让不同 AI 共用你的记忆"><p>你的表达偏好、学习目标与常用背景，可以统一保存在个人记忆库。</p><template #detail><div class="guide-instructions"><ol><li>进入「设置 → 个人 AI → 共享记忆」。</li><li>填写标题与内容，例如「请用中文解释 Java，先举例再讲原理」。</li><li>勾选使用并保存；以后在笔记 AI 和图片理解中均可使用。</li><li>不想发送某条记忆时点「停用」，或直接编辑、删除。</li></ol><p>每次发送前，预览会包含本次启用的记忆。改动记忆后需要重新预览。其他账户（包括平台管理员）无法通过页面或接口读写你的记忆。</p><RouterLink to="/app/settings?section=ai">管理我的记忆 →</RouterLink></div></template></DocRow>
+<DocRow id="local-training" title="训练自己的文本分类模型"><p>无需 API 密钥或显卡。在平台提供的 PyTorch CPU 环境中，用自己的标注数据训练小型分类模型。</p><template #detail><div class="guide-instructions"><ol><li>进入「设置 → 个人 AI → 本地训练」，确认环境已就绪。</li><li>下载示例 JSON，按其中的 text（文字）和 label（类别）格式准备样本。</li><li>上传文件，填写名称、轮数与学习率，再点「开始训练」。</li><li>观察训练损失、验证准确率及逐轮指标；完成后输入新文字试用。</li><li>点击「下载模型与数据」保存权重、原始样本、指标和离线预测脚本。</li></ol><p>需要 2–12 个类别，每类至少 4 条不同样本，总计 8–500 条。约 20% 留作验证；同样文字不能重复。小样本的验证结果只用于了解本次训练，不能当作通用性能结论。</p><p>记忆库用于发送背景，训练用于学习分类权重，两者分开。当前提供固定文本分类模板，不执行上传的 Python 代码，也不微调第三方聊天模型。</p><RouterLink to="/app/settings?section=ai">打开本地训练 →</RouterLink></div></template></DocRow>
 <DocRow id="first-request" title="预览，然后发送"><p>先看清楚要发送的内容，再决定是否使用自己的模型额度。</p><template #detail><div class="guide-instructions"><ol><li>选择个人模型与操作，准备发送预览。</li><li>核对模型、接收地址和完整内容。</li><li>同意后勾选确认并发送；不发送就点击「取消，不发送」。</li><li>结果生成后先检查，再手动应用和保存。</li></ol><p class="guide-outcome">离开页面或停止等待，不能保证撤回供应商已经收到的请求。</p></div><details class="guide-more"><summary>开发者接口示例与限制</summary><div><ol class="developer-flow"><li><span>01</span><div><strong>准备内容</strong><p>在笔记的「整理与写作」选择已启用的个人模型，然后选摘要、大纲、标签、格式整理或报告草稿。</p></div></li><li><span>02</span><div><strong>逐项核对预览</strong><p>确认供应商、模型、实际端点、系统指令、完整发送内容和大小。预览不会调用模型。</p></div></li><li><span>03</span><div><strong>明确同意本次发送</strong><p>勾选授权并点击「确认发送并生成」。不想发送时选「取消，不发送」。</p></div></li><li><span>04</span><div><strong>审核后手动应用</strong><p>生成内容先展示结果预览；检查事实后插入、替换正文或合并标签，最后保存笔记。</p></div></li></ol>
           <p>API 使用同源地址，例如本机 <code>http://localhost:4173/api/v1</code>。先通过 <code>POST /api/v1/auth/login</code> 登录取得平台会话令牌；后续请求带 <code>Authorization: Bearer &lt;自己的平台会话令牌&gt;</code> 和 <code>Content-Type: application/json</code>。供应商密钥不放在以下请求中。</p>
           <div class="docs-code-window" aria-label="个人 AI 请求示例">
@@ -182,7 +186,7 @@ Linux / macOS: sh deploy.sh</code></pre></div>
           <p>旧「平台演示与双路对比」使用 <code>MODEL_MODE=demo</code>：图片增强、视频音轨预处理、异步状态和结果页用于验证链路，输出明确标记 <code>DEMO</code>，属于合成结果。旧公共密钥远程执行入口已停用，不能切换模式来绕过个人确认流程。</p>
           <p>个人 AI 通过 API 的独立预览 / 执行流程运行，不走旧模型队列。预览和细粒度并发限制位于单个 API 进程内；API 重启会清除待确认预览。扩容前需要单副本或粘性路由处理预览，并配置共享网关配额，不能把进程内限流视为整个集群的费用上限。</p></div></details></template></DocRow>
 <DocRow id="training-data" title="导出实验数据"><p>导出便于保存、复查与后续处理，不代表完成模型训练。</p><template #detail><div class="guide-instructions"><ol><li>先确认已有可访问的实验与素材。</li><li>在模型中心使用数据集导出入口。</li><li>检查 ZIP 内的清单、标签与划分信息。</li></ol><RouterLink to="/app/models">打开模型中心 →</RouterLink></div><details class="guide-more"><summary>更多说明与注意事项</summary><div><p>旧实验的 <code>GET /api/v1/training/dataset</code> 可以导出数据集 ZIP、清单与划分信息。DEMO 输出是合成数据，不可当作人工真值、真实准确率或论文结论；模型标签也必须人工复核。</p>
-          <p>当前未实现供应商训练任务、微调 job 或 checkpoint 管理。导出文件、媒体处理成功或模拟协议测试通过，都不代表模型已训练、真实视频接口可用或识别质量提高。</p></div></details></template></DocRow>
+          <p>个人 AI 设置已提供本地 PyTorch 文本分类训练；供应商微调和大模型 checkpoint 管理尚未实现。导出文件、媒体处理成功或模拟协议测试通过，都不代表模型已训练、真实视频接口可用或识别质量提高。</p></div></details></template></DocRow>
 <DocRow id="acceptance" title="检查是否操作成功"><p>用一个不含敏感信息的小样本，走完一次流程。</p><template #detail><div class="guide-instructions"><ol><li>保存笔记后刷新，标题和正文仍在。</li><li>完成一次词汇练习后刷新，进度仍在。</li><li>运行 DEMO 后能打开结果，并在下载中心下载报告。</li><li>个人 AI 只预览并取消时，不会发出模型调用。</li></ol></div><details class="guide-more"><summary>更多说明与注意事项</summary><div><ol>
             <li><RouterLink to="/app/notes/new">新建笔记</RouterLink>，输入不含敏感信息的练习文字，选本地规则摘要；检查结果后应用、保存，刷新确认仍存在。</li>
             <li>有本人已完成实验时，在笔记中选择来源、预览并插入，再保存。没有来源时看到空状态是正常的，不会生成虚构实验。</li>

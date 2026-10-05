@@ -86,6 +86,8 @@ services:
       BOOTSTRAP_TEST_EMAIL: ${BOOTSTRAP_TEST_EMAIL:-test@personal-platform.local}
       RESET_TEST_PASSWORD: ${RESET_TEST_PASSWORD:-false}
       MODEL_MODE: ${MODEL_MODE:-demo}
+      TRAINING_SERVICE_URL: http://training:8090
+      TRAINING_SERVICE_TOKEN: ${TRAINING_SERVICE_TOKEN:-}
       PERSONAL_AI_REMOTE_ENABLED: ${PERSONAL_AI_REMOTE_ENABLED:-false}
       PERSONAL_AI_ALLOWED_BASE_URLS: ${PERSONAL_AI_ALLOWED_BASE_URLS:-}
       RATE_LIMIT_AUTH: ${RATE_LIMIT_AUTH:-10}
@@ -148,6 +150,27 @@ services:
       backend:
         condition: service_healthy
 
+  training:
+    image: robust-vision-training:local
+    build: ./ai/training
+    restart: unless-stopped
+    environment:
+      TRAINING_SERVICE_TOKEN: ${TRAINING_SERVICE_TOKEN:?Run deploy.ps1 or deploy.sh to configure training}
+    volumes: ["training_data:/data"]
+    read_only: true
+    tmpfs: ["/tmp:size=128m,mode=1777"]
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 2g
+    cpus: 2
+    pids_limit: 128
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8090/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
   frontend:
     build: ./cle
     ports: ["127.0.0.1:${WEB_PORT:-4173}:80"]
@@ -166,3 +189,4 @@ volumes:
   redis_data:
   object_data:
   clamav_data:
+  training_data:

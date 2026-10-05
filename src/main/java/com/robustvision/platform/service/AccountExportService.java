@@ -34,6 +34,7 @@ public class AccountExportService {
         data.put("files", rows("SELECT id, original_name, content_type, size_bytes, source, scan_status, created_at FROM file_asset WHERE owner_id = ? ORDER BY created_at, id", id));
         data.put("inferenceHistory", rows("SELECT id, trace_id, task_type, status, model_id, provider, enhancement_enabled, baseline_confidence, optimized_confidence, baseline_latency_ms, optimized_latency_ms, input_tokens, output_tokens, cost_cny, created_at, completed_at FROM inference_task WHERE requested_by = ? ORDER BY created_at, id", id));
         data.put("aiSettings", rows("SELECT provider, model, enabled, updated_at FROM personal_ai_setting WHERE owner_id = ? ORDER BY provider", id));
+        data.put("aiMemories", rows("SELECT id, title, body, enabled, revision, created_at, updated_at FROM personal_ai_memory WHERE owner_id = ? ORDER BY created_at, id", id));
         data.put("aiUsage", rows("SELECT id, provider, model, action, status, input_tokens, output_tokens, error_code, created_at FROM personal_ai_usage WHERE owner_id = ? ORDER BY created_at, id", id));
         data.put("wallet", rows("SELECT balance_cny, monthly_quota_cny, month_spent_cny, quota_period_start, updated_at FROM user_wallet WHERE user_id = ?", id));
         data.put("walletLedger", rows("SELECT id, type, amount, balance_after, reference_id, description, created_at FROM wallet_ledger WHERE user_id = ? ORDER BY created_at, id", id));

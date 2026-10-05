@@ -64,6 +64,7 @@ public class InferenceService {
 
     public ApiDtos.InferenceView create(ApiDtos.CreateInferenceRequest request) {
         UserEntity current = currentUserService.requireCurrent();
+        if(request.taskType() == TaskType.IMAGE_UNDERSTANDING) throw new BusinessException(HttpStatus.BAD_REQUEST,"PERSONAL_VISION_REQUIRED","图片理解请使用个人 AI 入口");
         invocationService.assertLegacyAvailable();
         FileAssetEntity input = fileService.requireAccessible(request.fileId());
         ModelDefinitionEntity model = modelService.requireActive(request.modelId());

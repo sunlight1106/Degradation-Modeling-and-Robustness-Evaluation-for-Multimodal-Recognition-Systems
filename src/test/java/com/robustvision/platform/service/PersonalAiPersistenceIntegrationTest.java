@@ -120,7 +120,7 @@ class PersonalAiPersistenceIntegrationTest {
 
     private PersonalRecognitionService recognition(PersonalAiPersistenceService writes) {
         return new PersonalRecognitionService(current, files, fileService, settings, results, writes, encryption,
-                endpoints, transport, new PersonalAiRateLimiter(), true);
+                endpoints, transport, new PersonalAiRateLimiter(), mock(PersonalAiMemoryService.class), true);
     }
     private PersonalRecognitionService.Result execute(PersonalAiPersistenceService writes) {
         var service = recognition(writes);
@@ -209,7 +209,7 @@ class PersonalAiPersistenceIntegrationTest {
         when(sources.buildContext(any())).thenReturn("");
         var service = new PersonalAiService(current, settings,
                 new PersonalAiPersistenceService(usage, results, lostCommitAcknowledgement()), encryption, endpoints, transport,
-                new PersonalAiRateLimiter(), sources, true);
+                new PersonalAiRateLimiter(), sources, mock(PersonalAiMemoryService.class), true);
         var preview = service.preview(new PreviewRequest(AiProvider.OPENAI, "draft", "Synthetic", "Synthetic body", List.of()));
         var completed = service.execute(new ExecuteRequest(preview.previewToken(), true));
         assertThat(completed.persistenceStatus()).isEqualTo("UNCONFIRMED");

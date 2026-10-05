@@ -44,7 +44,7 @@ class MySqlSchemaMigrationTest {
 
     private static final Set<String> DOMAIN_TABLES = java.util.stream.Stream.concat(
             LEGACY_DOMAIN_TABLES.stream(), java.util.stream.Stream.of("personal_ai_setting", "personal_ai_usage", "user_session",
-                    "vocabulary_book", "vocabulary_word", "vocabulary_profile", "vocabulary_progress", "vocabulary_question", "personal_recognition_result", "contact_link", "chat_message"))
+                    "vocabulary_book", "vocabulary_word", "vocabulary_profile", "vocabulary_progress", "vocabulary_question", "personal_recognition_result", "contact_link", "chat_message", "personal_ai_memory"))
             .collect(java.util.stream.Collectors.toUnmodifiableSet());
 
     @Test

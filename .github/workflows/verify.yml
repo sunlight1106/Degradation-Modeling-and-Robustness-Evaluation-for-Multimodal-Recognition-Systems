@@ -52,3 +52,17 @@ jobs:
           MYSQL_TEST_URL: jdbc:mysql://127.0.0.1:3306/?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
           MYSQL_TEST_USERNAME: root
           MYSQL_TEST_PASSWORD: isolated-ci-only
+
+  training:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: ai/training/requirements.txt
+      - run: pip install torch==2.10.0 --index-url https://download.pytorch.org/whl/cpu
+      - run: pip install -r ai/training/requirements.txt
+      - run: python -m unittest -v test_training
+        working-directory: ai/training

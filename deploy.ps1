@@ -3,20 +3,26 @@ $ErrorActionPreference = 'Stop'
 Set-Location $PSScriptRoot
 . "$PSScriptRoot\scripts\ensure-docker.ps1"
 Ensure-Docker
-if (-not (Test-Path -LiteralPath '.env')) {
-    function New-Secret {
+function New-Secret {
         $bytes = New-Object byte[] 32
         $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
         try { $rng.GetBytes($bytes) } finally { $rng.Dispose() }
         return ([BitConverter]::ToString($bytes)).Replace('-', '').ToLowerInvariant()
     }
+if (-not (Test-Path -LiteralPath '.env')) {
     $config = Get-Content -LiteralPath '.env.example' -Raw
-    foreach ($key in @('BOOTSTRAP_ADMIN_PASSWORD','MYSQL_PASSWORD','MYSQL_ROOT_PASSWORD','MINIO_ROOT_PASSWORD','JWT_SECRET','CREDENTIAL_MASTER_KEY')) {
+    foreach ($key in @('BOOTSTRAP_ADMIN_PASSWORD','MYSQL_PASSWORD','MYSQL_ROOT_PASSWORD','MINIO_ROOT_PASSWORD','JWT_SECRET','CREDENTIAL_MASTER_KEY','TRAINING_SERVICE_TOKEN')) {
         $config = $config.Replace("$key=", "$key=$(New-Secret)")
     }
     $config = $config.Replace('WEB_PORT=4173', "WEB_PORT=$Port")
     [IO.File]::WriteAllText((Join-Path $PSScriptRoot '.env'), $config, (New-Object Text.UTF8Encoding($false)))
     Write-Host 'Generated .env with a random administrator password and service secrets. Keep this file private.'
+}
+$trainingLine = Get-Content '.env' | Where-Object { $_ -match '^TRAINING_SERVICE_TOKEN=.+$' }
+if (-not $trainingLine) {
+    $config = (Get-Content '.env' -Raw) -replace '(?m)^TRAINING_SERVICE_TOKEN=.*\r?\n?', ''
+    $config = $config.TrimEnd() + "`nTRAINING_SERVICE_TOKEN=$(New-Secret)`n"
+    [IO.File]::WriteAllText((Join-Path $PSScriptRoot '.env'), $config, (New-Object Text.UTF8Encoding($false)))
 }
 $composeArgs = @('compose', 'up', '-d', '--wait', '--wait-timeout', '600')
 if (-not $SkipBuild) { $composeArgs += '--build' }

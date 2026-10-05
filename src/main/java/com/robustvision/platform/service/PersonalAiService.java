@@ -27,19 +27,20 @@ public class PersonalAiService {
     private final PersonalAiTransport transport;
     private final PersonalAiRateLimiter limits;
     private final NoteExperimentSourceService sources;
+    private final PersonalAiMemoryService memories;
     private final boolean remoteEnabled;
     private final Clock clock = Clock.systemUTC();
     private final Map<String, Pending> pending = new HashMap<>();
     private record Pending(Long owner, String settingId, long revision, AiProvider provider, String model,
-                           String action, PersonalAiTransport.Payload payload, List<String> selectedTaskIds, Instant expiresAt, String code, String codeLanguage, String commentStyle) {}
+                           String action, PersonalAiTransport.Payload payload, List<String> selectedTaskIds, Instant expiresAt, String code, String codeLanguage, String commentStyle, String memoryDigest) {}
     public PersonalAiService(CurrentUserService currentUser, PersonalAiSettingRepository settings,
                              PersonalAiPersistenceService persistence, SecretEncryptionService encryption,
                              PersonalAiEndpointPolicy endpoints, PersonalAiTransport transport,
-                             PersonalAiRateLimiter limits, NoteExperimentSourceService sources,
+                             PersonalAiRateLimiter limits, NoteExperimentSourceService sources, PersonalAiMemoryService memories,
                              @Value("${app.personal-ai.remote-enabled:false}") boolean remoteEnabled) {
         this.currentUser = currentUser; this.settings = settings; this.persistence = persistence; this.encryption = encryption;
         this.endpoints = endpoints; this.transport = transport; this.limits = limits; this.sources = sources;
-        this.remoteEnabled = remoteEnabled;
+        this.remoteEnabled = remoteEnabled; this.memories=memories;
     }
     public PreviewView preview(PreviewRequest request) {
         Long owner = currentUser.requireCurrent().getId();
@@ -64,6 +65,8 @@ public class PersonalAiService {
                 + (sourceContext.isBlank() ? "" : "\n\n经权限验证的实验结果：\n" + sourceContext);
         String system = codeAction ? CodeAnnotations.SYSTEM : SYSTEM;
         if (codeAction) context = "语言：" + request.codeLanguage() + "\n注释方式：" + request.commentStyle() + "\n请静态分析以下代码（不执行）：\n" + body;
+        var memory=memories.snapshot(owner);
+        if(memory!=null) context+=memory.context();
         String base = endpoints.validateBase(setting.getProvider(), setting.getBaseUrl());
         PersonalAiTransport.Payload payload = transport.prepare(setting.getProvider(), base, setting.getModel(), system, context);
         int bytes = payload.json().getBytes(StandardCharsets.UTF_8).length;
@@ -77,7 +80,7 @@ public class PersonalAiService {
             if (pending.values().stream().filter(p -> p.owner().equals(owner)).count() >= 3)
                 pending.entrySet().removeIf(e -> e.getValue().owner().equals(owner));
             pending.put(token, new Pending(owner, setting.getId(), setting.getRevision(), setting.getProvider(),
-                    setting.getModel(), action, payload, selectedTaskIds, expires, codeAction ? body : null, request.codeLanguage(), request.commentStyle()));
+                    setting.getModel(), action, payload, selectedTaskIds, expires, codeAction ? body : null, request.codeLanguage(), request.commentStyle(),memory==null?null:memory.digest()));
         }
         return new PreviewView(token, expires, setting.getProvider(), setting.getModel(), payload.url(), action, context, system, bytes);
     }
@@ -98,6 +101,7 @@ public class PersonalAiService {
         endpoints.validateBase(setting.getProvider(), setting.getBaseUrl());
         // Re-authorize selected resources at execution without changing the approved immutable payload.
         sources.buildContext(approved.selectedTaskIds());
+        memories.verify(owner,approved.memoryDigest());
         try (PersonalAiRateLimiter.Permit ignored = limits.acquire(owner)) {
             String key = encryption.decrypt(setting.getEncryptedKey());
             PersonalAiTransport.Completion result;

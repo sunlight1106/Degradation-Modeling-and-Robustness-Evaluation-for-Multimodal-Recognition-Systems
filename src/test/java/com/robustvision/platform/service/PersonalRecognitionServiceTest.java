@@ -12,6 +12,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 class PersonalRecognitionServiceTest {
+    private final PersonalAiMemoryService memories=mock(PersonalAiMemoryService.class);
     CurrentUserService current=mock(CurrentUserService.class);
     FileAssetRepository files=mock(FileAssetRepository.class);
     FileService fileService=mock(FileService.class);
@@ -44,7 +45,7 @@ class PersonalRecognitionServiceTest {
         when(transport.execute(any(),any(),eq("synthetic-own-key"))).thenReturn(new PersonalAiTransport.Completion("商户：示例，金额未知",10,5));
         when(results.save(any())).thenAnswer(invocation->invocation.getArgument(0));
     }
-    private PersonalRecognitionService service(boolean enabled){return new PersonalRecognitionService(current,files,fileService,settings,results,persistence,encryption,endpoints,transport,new PersonalAiRateLimiter(),enabled);}
+    private PersonalRecognitionService service(boolean enabled){return new PersonalRecognitionService(current,files,fileService,settings,results,persistence,encryption,endpoints,transport,new PersonalAiRateLimiter(),memories,enabled);}
     @Test void approvedOwnImageUsesOnlyOwnKeyPersistsResultAndCannotReplay() {
         var service=service(true);var preview=service.preview(AiProvider.OPENAI,fileId,TaskType.RECEIPT);
         assertThat(preview.fileId()).isEqualTo(fileId);assertThat(preview.outboundBytes()).isPositive();
@@ -159,5 +160,22 @@ class PersonalRecognitionServiceTest {
         assertThatThrownBy(()->service.preview(AiProvider.DEEPSEEK,fileId,TaskType.RECEIPT)).isInstanceOf(BusinessException.class).hasMessageContaining("尚未验证");
         assertThatThrownBy(()->service.preview(AiProvider.OPENAI,fileId,TaskType.VIDEO_ANALYSIS)).isInstanceOf(BusinessException.class);
         verify(transport,never()).execute(any(),any(),anyString());
+    }
+
+    @Test void generalImageQuestionAndOwnMemoriesAppearInPreviewAndMemoryChangesBlockSend() {
+        when(memories.snapshot(1L)).thenReturn(new PersonalAiMemoryService.Snapshot("\n我的视觉偏好", "memory-version"));
+        var service=service(true);
+        var preview=service.preview(AiProvider.OPENAI,fileId,TaskType.IMAGE_UNDERSTANDING,"图中有哪些物品？");
+        assertThat(preview.prompt()).contains("图中有哪些物品？","我的视觉偏好");
+        assertThat(preview.taskType()).isEqualTo(TaskType.IMAGE_UNDERSTANDING);
+        doThrow(new BusinessException(org.springframework.http.HttpStatus.CONFLICT,"AI_MEMORY_CHANGED","记忆已更改")).when(memories).verify(1L,"memory-version");
+        assertThatThrownBy(()->service.execute(preview.previewToken(),true)).hasMessageContaining("记忆已更改");
+        verify(transport,never()).execute(any(),any(),any());
+    }
+    @Test void generalImageUnderstandingProducesPersistedResult() {
+        var service=service(true);
+        var preview=service.preview(AiProvider.OPENAI,fileId,TaskType.IMAGE_UNDERSTANDING,"说明内容");
+        assertThat(service.execute(preview.previewToken(),true).taskType()).isEqualTo(TaskType.IMAGE_UNDERSTANDING);
+        verify(results).save(argThat(r->r.getTaskType()==TaskType.IMAGE_UNDERSTANDING && r.getOwnerId().equals(1L)));
     }
 }

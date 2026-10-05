@@ -45,6 +45,7 @@ public class ModelInvocationService {
         payload.put("latencyMs", latency);
         payload.put("prediction", switch (taskType) {
             case LICENSE_PLATE -> platePrediction(seed);
+            case IMAGE_UNDERSTANDING -> throw new IllegalArgumentException("Use personal vision for image understanding");
             case RECEIPT -> receiptPrediction(seed);
             case VIDEO_ANALYSIS -> Map.of("text", "演示视频：道路场景与车辆经过", "fields", Map.of("events", List.of("vehicle_pass"), "duration", "demo"));
         });
