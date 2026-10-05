@@ -31,3 +31,7 @@ Browser requests are bound to the account generation loaded in that tab. Another
 The JSON envelopes for personal AI, account/auth and notes are bounded before JSON deserialization. Notebook bodies have a 200,000-character maximum. Vocabulary imports have their separate 2 MiB envelope and validated per-field/storage limits. Overall disk quotas, distributed admission control and production operational monitoring are still deployment responsibilities.
 
 The Nginx privacy access log is defined at the server level to override the official image's inherited combined log. Adding a second access log at the same HTTP level would retain both logs ([official logging semantics](https://nginx.org/en/docs/http/ngx_http_log_module.html#access_log)). CI starts a temporary official Nginx container and verifies that a failed upstream request containing a synthetic private path/query never appears in logs.
+
+## 群组与站内信访问范围
+
+站内信为所有启用账号的基础功能，旧 `message:read` 角色项不再作为入口门槛。私人收件人由服务端限制为平台管理员或符合群内读写权限的同组成员。群内容、回复和附件按当前成员资格及群角色权限校验，群管理员无法获得平台权限或修改其他群管理员。群消息不进入私人已发送列表，消息附件禁止通过普通文件接口绕过成员检查。群发言和成员变更串行锁定同一个群组，避免成员变更与发言提交交错。完整操作及历史消息可见性见 [群组与站内信](GROUPS.md)。

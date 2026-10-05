@@ -36,7 +36,8 @@ const mainItems: NavItem[] = [
   { label: '优化对比', to: '/app/comparisons', icon: 'compare', any: ['experiment:read', 'experiment:read:any'] },
   { label: '下载中心', to: '/app/downloads', icon: 'download', any: ['file:read', 'file:read:any', 'experiment:read', 'experiment:read:any'] },
   { label: '余额与充值', to: '/app/billing', icon: 'wallet', permission: 'billing:read' },
-  { label: '站内信箱', to: '/app/mail', icon: 'mail', permission: 'message:read' },
+  { label: '站内信箱', to: '/app/mail', icon: 'mail' },
+  { label: '群组协作', to: '/app/groups', icon: 'users' },
 ]
 
 const adminItems: NavItem[] = [
@@ -58,7 +59,7 @@ function visible(items: NavItem[]) {
 const navGroups = computed(() => [
   { label: '探索与创作', items: visible(mainItems.filter(item => ['/app/home', '/app/knowledge', '/app/vocabulary', '/app/notes'].includes(item.to))) },
   { label: '识别与评测', items: visible(mainItems.filter(item => ['/app/upload', '/app/models', '/app/images', '/app/comparisons'].includes(item.to))) },
-  { label: '记录与账户', items: visible(mainItems.filter(item => ['/app/logs', '/app/downloads', '/app/billing', '/app/mail'].includes(item.to))) },
+  { label: '记录与账户', items: visible(mainItems.filter(item => ['/app/logs', '/app/downloads', '/app/billing', '/app/mail', '/app/groups'].includes(item.to))) },
 ])
 const title = computed(() => {
   const all = [...mainItems, ...adminItems, ...supportItems]

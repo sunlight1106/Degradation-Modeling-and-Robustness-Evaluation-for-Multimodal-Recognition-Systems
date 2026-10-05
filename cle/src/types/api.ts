@@ -244,6 +244,7 @@ export interface WorkspaceView {
 }
 
 export interface UserDirectoryView { id: number; username: string; displayName: string; email: string }
+export interface MessageContactView { id: number; username: string; displayName: string; relationship: 'ADMIN' | 'GROUP_MEMBER' | 'USER' }
 export interface MessageAttachmentView { id: number; fileName: string; contentType: string; sizeBytes: number; downloadUrl: string }
 export interface MessageView {
   id: string
@@ -255,6 +256,8 @@ export interface MessageView {
   attachments: MessageAttachmentView[]
   read: boolean
   createdAt: string
+  workspaceId: number | null
+  replyToId: string | null
 }
 
 // ---------------------------------------------------------------------------

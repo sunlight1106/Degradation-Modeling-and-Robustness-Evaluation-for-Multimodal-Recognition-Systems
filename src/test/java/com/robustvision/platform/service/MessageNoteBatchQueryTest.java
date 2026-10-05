@@ -38,6 +38,7 @@ class MessageNoteBatchQueryTest {
     @Autowired NoteService notes;
     @MockBean CurrentUserService currentUser;
     @MockBean FileService files;
+    @MockBean WorkspaceService workspaces;
     @MockBean NoteReferenceService references;
     private UserEntity current;
     private UserEntity other;

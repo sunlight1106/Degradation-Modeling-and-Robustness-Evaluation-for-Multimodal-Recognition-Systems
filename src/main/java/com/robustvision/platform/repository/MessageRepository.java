@@ -18,21 +18,33 @@ public interface MessageRepository extends JpaRepository<MessageEntity, String> 
         String getSubject();
         String getBody();
         Instant getCreatedAt();
+        Long getWorkspaceId();
+        String getReplyToId();
     }
 
     @Query("""
             select m.id as id, m.sender.id as senderId, m.sender.displayName as senderName,
-                   m.subject as subject, m.body as body, m.createdAt as createdAt
-            from MessageEntity m where m.sender.id = :userId
+                   m.subject as subject, m.body as body, m.createdAt as createdAt,
+                   m.workspaceId as workspaceId, m.replyToId as replyToId
+            from MessageEntity m where m.sender.id = :userId and m.workspaceId is null
             order by m.createdAt desc, m.id asc
             """)
     List<MessageRow> findSentRows(@Param("userId") Long userId);
 
     @Query("""
             select m.id as id, m.sender.id as senderId, m.sender.displayName as senderName,
-                   m.subject as subject, m.body as body, m.createdAt as createdAt
-            from MessageRecipientEntity r join r.message m where r.recipient.id = :userId
+                   m.subject as subject, m.body as body, m.createdAt as createdAt,
+                   m.workspaceId as workspaceId, m.replyToId as replyToId
+            from MessageRecipientEntity r join r.message m where r.recipient.id = :userId and m.workspaceId is null
             order by m.createdAt desc, m.id asc
             """)
     List<MessageRow> findInboxRows(@Param("userId") Long userId);
+
+    @Query("""
+            select m.id as id, m.sender.id as senderId, m.sender.displayName as senderName,
+                   m.subject as subject, m.body as body, m.createdAt as createdAt,
+                   m.workspaceId as workspaceId, m.replyToId as replyToId
+            from MessageEntity m where m.workspaceId = :workspaceId order by m.createdAt desc, m.id desc
+            """)
+    List<MessageRow> findGroupRows(@Param("workspaceId") Long workspaceId, org.springframework.data.domain.Pageable pageable);
 }

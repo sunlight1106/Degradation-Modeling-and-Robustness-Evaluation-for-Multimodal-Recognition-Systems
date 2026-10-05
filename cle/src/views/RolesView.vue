@@ -30,13 +30,13 @@ onMounted(async () => {
   try {
     const [roleList, permissionList] = await Promise.all([api.roles(), api.permissions()])
     roles.value = roleList
-    permissions.value = permissionList
+    permissions.value = permissionList.filter(item => item.code !== 'message:read')
     selectedId.value = roles.value.find(role => role.code === 'RESEARCHER')?.id || roles.value[0]?.id || null
   } catch (reason) { error.value = reason instanceof ApiClientError ? reason.message : '权限数据加载失败' }
   finally { loading.value = false }
 })
 
-watch(selectedRole, role => { selectedPermissions.value = role ? [...role.permissions] : [] }, { immediate: true })
+watch(selectedRole, role => { selectedPermissions.value = role ? role.permissions.filter(code => code !== 'message:read') : [] }, { immediate: true })
 
 async function save() {
   if (!selectedRole.value || selectedRole.value.code === 'ADMIN') return
@@ -64,7 +64,7 @@ async function createRole() {
 
 <template>
   <div class="page-stack">
-    <section class="page-intro page-intro--split"><div><p class="page-kicker">RBAC</p><h2>权限管理</h2><p>管理员拥有最高权限，并可新建角色、组合权限，再分配给平台用户。</p></div><button v-if="canWrite" class="button button--dark" @click="creating = true"><AppIcon name="plus" :size="16" /> 新建角色</button></section>
+    <section class="page-intro page-intro--split"><div><p class="page-kicker">RBAC</p><h2>权限管理</h2><p>管理员可分配平台权限。站内信为所有账号的基础功能；群内权限独立设置，不会提升平台权限。</p></div><button v-if="canWrite" class="button button--dark" @click="creating = true"><AppIcon name="plus" :size="16" /> 新建角色</button></section>
     <div v-if="loading" class="large-skeleton" />
     <div v-else-if="error" class="inline-alert inline-alert--error">{{ error }}</div>
     <section v-else class="role-layout">

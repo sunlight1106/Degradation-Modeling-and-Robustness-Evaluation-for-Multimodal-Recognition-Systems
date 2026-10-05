@@ -51,7 +51,7 @@ class MySqlSchemaMigrationTest {
     void freshMigrationsCoverAllEntitiesAndConstraintsOnMySql84() throws Exception {
         try (TestDatabase database = new TestDatabase()) {
             Flyway flyway = database.flyway(null);
-            assertThat(flyway.migrate().migrationsExecuted).isGreaterThanOrEqualTo(12);
+            assertThat(flyway.migrate().migrationsExecuted).isGreaterThanOrEqualTo(13);
             flyway.validate();
             assertThat(flyway.migrate().migrationsExecuted).isZero();
             try (Connection connection = database.connect()) {
@@ -112,6 +112,13 @@ class MySqlSchemaMigrationTest {
     }
 
     private static void assertFixtureAndConstraints(Connection c) throws SQLException {
+        assertThat(scalar(c, "SELECT COUNT(*) FROM internal_message WHERE workspace_id IS NOT NULL OR reply_to_id IS NOT NULL")).isEqualTo("0");
+        assertThatThrownBy(() -> { try (Statement statement = c.createStatement()) {
+            statement.executeUpdate("UPDATE internal_message SET workspace_id = 99999999 WHERE id = 'message-1'");
+        } }).isInstanceOf(SQLException.class);
+        assertThatThrownBy(() -> { try (Statement statement = c.createStatement()) {
+            statement.executeUpdate("UPDATE internal_message SET reply_to_id = 'missing-message' WHERE id = 'message-1'");
+        } }).isInstanceOf(SQLException.class);
         assertThat(scalar(c, "SELECT title FROM note WHERE id = 'note-1'"))
                 .isEqualTo("多模态评测 🧪");
         assertThat(scalar(c, "SELECT baseline_result FROM inference_task WHERE id = 'task-1'"))
@@ -143,6 +150,7 @@ class MySqlSchemaMigrationTest {
 
     private static void assertIndexes(Connection c) throws SQLException {
         Map<String, String> expected = Map.ofEntries(
+                Map.entry("idx_message_workspace_created", "workspace_id,created_at,id"),
                 Map.entry("idx_vocab_book_owner", "owner_id,created_at"),
                 Map.entry("idx_vocab_progress_due", "owner_id,due_date"),
                 Map.entry("idx_vocab_question_owner_time", "owner_id,created_at"),
@@ -178,7 +186,9 @@ class MySqlSchemaMigrationTest {
     private static Map<String, List<String>> snapshot(Connection c) throws SQLException {
         Map<String, List<String>> result = new LinkedHashMap<>();
         for (String table : new TreeSet<>(LEGACY_DOMAIN_TABLES)) {
-            List<String> values = rows(c, "SELECT * FROM `" + table + "`");
+            // V13 adds nullable group/reply columns; compare every original message column across upgrades.
+            String columns = table.equals("internal_message") ? "id,sender_id,subject,body,created_at" : "*";
+            List<String> values = rows(c, "SELECT " + columns + " FROM `" + table + "`");
             values.sort(String::compareTo);
             result.put(table, values);
         }

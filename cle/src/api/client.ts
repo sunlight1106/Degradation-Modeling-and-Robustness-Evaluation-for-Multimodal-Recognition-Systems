@@ -20,6 +20,7 @@ import type {
   WorkspaceView,
   WorkspaceMemberRole,
   UserDirectoryView,
+  MessageContactView,
   MessageView,
   PublicPaymentView,
   KnowledgeTopicView,
@@ -207,15 +208,26 @@ export const api = {
   upsertWorkspaceMember: (id: number, payload: { userId: number; role: WorkspaceMemberRole; permissions: string[] }) =>
     request<WorkspaceView>(`/workspaces/${id}/members`, { method: 'PUT', body: JSON.stringify(payload) }),
   removeWorkspaceMember: (id: number, userId: number) => request<WorkspaceView>(`/workspaces/${id}/members/${userId}`, { method: 'DELETE' }),
-  messageDirectory: () => request<UserDirectoryView[]>('/messages/directory'),
+  workspaceDirectory: (id: number) => request<UserDirectoryView[]>(`/workspaces/${id}/directory`),
+  leaveWorkspace: (id: number) => request<void>(`/workspaces/${id}/members/me`, { method: 'DELETE' }),
+  groupMessages: (id: number, page = 0) => request<MessageView[]>(`/messages/groups/${id}?page=${page}`),
+  sendGroupMessage: (id: number, payload: { body: string; files: File[]; replyToId?: string }) => {
+    const body = new FormData()
+    body.append('body', payload.body)
+    if (payload.replyToId) body.append('replyToId', payload.replyToId)
+    payload.files.forEach(file => body.append('files', file))
+    return request<MessageView>(`/messages/groups/${id}`, { method: 'POST', body })
+  },
+  messageDirectory: () => request<MessageContactView[]>('/messages/directory'),
   inbox: () => request<MessageView[]>('/messages/inbox'),
   sent: () => request<MessageView[]>('/messages/sent'),
   message: (id: string) => request<MessageView>(`/messages/${id}`),
-  sendMessage: (payload: { recipientIds: number[]; subject: string; body: string; files: File[] }) => {
+  sendMessage: (payload: { recipientIds: number[]; subject: string; body: string; files: File[]; replyToId?: string }) => {
     const body = new FormData()
     payload.recipientIds.forEach(id => body.append('recipientIds', String(id)))
     body.append('subject', payload.subject)
     body.append('body', payload.body)
+    if (payload.replyToId) body.append('replyToId', payload.replyToId)
     payload.files.forEach(file => body.append('files', file))
     return request<MessageView>('/messages', { method: 'POST', body })
   },

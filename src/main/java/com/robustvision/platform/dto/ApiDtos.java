@@ -273,13 +273,14 @@ public final class ApiDtos {
     ) {}
 
     public record UserDirectoryView(Long id, String username, String displayName, String email) {}
+    public record MessageContactView(Long id, String username, String displayName, String relationship) {}
 
     public record MessageAttachmentView(Long id, String fileName, String contentType, long sizeBytes, String downloadUrl) {}
 
     public record MessageView(
             String id, Long senderId, String senderName, String subject, String body,
             List<UserDirectoryView> recipients, List<MessageAttachmentView> attachments,
-            boolean read, Instant createdAt
+            boolean read, Instant createdAt, Long workspaceId, String replyToId
     ) {}
 
     // ------------------------------------------------------------------

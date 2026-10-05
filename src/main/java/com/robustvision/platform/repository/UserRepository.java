@@ -27,6 +27,28 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     boolean existsByEmailAndIdNot(String email, Long id);
     Optional<UserEntity> findByEmail(String email);
     List<UserEntity> findAllByOrderByCreatedAtDesc();
+
+    @Query("""
+            select u.id as id, u.username as username, u.displayName as displayName, u.role.code as roleCode
+            from UserEntity u where u.status = com.robustvision.platform.domain.UserStatus.ACTIVE
+            and u.id <> :currentId and (:allTargets = true or u.id in :targetIds)
+            and (:admin = true or u.role.code = 'ADMIN' or exists (
+                select mine.id from WorkspaceMemberEntity mine, WorkspaceMemberEntity other
+                where mine.workspace.id = other.workspace.id and mine.user.id = :currentId and other.user.id = u.id
+                and mine.role <> com.robustvision.platform.domain.WorkspaceMemberRole.VIEWER
+                and 'CONTENT_READ' member of mine.permissions and 'CONTENT_WRITE' member of mine.permissions
+                and 'CONTENT_READ' member of other.permissions))
+            order by u.displayName, u.id
+            """)
+    List<MessageContactRow> findMessageContacts(@Param("currentId") Long currentId, @Param("admin") boolean admin,
+            @Param("allTargets") boolean allTargets, @Param("targetIds") java.util.Collection<Long> targetIds);
+
+    interface MessageContactRow {
+        Long getId();
+        String getUsername();
+        String getDisplayName();
+        String getRoleCode();
+    }
     /** A locking/current read, including on MySQL REPEATABLE READ transactions. */
     @Query(value = "SELECT id FROM app_user WHERE role_id = :roleId AND status = 'ACTIVE' ORDER BY id FOR UPDATE", nativeQuery = true)
     List<Long> findLockedActiveAdminIds(@Param("roleId") Long roleId);

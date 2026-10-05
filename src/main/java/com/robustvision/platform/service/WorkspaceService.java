@@ -28,6 +28,15 @@ public class WorkspaceService {
     }
 
     @Transactional(readOnly = true)
+    public List<ApiDtos.UserDirectoryView> directory(Long id) {
+        UserEntity current = currentUserService.requireCurrent();
+        requirePermission(requireAccessible(id, current), current, "MEMBERS_WRITE");
+        return userRepository.findAllByOrderByCreatedAtDesc().stream()
+                .filter(user -> user.getStatus() == UserStatus.ACTIVE && !user.getId().equals(current.getId()))
+                .map(user -> new ApiDtos.UserDirectoryView(user.getId(), user.getUsername(), user.getDisplayName(), null)).toList();
+    }
+
+    @Transactional(readOnly = true)
     public List<ApiDtos.WorkspaceView> list() {
         UserEntity current = currentUserService.requireCurrent();
         boolean admin = currentUserService.isSuperAdmin(current);
@@ -74,17 +83,18 @@ public class WorkspaceService {
 
     @Transactional
     public ApiDtos.WorkspaceView update(Long id, ApiDtos.UpdateWorkspaceRequest request) {
-        UserEntity current = currentUserService.requireCurrent(); WorkspaceEntity workspace = requireAccessible(id, current);
+        UserEntity current = currentUserService.requireCurrent(); WorkspaceEntity workspace = requireLocked(id, current);
         requirePermission(workspace, current, "SETTINGS_WRITE"); workspace.update(request.name().trim(), request.color());
         return toView(workspaceRepository.save(workspace), current);
     }
 
     @Transactional
     public ApiDtos.WorkspaceView upsertMember(Long workspaceId, ApiDtos.WorkspaceMemberRequest request) {
-        UserEntity current = currentUserService.requireCurrent(); WorkspaceEntity workspace = requireAccessible(workspaceId, current);
+        UserEntity current = currentUserService.requireCurrent(); WorkspaceEntity workspace = requireLocked(workspaceId, current);
         requirePermission(workspace, current, "MEMBERS_WRITE"); validatePermissions(request.permissions());
         UserEntity user = userRepository.findById(request.userId())
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "用户不存在"));
+        if (user.getStatus() != UserStatus.ACTIVE) throw new BusinessException(HttpStatus.BAD_REQUEST, "WORKSPACE_USER_DISABLED", "不能添加已停用账号");
         if (request.role() == WorkspaceMemberRole.OWNER && !user.getId().equals(workspace.getOwner().getId()))
             throw new BusinessException(HttpStatus.CONFLICT, "WORKSPACE_OWNER_LOCKED", "不能将其他成员设为所有者");
         WorkspaceMemberEntity member = memberRepository.findByWorkspaceIdAndUserId(workspaceId, user.getId())
@@ -92,9 +102,13 @@ public class WorkspaceService {
         if (member.getRole() == WorkspaceMemberRole.OWNER && request.role() != WorkspaceMemberRole.OWNER)
             throw new BusinessException(HttpStatus.CONFLICT, "WORKSPACE_OWNER_LOCKED", "不能修改工作空间所有者角色");
         Set<String> permissions = request.permissions() == null || request.permissions().isEmpty() ? defaults(request.role()) : request.permissions();
+        if (!defaults(request.role()).containsAll(permissions))
+            throw new BusinessException(HttpStatus.FORBIDDEN, "WORKSPACE_PRIVILEGE_ESCALATION", "所选权限不能超过群角色的权限范围");
+        if (request.role() == WorkspaceMemberRole.OWNER) permissions = ALL;
         if (!currentUserService.isSuperAdmin(current) && !workspace.getOwner().getId().equals(current.getId())) {
             WorkspaceMemberEntity actor = memberRepository.findByWorkspaceIdAndUserId(workspaceId, current.getId()).orElseThrow();
-            if (!actor.getPermissions().containsAll(permissions) || member.getRole() == WorkspaceMemberRole.OWNER)
+            if (!actor.getPermissions().containsAll(permissions) || member.getRole() == WorkspaceMemberRole.OWNER
+                    || member.getRole() == WorkspaceMemberRole.ADMIN || request.role() == WorkspaceMemberRole.ADMIN)
                 throw new BusinessException(HttpStatus.FORBIDDEN, "WORKSPACE_PRIVILEGE_ESCALATION", "不能授予自己不具备的权限或修改所有者权限");
         }
         member.update(request.role(), permissions); memberRepository.save(member); return toView(workspace, current);
@@ -102,13 +116,41 @@ public class WorkspaceService {
 
     @Transactional
     public ApiDtos.WorkspaceView removeMember(Long workspaceId, Long userId) {
-        UserEntity current = currentUserService.requireCurrent(); WorkspaceEntity workspace = requireAccessible(workspaceId, current);
+        UserEntity current = currentUserService.requireCurrent(); WorkspaceEntity workspace = requireLocked(workspaceId, current);
         requirePermission(workspace, current, "MEMBERS_WRITE");
         WorkspaceMemberEntity member = memberRepository.findByWorkspaceIdAndUserId(workspaceId, userId)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "WORKSPACE_MEMBER_NOT_FOUND", "成员不存在"));
         if (member.getRole() == WorkspaceMemberRole.OWNER)
             throw new BusinessException(HttpStatus.CONFLICT, "WORKSPACE_OWNER_LOCKED", "不能移除工作空间所有者");
+        if (member.getRole() == WorkspaceMemberRole.ADMIN && !currentUserService.isSuperAdmin(current)
+                && !workspace.getOwner().getId().equals(current.getId()))
+            throw new BusinessException(HttpStatus.FORBIDDEN, "WORKSPACE_PRIVILEGE_ESCALATION", "只有群主或平台管理员可以移除群管理员");
         memberRepository.delete(member); return toView(workspace, current);
+    }
+
+    @Transactional
+    public void leave(Long id) {
+        UserEntity current = currentUserService.requireCurrent();
+        WorkspaceEntity workspace = requireLocked(id, current);
+        if (workspace.getOwner().getId().equals(current.getId()))
+            throw new BusinessException(HttpStatus.CONFLICT, "WORKSPACE_OWNER_LOCKED", "群主不能直接退出自己的群组");
+        WorkspaceMemberEntity member = memberRepository.findByWorkspaceIdAndUserId(id, current.getId())
+                .orElseThrow(() -> new BusinessException(HttpStatus.FORBIDDEN, "WORKSPACE_ACCESS_DENIED", "你不是该群组成员"));
+        memberRepository.delete(member);
+    }
+
+    /** Caller transaction holds the group lock during posts and membership mutations. */
+    public void requireContentPermission(Long id, boolean write) {
+        UserEntity current = currentUserService.requireCurrent();
+        WorkspaceEntity workspace = write ? requireLocked(id, current) : requireAccessible(id, current);
+        requirePermission(workspace, current, "CONTENT_READ");
+        if (write) requirePermission(workspace, current, "CONTENT_WRITE");
+    }
+
+    private WorkspaceEntity requireLocked(Long id, UserEntity current) {
+        workspaceRepository.findLockedById(id).orElseThrow(() -> new BusinessException(
+                HttpStatus.NOT_FOUND, "WORKSPACE_NOT_FOUND", "群组不存在"));
+        return requireAccessible(id, current);
     }
 
     private WorkspaceEntity requireAccessible(Long id, UserEntity current) {
@@ -123,17 +165,17 @@ public class WorkspaceService {
         if (currentUserService.isSuperAdmin(current)) return;
         WorkspaceMemberEntity member = memberRepository.findByWorkspaceIdAndUserId(workspace.getId(), current.getId())
                 .orElseThrow(() -> new BusinessException(HttpStatus.FORBIDDEN, "WORKSPACE_ACCESS_DENIED", "无权访问该工作空间"));
-        if (!member.getPermissions().contains(permission))
+        if (!member.getPermissions().contains(permission) || !defaults(member.getRole()).contains(permission))
             throw new BusinessException(HttpStatus.FORBIDDEN, "WORKSPACE_PERMISSION_DENIED", "工作空间权限不足");
     }
 
     private ApiDtos.WorkspaceView toView(WorkspaceEntity workspace, UserEntity current) {
         WorkspaceMemberEntity own = memberRepository.findByWorkspaceIdAndUserId(workspace.getId(), current.getId()).orElse(null);
         WorkspaceMemberRole currentRole = currentUserService.isSuperAdmin(current) && own == null ? WorkspaceMemberRole.ADMIN : own == null ? null : own.getRole();
-        Set<String> currentPermissions = currentUserService.isSuperAdmin(current) ? ALL : own == null ? Set.of() : own.getPermissions();
+        Set<String> currentPermissions = currentUserService.isSuperAdmin(current) ? ALL : own == null ? Set.of() : effectivePermissions(own.getRole(), own.getPermissions());
         List<ApiDtos.WorkspaceMemberView> members = memberRepository.findByWorkspaceIdOrderByCreatedAtAsc(workspace.getId()).stream().map(member ->
                 new ApiDtos.WorkspaceMemberView(member.getId(), member.getUser().getId(), member.getUser().getUsername(), member.getUser().getDisplayName(),
-                        member.getRole(), member.getPermissions(), member.getCreatedAt())).toList();
+                        member.getRole(), effectivePermissions(member.getRole(), member.getPermissions()), member.getCreatedAt())).toList();
         return new ApiDtos.WorkspaceView(workspace.getId(), workspace.getName(), workspace.getSlug(), workspace.getColor(),
                 workspace.getOwner().getId(), workspace.getOwner().getDisplayName(), currentRole, currentPermissions,
                 currentPermissions.contains("MEMBERS_READ") ? members : members.stream()
@@ -149,7 +191,7 @@ public class WorkspaceService {
 
         private ApiDtos.WorkspaceMemberView toView() {
             return new ApiDtos.WorkspaceMemberView(details.getId(), details.getUserId(), details.getUsername(),
-                    details.getDisplayName(), details.getRole(), permissions, details.getCreatedAt());
+                    details.getDisplayName(), details.getRole(), effectivePermissions(details.getRole(), permissions), details.getCreatedAt());
         }
     }
 
@@ -157,7 +199,10 @@ public class WorkspaceService {
         if (permissions == null) return; Set<String> unknown = new HashSet<>(permissions); unknown.removeAll(ALL);
         if (!unknown.isEmpty()) throw new BusinessException(HttpStatus.BAD_REQUEST, "WORKSPACE_PERMISSION_INVALID", "包含未知工作空间权限: " + unknown);
     }
-    private Set<String> defaults(WorkspaceMemberRole role) { return switch (role) {
+    private static Set<String> effectivePermissions(WorkspaceMemberRole role, Set<String> assigned) {
+        Set<String> result = new LinkedHashSet<>(assigned); result.retainAll(defaults(role)); return result;
+    }
+    private static Set<String> defaults(WorkspaceMemberRole role) { return switch (role) {
         case OWNER, ADMIN -> ALL;
         case MEMBER -> Set.of("CONTENT_READ", "CONTENT_WRITE", "MEMBERS_READ");
         case VIEWER -> Set.of("CONTENT_READ");

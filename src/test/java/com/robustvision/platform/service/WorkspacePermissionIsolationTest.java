@@ -32,7 +32,7 @@ class WorkspacePermissionIsolationTest {
         membership.update(WorkspaceMemberRole.MEMBER, Set.of("CONTENT_READ", "MEMBERS_WRITE")); em.flush();
         assertThatThrownBy(() -> service.upsertMember(workspace.getId(), new ApiDtos.WorkspaceMemberRequest(
                 viewer.getId(), WorkspaceMemberRole.ADMIN, Set.of("SETTINGS_WRITE", "MEMBERS_WRITE"))))
-                .isInstanceOf(BusinessException.class).hasMessageContaining("不能授予");
+                .isInstanceOf(BusinessException.class).hasMessage("工作空间权限不足");
         when(current.requireCurrent()).thenReturn(owner);
         assertThat(service.detail(workspace.getId()).members()).hasSize(2);
     }

@@ -20,6 +20,11 @@ public class MessageEntity {
     private String subject;
     @Column(nullable = false, columnDefinition = "TEXT")
     private String body;
+    @Column(name = "workspace_id")
+    private Long workspaceId;
+    @Column(name = "reply_to_id", length = 36)
+    @JdbcTypeCode(SqlTypes.CHAR)
+    private String replyToId;
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 
@@ -30,5 +35,9 @@ public class MessageEntity {
     public UserEntity getSender() { return sender; }
     public String getSubject() { return subject; }
     public String getBody() { return body; }
+    public Long getWorkspaceId() { return workspaceId; }
+    public void setWorkspaceId(Long workspaceId) { this.workspaceId = workspaceId; }
+    public String getReplyToId() { return replyToId; }
+    public void setReplyToId(String replyToId) { this.replyToId = replyToId; }
     public Instant getCreatedAt() { return createdAt; }
 }

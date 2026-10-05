@@ -9,6 +9,9 @@ import java.util.List;
 import java.util.Optional;
 
 public interface WorkspaceRepository extends JpaRepository<WorkspaceEntity, Long> {
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("select w from WorkspaceEntity w where w.id = :id")
+    Optional<WorkspaceEntity> findLockedById(@Param("id") Long id);
     /** Scalar summaries avoid hydrating eager owner roles and their permission collections. */
     interface WorkspaceSummary {
         Long getId();

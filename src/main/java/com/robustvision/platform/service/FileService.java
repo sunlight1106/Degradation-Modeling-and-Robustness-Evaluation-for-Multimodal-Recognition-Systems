@@ -127,6 +127,8 @@ public class FileService {
     public FileAssetEntity requireAccessible(String id) {
         FileAssetEntity asset = fileRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "FILE_NOT_FOUND", "文件不存在"));
+        if (asset.getSource() == FileSource.MESSAGE_ATTACHMENT)
+            throw new BusinessException(HttpStatus.FORBIDDEN, "MESSAGE_ATTACHMENT_ROUTE_REQUIRED", "请通过所属消息下载附件");
         UserEntity current = currentUserService.requireCurrent();
         boolean owner = asset.getOwner().getId().equals(current.getId());
         if (!owner && !currentUserService.hasPermission(current, "file:read:any")) {
