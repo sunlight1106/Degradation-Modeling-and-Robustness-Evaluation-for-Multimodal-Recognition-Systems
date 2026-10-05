@@ -30,7 +30,7 @@ try {
   for (const href of ['/register', '/login', '/app/notes/new', '/app/notes', '/app/upload', '/app/knowledge', '/app/vocabulary', '/app/settings?section=ai', '/app/settings?section=profile', '/app/settings?section=security', '/app/settings?section=privacy', '/app/settings?section=appearance', '/app/settings?section=usage', '/swagger-ui.html']) {
     assert(hrefs.has(href), `First-run navigation links to ${href}`)
   }
-  for (const required of ['http://localhost:4173/api/v1', 'PERSONAL_AI_REMOTE_ENABLED=false', 'AES-256-GCM', '至少 32 UTF-8 字节', '9 类适配器', '模拟上游和合成数据', '真实视频调用暂未开放', 'DeepSeek 视觉兼容性尚未验证', '5 MiB（5,242,880 字节）', 'LOCAL_RULES', '不会静默截断', '24,000 字符', '最多选 20 份', '最近最多 100 次', '未提供的 Token 数记为未知', '3 本原创入门词书', '共 60 词', '累计答对 4 次', '下一个本地日历日期', '4–500 词', '最多 2 MiB', 'MODEL_MODE=demo']) {
+  for (const required of ['http://localhost:4173/api/v1', 'PERSONAL_AI_REMOTE_ENABLED=false', 'AES-256-GCM', '至少 32 UTF-8 字节', '9 类适配器', '模拟上游和合成数据', '真实视频调用暂未开放', 'DeepSeek 视觉兼容性尚未验证', '5 MiB（5,242,880 字节）', 'LOCAL_RULES', '不会静默截断', '24,000 字符', '最多选 20 份', '最近最多 100 次', '未提供的 Token 数记为未知', '17 本内置词书', '14,894 个不同单词', '累计答对 4 次', '下一个本地日历日期', '4–500 词', '最多 2 MiB', 'MODEL_MODE=demo']) {
     assert(content.includes(required), `Rendered guide states ${required}`)
   }
   for (const stale of ['localhost:8080', 'MODEL_MODE=live', 'DEEPSEEK_API_KEYS', 'KIMI_API_KEYS', 'QWEN_API_KEYS', 'QWEN_VIDEO_MODEL', 'Kimi 使用 Files API', '通过 Files API 上传视频', '千问视频会路由', '至少配置 DeepSeek', '等待 180 秒', '未配置时走本地规则引擎', '已经实现真实推理', '模型 API 预算与余额']) {

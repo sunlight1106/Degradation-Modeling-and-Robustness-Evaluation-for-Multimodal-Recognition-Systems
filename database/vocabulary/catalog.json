@@ -1,0 +1,94 @@
+{
+  "source": "https://github.com/skywind3000/ECDICT",
+  "commit": "bc015ed2e24a7abef49fc6dbbb7fe32c1dadaf8b",
+  "sourceSha256": "1a6947e04785db63613a92e14903cdae7954f7e84860b10e68e5c7cbb3f9c3cf",
+  "catalogSha256": "eea34e73d6096d70b77d2a6af0b35bfab0fff25ddd6093a88ac06d95882cf7e7",
+  "uniqueWords": 14894,
+  "totalEntries": 43632,
+  "books": [
+    {
+      "id": "vocab-ec-ky",
+      "title": "考研英语 · 综合词汇",
+      "level": "考研",
+      "words": 4796
+    },
+    {
+      "id": "vocab-ec-cet4",
+      "title": "大学英语四级",
+      "level": "四级",
+      "words": 3844
+    },
+    {
+      "id": "vocab-ec-cet6",
+      "title": "大学英语六级",
+      "level": "六级",
+      "words": 5401
+    },
+    {
+      "id": "vocab-ec-ielts",
+      "title": "雅思 IELTS 词汇",
+      "level": "雅思",
+      "words": 5026
+    },
+    {
+      "id": "vocab-ec-toefl",
+      "title": "托福 TOEFL 词汇",
+      "level": "托福",
+      "words": 6941
+    },
+    {
+      "id": "vocab-ec-gre",
+      "title": "GRE 进阶词汇",
+      "level": "GRE",
+      "words": 7484
+    },
+    {
+      "id": "vocab-ec-zk",
+      "title": "初中英语 · 中考词汇",
+      "level": "初中",
+      "words": 1599
+    },
+    {
+      "id": "vocab-ec-gk",
+      "title": "高中英语 · 高考词汇",
+      "level": "高中",
+      "words": 3666
+    },
+    {
+      "id": "vocab-ec-ky-core",
+      "title": "考研英语 · 高频 1500",
+      "level": "考研",
+      "words": 1500
+    },
+    {
+      "id": "vocab-ec-primary",
+      "title": "小学衔接 · 常用 500",
+      "level": "小学衔接",
+      "words": 500
+    },
+    {
+      "id": "vocab-ec-gk-core",
+      "title": "高中英语 · 基础 1000",
+      "level": "高中",
+      "words": 1000
+    },
+    {
+      "id": "vocab-ec-academic",
+      "title": "学术阅读 · 进阶 1500",
+      "level": "学术英语",
+      "words": 1500
+    },
+    {
+      "id": "vocab-ec-computing",
+      "title": "计算机英语 · 核心术语",
+      "level": "计算机",
+      "words": 190
+    },
+    {
+      "id": "vocab-ec-business",
+      "title": "商务英语 · 职场沟通",
+      "level": "商务",
+      "words": 185
+    }
+  ]
+}

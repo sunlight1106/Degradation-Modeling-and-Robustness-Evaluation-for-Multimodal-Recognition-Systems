@@ -1,5 +1,9 @@
 # 第三方许可
 
+## 内置词库
+
+新增词书使用 [ECDICT](https://github.com/skywind3000/ECDICT) 固定版本的词条、释义和音标。原 MIT 许可全文保存在 [ECDICT-LICENSE.txt](database/vocabulary/ECDICT-LICENSE.txt)，版本、校验值及各书词量见 [catalog.json](database/vocabulary/catalog.json)。选词规则与使用方法见 [词汇学习指南](docs/VOCABULARY.md)。未引入具体出版社词书的封面、原版编排或例句。
+
 ## 已退出当前版本的素材
 
 此前版本包含第三方游戏图片、角色素材和宣传视频。当前已将 `cle/public/art/` 从版本跟踪中移除并忽略；前端公开资源改为 `cle/static/`，Docker 构建也排除旧目录。历史设计中未使用的组件和样式不再进入当前源码快照。

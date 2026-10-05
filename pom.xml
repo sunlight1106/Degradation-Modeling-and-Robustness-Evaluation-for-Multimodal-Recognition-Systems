@@ -117,6 +117,7 @@
         <resources>
             <resource><directory>src/main/resources</directory></resource>
             <resource><directory>database/migrations</directory><targetPath>db/migration</targetPath></resource>
+            <resource><directory>database/vocabulary</directory><targetPath>vocabulary</targetPath></resource>
         </resources>
         <plugins>
             <plugin>

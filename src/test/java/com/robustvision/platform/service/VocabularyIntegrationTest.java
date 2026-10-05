@@ -46,6 +46,13 @@ class VocabularyIntegrationTest {
     @Autowired MutableClock clock;
     UserEntity alice,bob;
     @BeforeEach void fixtures() throws Exception {
+        if(jdbc.queryForObject("select count(*) from vocabulary_book where id='vocab-ec-ky'",Integer.class)==0) {
+            try(var connection=Objects.requireNonNull(jdbc.getDataSource()).getConnection()) {
+                var context=org.mockito.Mockito.mock(org.flywaydb.core.api.migration.Context.class);
+                org.mockito.Mockito.when(context.getConnection()).thenReturn(connection);
+                new db.migration.V17__expanded_vocabulary_catalog().migrate(context);
+            }
+        }
         clock.set("2026-10-02T12:00:00Z");
         String suffix=UUID.randomUUID().toString().substring(0,8);
         var role=roles.save(new RoleEntity("VOCAB_"+suffix,"Vocabulary","Synthetic",Set.of()));
@@ -78,11 +85,27 @@ class VocabularyIntegrationTest {
     }
     @Test void requiresAuthenticationAndExplicitValidTimezone() throws Exception {
         mvc.perform(get("/api/v1/vocabulary/dashboard")).andExpect(status().isUnauthorized());
-        var dashboard=dash(alice);assertThat(dashboard.path("settings").path("zoneId").isNull()).isTrue();assertThat(dashboard.path("books").size()).isEqualTo(3);
-        assertThat(jdbc.queryForObject("select count(*) from vocabulary_word where book_id like 'vocab-%'",Integer.class)).isEqualTo(60);
+        var dashboard=dash(alice);assertThat(dashboard.path("settings").path("zoneId").isNull()).isTrue();assertThat(dashboard.path("books").size()).isEqualTo(17);
+        assertThat(jdbc.queryForObject("select count(*) from vocabulary_word where book_id like 'vocab-%'",Integer.class)).isEqualTo(43692);
         mvc.perform(json(post("/api/v1/vocabulary/next"),alice,Map.of("bookId","vocab-daily","mode","LEARN"))).andExpect(status().isBadRequest()).andExpect(jsonPath("$.error.code").value("VOCAB_TIMEZONE_REQUIRED"));
         mvc.perform(json(put("/api/v1/vocabulary/settings"),alice,Map.of("zoneId","Mars/Nowhere","dailyGoal",10))).andExpect(status().isBadRequest());
         mvc.perform(json(put("/api/v1/vocabulary/settings"),alice,Map.of("zoneId","Asia/Shanghai","dailyGoal",0))).andExpect(status().isBadRequest());
+    }
+    @Test void expandedBooksRemainLearnableSearchableAndOwnerScoped() throws Exception {
+        var catalog=dash(alice).path("books");
+        JsonNode postgraduate=null;
+        for(var book:catalog) if(book.path("id").asText().equals("vocab-ec-ky"))postgraduate=book;
+        assertThat(postgraduate).isNotNull();assertThat(postgraduate.path("totalWords").asInt()).isEqualTo(4796);
+        assertThat(postgraduate.path("learned").asInt()).isZero();
+        settings(alice,"Asia/Shanghai",1,"vocab-ec-ky");
+        var q=next(alice,"vocab-ec-ky","LEARN").path("question");
+        assertThat(q.path("options").size()).isEqualTo(4);
+        var result=answer(alice,q,true);assertThat(result.path("learningCorrect").asInt()).isEqualTo(1);
+        for(var book:dash(bob).path("books"))assertThat(book.path("learning").asInt()).isZero();
+        var later=call(as(get("/api/v1/vocabulary/books/vocab-ec-gre/words").param("page","210"),alice));
+        assertThat(later.path("items").size()).isEqualTo(30);
+        var search=call(as(get("/api/v1/vocabulary/books/vocab-ec-computing/words").param("query","algorithm"),alice));
+        assertThat(search.path("items").get(0).path("term").asText()).isEqualTo("algorithm");
     }
     @Test void questionsDoNotLeakAnswerAndInvalidOptionsDoNotMutate() throws Exception {
         settings(alice,"Asia/Shanghai",2,"vocab-daily");var q=next(alice,"vocab-daily","LEARN").path("question");

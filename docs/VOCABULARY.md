@@ -1,14 +1,47 @@
-# Vocabulary learning
+# 词书与背单词使用指南
 
-## Delivered scope
+## 先选一本，马上开始
 
-Visit `/app/vocabulary` after signing in. This is an independent learning feature, not an implementation of a third-party app or its proprietary review algorithm.
+1. 登录后打开「目录与账户 → 背单词」，首次使用先确认学习时区和每日目标。
+2. 打开「我的词书」，按 **考研 / 四六级 / 留学考试 / 中小学 / 专业与通用** 筛选，也可以输入名称搜索。
+3. 点「查看单词」先了解收录内容，或点「选这本词书」再「开始学习」。切换词书会保留此前各本书的学习进度。
+4. 每次选择一个释义；同一词条累计答对 4 次后进入次日复习。按键 1–4 可选答案，Enter 继续。
+5. 「单词本」可以搜索单词、查看释义、收藏或筛选错词；「学习记录」显示近期进度。
 
-- Three original starter books: daily life, travel, and study/research; **20 entries each, 60 total**. These are deliberately labelled starter selections, not complete CET, IELTS, TOEFL, postgraduate, or official examination books.
-- Each entry includes an English term, broad American IPA, part of speech, a focused Chinese sense, an original example and translation, and reviewed distractors.
-- Book selection, server-persisted per-user progress, four-choice learning, next-day spaced review, mistakes practice, stars, searchable/paginated word lists, a daily goal, current streak, and a 14-day history.
-- Private JSON book imports: 4–500 words/book, up to 20 books/account. Both the UI and a pre-Jackson server filter limit imports to 2 MiB (including chunked requests); ordinary writes are capped at 16 KiB. Bean validation then bounds all fields/lists and rejects null word elements. Word text cannot contain control characters, and serialized distractor lengths are bounded before any persistence write. All terms and distractor labels are checked for normalized duplicates. Every word requires 3–8 explicit incorrect meanings; authors must ensure they do not overlap semantically with the focused sense.
-- All original books are available to every authenticated account. Imported books, settings and progress are only available to their owner, including when another account has administrative permissions.
+## 内置词书
+
+现在共 **17 本**：14 本新增词书，加上原有日常生活、学习与研究、出行旅行各 20 词。
+新增词库包含 **14,894 个不同单词，43,632 个词条收录**；连同原有 60 词，全部词书合计 43,692 个收录。不同书之间有重叠，不能把收录总数当成不同单词数。
+
+| 词书 | 实际收录 |
+| --- | ---: |
+| 考研英语 · 综合词汇 | 4,796 |
+| 大学英语四级 | 3,844 |
+| 大学英语六级 | 5,401 |
+| 雅思 IELTS 词汇 | 5,026 |
+| 托福 TOEFL 词汇 | 6,941 |
+| GRE 进阶词汇 | 7,484 |
+| 初中英语 · 中考词汇 | 1,599 |
+| 高中英语 · 高考词汇 | 3,666 |
+| 考研英语 · 高频 1500 | 1,500 |
+| 小学衔接 · 常用 500 | 500 |
+| 高中英语 · 基础 1000 | 1,000 |
+| 学术阅读 · 进阶 1500 | 1,500 |
+| 计算机英语 · 核心术语 | 190 |
+| 商务英语 · 职场沟通 | 185 |
+
+- 考试分类来自 ECDICT 的已有标签，使用通用语料词频排序；不代表当前考试官方完整大纲。“高频”不代表历年试卷出现次数。
+- 小学衔接、基础、学术及专业词书是按说明筛选的学习合集。人教版具体年级、册次和单元尚未内置。
+- 没有把通用词库标为“闪过 2028”“红宝书 2028”等出版物。需要某一具体版本时，可以私有导入自己有权使用的内容。
+- 原有入门书包含原创例句。新增词条保留 ECDICT 的中文释义与可用音标；缺少的音标或例句留空，不伪造示例。练习干扰项为自动筛选，并排除中文释义字符重叠，仍可结合上下文辨析多义词。
+
+## 导入自己的版本
+
+点击「导入自己的词书 → 填入原创示例」，按示例替换内容，或读取 UTF-8 JSON 文件，再勾选内容使用权确认并导入。每本 **4–500 词**，每个账号最多 **20 本**，文件最大 **2 MB**。较大的教材请按册次或单元分成多本；这项导入容量限制不影响内置大词书。
+
+每个词需要英文、音标、词性、一个明确中文释义、例句及译文，还有 3–8 个不同且不与正确义项重叠的干扰项。模板见 [import-example.json](vocabulary/import-example.json)。填写自己的书名和来源说明，导入后仅当前账号可见，管理员也不会因此获得读取权限。
+
+词书数据随 Docker 镜像安装，启动与学习时无需再联网下载，也不会触发模型 API 费用。新增公共词书不会覆盖原来的私人词书和学习记录。
 
 ## Learning rules
 
@@ -31,13 +64,13 @@ Question payloads expose the prompt, IPA, part of speech and randomized opaque o
 
 The frontend uses Vue text interpolation for imported text, not raw HTML. Progress stays in server storage; there are no cross-account browser progress caches. Account export includes only the user's private book content, settings and progress, and deliberately excludes question answer snapshots.
 
-## Content provenance and rights
+## 数据来源与更新
 
-`V11__original_starter_vocabulary.sql` contains the complete 60-entry starter corpus authored for this project. Chinese learning glosses, examples, translations and distractors are original and are distributed under the repository's MIT license. English lexical items and IPA are factual learning data; IPA is supplied as broad American learning guidance and may omit dialect variants. No dictionary scrape, commercial wordbook, branded artwork, audio recording, user-private document, or copyrighted example corpus is included.
+新增词条来自 [ECDICT](https://github.com/skywind3000/ECDICT)，固定提交 `bc015ed2e24a7abef49fc6dbbb7fe32c1dadaf8b`。保留 [MIT 许可全文](../database/vocabulary/ECDICT-LICENSE.txt)。[catalog.json](../database/vocabulary/catalog.json) 记录源文件与压缩词库的 SHA-256、词量和版本。
 
-General product inspiration: [不背单词 official website](https://www.bbdc.cn/), consulted 2026-10-02 for high-level wordbook/review workflow context only. The implementation and visual design are independent.
+从该提交下载 `ecdict.csv` 后，可用 `python scripts/build-vocabulary-catalog.py /path/to/ecdict.csv` 重建；脚本先核对源文件哈希，再按标签/词频/人工主题表选词。释义选择保留长度合适的完整一行，过滤无中文释义、无效拼写及大小写重复。音标沿用源文件，未统一口音。压缩数据只保存一次各个词条，各词书引用同一份数据；数据库按词书建立独立学习条目。
 
-The import format is in `docs/vocabulary/import-example.json`. `rightsConfirmed` is intentionally false in the sample. The user must explicitly confirm their right to use all imported content; private import is not permission to republish someone else's corpus. Imported text and examples should be reviewed for correctness and ambiguous distractors.
+V17 数据库迁移自动导入该离线包，原有 V11 入门词库不变。**已经发布的 V17 数据包和迁移不可原地改写**；后续词库修订须新增迁移，以保留升级校验与已有学习记录。迁移校验包含压缩包内容，缺失或损坏时启动失败而非静默提供空词库。
 
 ## Exporting and reimporting private books
 

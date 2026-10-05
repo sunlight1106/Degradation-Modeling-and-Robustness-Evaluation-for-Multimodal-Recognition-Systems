@@ -75,7 +75,10 @@ public class VocabularyService {
         long owner=lockedOwner(); var p=profile(owner);
         LocalDate day=p.zoneId==null?null:today(p);
         var progress=progress(owner);
-        var books=accessibleBooks(owner).stream().map(b->bookView(b,owner,progress,day)).toList();
+        // Aggregate the catalog in SQL: never load every definition once per book on each answer.
+        var catalogStats=em.createQuery("select w.bookId, count(w), sum(case when p.learningCorrect>=4 then 1 else 0 end), sum(case when p.learningCorrect>0 and p.learningCorrect<4 then 1 else 0 end), sum(case when p.learningCorrect>=4 and p.dueDate<=:day then 1 else 0 end), sum(case when p.mistake=true then 1 else 0 end) from VocabularyWordEntity w join VocabularyBookEntity b on b.id=w.bookId left join VocabularyProgressEntity p on p.wordId=w.id and p.ownerId=:owner where b.ownerId is null or b.ownerId=:owner group by w.bookId",Object[].class)
+                .setParameter("owner",owner).setParameter("day",day==null?LocalDate.of(1000,1,1):day).getResultList().stream().collect(Collectors.toMap(row->(String)row[0],Function.identity()));
+        var books=accessibleBooks(owner).stream().map(b->{var s=catalogStats.getOrDefault(b.id,new Object[]{b.id,0L,0L,0L,0L,0L});return new Book(b.id,b.title,b.description,b.attribution,b.level,b.ownerId!=null && b.ownerId==owner,((Number)s[1]).longValue(),((Number)s[2]).longValue(),((Number)s[3]).longValue(),((Number)s[4]).longValue(),((Number)s[5]).longValue());}).toList();
         // Fixed local study dates are retained when a user changes their timezone later.
         var totals=em.createQuery("select q.studyDate, count(q), sum(case when q.answerCorrect=true then 1 else 0 end), sum(case when q.mode='REVIEW' then 1 else 0 end) from VocabularyQuestionEntity q where q.ownerId=:owner and q.studyDate is not null group by q.studyDate",Object[].class)
                 .setParameter("owner",owner).getResultList();
@@ -177,7 +180,7 @@ public class VocabularyService {
     }
     @Transactional(readOnly=true)
     public WordPage browse(String bookId,String filter,String query,int page) {
-        long owner=owner();book(bookId,owner);if(page<0||page>200) throw bad("INVALID_PAGE","页码无效");
+        long owner=owner();book(bookId,owner);if(page<0||page>10000) throw bad("INVALID_PAGE","页码无效");
         if(query!=null && query.length()>80) throw bad("INVALID_QUERY","搜索词太长");
         if(!Set.of("ALL","LEARNING","LEARNED","MISTAKES","STARRED","DUE").contains(filter)) throw bad("INVALID_FILTER","筛选条件无效");
         var p=em.find(VocabularyProfileEntity.class,owner);LocalDate day=p==null||p.zoneId==null?null:today(p);var ps=progress(owner);
