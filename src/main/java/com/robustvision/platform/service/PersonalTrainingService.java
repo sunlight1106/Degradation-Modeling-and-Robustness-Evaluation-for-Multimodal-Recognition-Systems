@@ -18,7 +18,7 @@ public class PersonalTrainingService {
     private final CurrentUserService current;
     private final ObjectMapper mapper;
     private final String baseUrl, token;
-    private final HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).followRedirects(HttpClient.Redirect.NEVER).build();
+    private final HttpClient client = HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).connectTimeout(Duration.ofSeconds(3)).followRedirects(HttpClient.Redirect.NEVER).build();
     public PersonalTrainingService(CurrentUserService current, ObjectMapper mapper,
             @Value("${TRAINING_SERVICE_URL:http://training:8090}") String baseUrl,
             @Value("${TRAINING_SERVICE_TOKEN:}") String token) {
