@@ -78,6 +78,7 @@ class MySqlBackupRestoreTest {
                 execute(c, "UPDATE note SET library = '英语学习', content_format = 'HTML', body = '<h2>Reading</h2><p>学习记录</p>' WHERE id = 'note-1'");
                 execute(c, "INSERT INTO note (id, owner_id, title, body, parent_id) VALUES ('note-child',101,'子页面','代码笔记','note-1')");
                 MySqlSchemaMigrationTest.seedAccountSettings(c);
+                execute(c, "INSERT INTO personal_ai_memory (id,owner_id,title,body,enabled,revision,created_at,updated_at) VALUES ('memory-fixture',101,'学习偏好','恢复后的私人记忆',true,2,CURRENT_TIMESTAMP(6),CURRENT_TIMESTAMP(6))");
                 execute(c, "UPDATE internal_message SET workspace_id=201 WHERE id='message-1'");
                 execute(c, "INSERT INTO internal_message (id,sender_id,subject,body,workspace_id,reply_to_id) VALUES ('group-reply',101,'群回复','回复资料',201,'message-1')");
                 try (var statement = c.prepareStatement("UPDATE file_asset SET storage_path=?, size_bytes=?, sha256=? WHERE id='file-1'")) {
@@ -119,11 +120,13 @@ class MySqlBackupRestoreTest {
             assertThat(Files.readAllBytes(restoredFiles.resolve("fixture/图像 🧪.bin"))).isEqualTo(content);
             assertThat(Files.readAllBytes(restoredFiles.resolve("fixture/笔记.txt"))).isEqualTo(Files.readAllBytes(text));
             try (Connection c = DriverManager.getConnection(server + restored + options, username, password)) {
+                assertThat(scalar(c, "SELECT body FROM personal_ai_memory WHERE owner_id=101")).isEqualTo("恢复后的私人记忆");
+                assertThat(scalar(c, "SELECT revision FROM personal_ai_memory WHERE owner_id=101")).isEqualTo("2");
                 assertThat(scalar(c, "SELECT body FROM chat_message WHERE contact_id=301")).isEqualTo("恢复后仍可读取的私聊");
                 assertThat(scalar(c, "SELECT status FROM contact_link WHERE id=301")).isEqualTo("ACCEPTED");
                 assertThat(scalar(c, "SELECT revision FROM note WHERE id='note-1'")).isEqualTo("7");
-                assertThat(scalar(c, "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE()")).isEqualTo("34");
-                assertThat(scalar(c, "SELECT COUNT(*) FROM information_schema.referential_constraints WHERE constraint_schema=DATABASE()")).isEqualTo("48");
+                assertThat(scalar(c, "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE()")).isEqualTo("35");
+                assertThat(scalar(c, "SELECT COUNT(*) FROM information_schema.referential_constraints WHERE constraint_schema=DATABASE()")).isEqualTo("49");
                 assertThat(scalar(c, "SELECT workspace_id FROM internal_message WHERE id='group-reply'")).isEqualTo("201");
                 assertThat(scalar(c, "SELECT reply_to_id FROM internal_message WHERE id='group-reply'")).isEqualTo("message-1");
                 assertThat(scalar(c, "SELECT parent_id FROM note WHERE id='note-child'")).isEqualTo("note-1");
