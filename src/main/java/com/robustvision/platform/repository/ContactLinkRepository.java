@@ -17,10 +17,17 @@ public interface ContactLinkRepository extends JpaRepository<ContactLinkEntity, 
     interface Row {
         Long getId(); Long getUserId(); String getIdentityCode(); String getUsername(); String getDisplayName();
         Long getRequesterId(); String getStatus(); boolean getBlockedByMe(); boolean getAvailable();
+        String getRemark(); boolean getPinned(); boolean getMuted(); long getUnreadCount(); long getClearedThrough();
     }
     @Query("""
         select c.id as id, u.id as userId, u.identityCode as identityCode, u.username as username, u.displayName as displayName,
         c.requesterId as requesterId, c.status as status,
+        case when c.lowUserId = :user then c.lowRemark else c.highRemark end as remark,
+        case when c.lowUserId = :user then c.lowPinned else c.highPinned end as pinned,
+        case when c.lowUserId = :user then c.lowMuted else c.highMuted end as muted,
+        case when c.lowUserId = :user then c.lowClearedThrough else c.highClearedThrough end as clearedThrough,
+        (select count(m.id) from ChatMessageEntity m where m.contact.id = c.id and m.sender.id <> :user
+            and m.id > case when c.lowUserId = :user then c.lowReadThrough else c.highReadThrough end) as unreadCount,
         case when c.lowUserId = :user then c.lowBlocked else c.highBlocked end as blockedByMe,
         case when c.lowBlocked = false and c.highBlocked = false and u.status = com.robustvision.platform.domain.UserStatus.ACTIVE then true else false end as available
         from ContactLinkEntity c, UserEntity u

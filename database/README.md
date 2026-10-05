@@ -19,6 +19,7 @@
 | V11 | Original starter vocabulary (no third-party proprietary corpus) |
 | V12 | Owner-scoped personal image recognition results |
 | V19 | Permanent unique user identity codes; existing-user backfill |
+| V20 | Per-user private contact remarks, pins, mute settings and chat read/clear cursors |
 
 V1–V6 remain unchanged. V7 adds indexes only: it does not replace tables, change primary keys, reset passwords, rewrite content or modify balances. MySQL `CHAR` columns are explicitly mapped as `CHAR` in Hibernate, including fixed-width IDs, hashes and tokens; changing deployed IDs to `VARCHAR` is unnecessary.
 
@@ -61,7 +62,7 @@ export MYSQL_TEST_USERNAME='local_test_user'
 ./mvnw -Dtest=MySqlSchemaMigrationTest test
 ```
 
-Without `MYSQL_TEST_URL`, the four schema contract cases are reported **skipped**, not passed. In CI or release verification, explicitly provide these variables and check `target/surefire-reports/com.robustvision.platform.database.MySqlSchemaMigrationTest.txt` for `Tests run: 4`, `Failures: 0`, `Errors: 0`, `Skipped: 0`.
+Without `MYSQL_TEST_URL`, the five schema contract cases are reported **skipped**, not passed. In CI or release verification, explicitly provide these variables and check `target/surefire-reports/com.robustvision.platform.database.MySqlSchemaMigrationTest.txt` for `Tests run: 5`, `Failures: 0`, `Errors: 0`, `Skipped: 0`.
 
 The tests verify:
 
@@ -111,3 +112,5 @@ Runtime MySQL, Redis and object-storage data belongs in Docker named volumes, no
 ## User identity codes
 
 V19 assigns every existing account a `PKB-` code without changing its internal ID, password, relationships or profile timestamp. New accounts receive a random UUID-based code automatically. The database requires non-null, unique codes; APIs expose them as `identityCode` but do not accept edits to them. Exact code lookup follows the same discovery, disabled-account and blocking rules as user search. Keep the database volume or restore its backup when moving deployments to retain existing codes.
+
+Contact preferences in V20 are independent for each side of a contact pair and updated under the existing pair lock. Clearing history advances only the acting user's cursor; all message pagination paths honor it and the peer's history is retained. Mute hides unread badges, not delivery. Blocking preserves accepted relationships but never accepts a pending request, and either side's block still denies discovery, direct mail and chat.

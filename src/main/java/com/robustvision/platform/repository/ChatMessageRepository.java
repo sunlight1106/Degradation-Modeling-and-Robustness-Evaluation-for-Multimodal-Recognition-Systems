@@ -10,5 +10,7 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessageEntity, 
     @EntityGraph(attributePaths = "sender")
     List<ChatMessageEntity> findByContactIdAndIdGreaterThanOrderByIdAsc(Long contactId, Long after, Pageable page);
     @EntityGraph(attributePaths = "sender")
-    List<ChatMessageEntity> findByContactIdAndIdLessThanOrderByIdDesc(Long contactId, Long before, Pageable page);
+    List<ChatMessageEntity> findByContactIdAndIdGreaterThanAndIdLessThanOrderByIdDesc(Long contactId, Long clearedThrough, Long before, Pageable page);
+    boolean existsByIdAndContactId(Long id, Long contactId);
+    Optional<ChatMessageEntity> findFirstByContactIdOrderByIdDesc(Long contactId);
 }

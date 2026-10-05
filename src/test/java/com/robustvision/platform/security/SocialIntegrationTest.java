@@ -98,7 +98,7 @@ class SocialIntegrationTest {
         bob.setStatus(UserStatus.DISABLED); users.save(bob);
         mvc.perform(auth(get("/api/v1/social/people").param("q", code), o)).andExpect(jsonPath("$.data").isEmpty());
     }
-    @Test void blockingStopsChatDiscoveryAndExistingDirectMailAndUnblockDoesNotRestoreFriendship() throws Exception {
+    @Test void blockingStopsContactAndUnblockRestoresOnlyAnExistingAcceptedRelationship() throws Exception {
         long id=request(); action(id,b,"accept").andExpect(status().isOk());
         mvc.perform(auth(multipart("/api/v1/messages").param("recipientIds",bob.getId().toString()).param("subject","Friend").param("body","Hello"),a)).andExpect(status().isOk());
         action(id,b,"block").andExpect(status().isOk());
@@ -106,8 +106,14 @@ class SocialIntegrationTest {
         send(id,a,UUID.randomUUID().toString(),"no").andExpect(status().isNotFound());
         mvc.perform(auth(get("/api/v1/social/contacts/{id}/messages",id),a)).andExpect(status().isNotFound());
         mvc.perform(auth(multipart("/api/v1/messages").param("recipientIds",bob.getId().toString()).param("subject","Friend").param("body","No"),a)).andExpect(status().isForbidden());
+        action(id,a,"block").andExpect(status().isOk());
         action(id,b,"unblock").andExpect(status().isOk());
-        send(id,a,UUID.randomUUID().toString(),"no").andExpect(status().isNotFound());
+        send(id,a,UUID.randomUUID().toString(),"still blocked").andExpect(status().isNotFound());
+        action(id,a,"unblock").andExpect(status().isOk());
+        send(id,a,UUID.randomUUID().toString(),"restored").andExpect(status().isOk());
+        action(id,a,"remove").andExpect(status().isOk());
+        action(id,a,"unblock").andExpect(status().isOk());
+        send(id,a,UUID.randomUUID().toString(),"deleted").andExpect(status().isNotFound());
         mvc.perform(json(post("/api/v1/social/contacts"),a,Map.of("userId",bob.getId()))).andExpect(status().isTooManyRequests());
     }
     @Test void cursorsAreBoundedAndDisabledUsersAreUnavailable() throws Exception {
@@ -130,6 +136,59 @@ class SocialIntegrationTest {
         mvc.perform(json(patch("/api/v1/notes/{id}",key),a,Map.of("body","new device","baseRevision",note.path("revision").asLong()))).andExpect(status().isOk()).andExpect(jsonPath("$.data.revision").value(1));
         mvc.perform(json(patch("/api/v1/notes/{id}",key),a,Map.of("body","stale device","baseRevision",0))).andExpect(status().isConflict()).andExpect(jsonPath("$.error.code").value("NOTE_SYNC_CONFLICT"));
         mvc.perform(auth(get("/api/v1/notes/{id}",key),a)).andExpect(jsonPath("$.data.body").value("new device"));
+    }
+    @Test void preferencesBelongOnlyToTheirOwnerAndDoNotChangeProfiles() throws Exception {
+        long id = request(); action(id,b,"accept").andExpect(status().isOk());
+        mvc.perform(json(patch("/api/v1/social/contacts/{id}/preferences",id),a,
+                Map.of("remark","  私人备注  ","pinned",true,"muted",true,"userId",bob.getId())))
+                .andExpect(status().isOk());
+        mvc.perform(auth(get("/api/v1/social/contacts"),a)).andExpect(jsonPath("$.data[0].remark").value("私人备注"))
+                .andExpect(jsonPath("$.data[0].pinned").value(true)).andExpect(jsonPath("$.data[0].muted").value(true));
+        mvc.perform(auth(get("/api/v1/social/contacts"),b)).andExpect(jsonPath("$.data[0].remark").value(""))
+                .andExpect(jsonPath("$.data[0].pinned").value(false)).andExpect(jsonPath("$.data[0].muted").value(false));
+        assertThat(users.findById(bob.getId()).orElseThrow().getDisplayName()).isEqualTo(bob.getDisplayName());
+        for (String token : List.of(o, ad)) {
+            mvc.perform(json(patch("/api/v1/social/contacts/{id}/preferences",id),token,Map.of("remark","forged"))).andExpect(status().isNotFound());
+            mvc.perform(auth(post("/api/v1/social/contacts/{id}/clear-history",id),token)).andExpect(status().isNotFound());
+            action(id,token,"block").andExpect(status().isNotFound());
+        }
+        mvc.perform(json(patch("/api/v1/social/contacts/{id}/preferences",id),a,Map.of("remark","x".repeat(81)))).andExpect(status().isBadRequest());
+    }
+    @Test void unreadAndHistoryClearingArePrivateMonotonicAndApplyToEveryCursor() throws Exception {
+        long id=request(); action(id,b,"accept").andExpect(status().isOk());
+        long first=data(send(id,b,UUID.randomUUID().toString(),"first").andReturn()).path("id").asLong();
+        mvc.perform(auth(get("/api/v1/social/contacts"),a)).andExpect(jsonPath("$.data[0].unreadCount").value(1));
+        mvc.perform(json(post("/api/v1/social/contacts/{id}/read",id),o,Map.of("through",first))).andExpect(status().isNotFound());
+        mvc.perform(json(post("/api/v1/social/contacts/{id}/read",id),a,Map.of("through",Long.MAX_VALUE))).andExpect(status().isBadRequest());
+        mvc.perform(json(post("/api/v1/social/contacts/{id}/read",id),a,Map.of("through",first))).andExpect(status().isOk());
+        mvc.perform(auth(get("/api/v1/social/contacts"),a)).andExpect(jsonPath("$.data[0].unreadCount").value(0));
+        long second=data(send(id,b,UUID.randomUUID().toString(),"second").andReturn()).path("id").asLong();
+        mvc.perform(auth(post("/api/v1/social/contacts/{id}/clear-history",id),a)).andExpect(status().isOk());
+        mvc.perform(auth(get("/api/v1/social/contacts/{id}/messages",id),a)).andExpect(jsonPath("$.data").isEmpty());
+        mvc.perform(auth(get("/api/v1/social/contacts/{id}/messages",id).param("after","0"),a)).andExpect(jsonPath("$.data").isEmpty());
+        mvc.perform(auth(get("/api/v1/social/contacts/{id}/messages",id).param("before",String.valueOf(second)),a)).andExpect(jsonPath("$.data").isEmpty());
+        mvc.perform(auth(get("/api/v1/social/contacts/{id}/messages",id),b)).andExpect(jsonPath("$.data.length()").value(2));
+        mvc.perform(json(post("/api/v1/social/contacts/{id}/read",id),a,Map.of("through",first))).andExpect(status().isOk());
+        mvc.perform(auth(get("/api/v1/social/contacts"),a)).andExpect(jsonPath("$.data[0].unreadCount").value(0))
+                .andExpect(jsonPath("$.data[0].clearedThrough").value(second));
+        send(id,b,UUID.randomUUID().toString(),"new").andExpect(status().isOk());
+        mvc.perform(auth(get("/api/v1/social/contacts/{id}/messages",id),a)).andExpect(jsonPath("$.data.length()").value(1)).andExpect(jsonPath("$.data[0].body").value("new"));
+        mvc.perform(auth(get("/api/v1/social/contacts"),a)).andExpect(jsonPath("$.data[0].unreadCount").value(1));
+        mvc.perform(auth(get("/api/v1/social/contacts"),b)).andExpect(jsonPath("$.data[0].clearedThrough").value(0));
+    }
+    @Test void onlyRequesterCanWithdrawAndUnblockingPendingRequestsDoesNotGrantConsent() throws Exception {
+        long id=request();
+        action(id,b,"withdraw").andExpect(status().isNotFound());
+        action(id,ad,"withdraw").andExpect(status().isNotFound());
+        action(id,a,"withdraw").andExpect(status().isOk());
+        action(id,b,"accept").andExpect(status().isNotFound());
+        mvc.perform(auth(get("/api/v1/social/contacts"),a)).andExpect(jsonPath("$.data").isEmpty());
+        action(id,b,"block").andExpect(status().isOk());
+        mvc.perform(auth(get("/api/v1/social/contacts"),b)).andExpect(jsonPath("$.data[0].blockedByMe").value(true));
+        mvc.perform(auth(get("/api/v1/social/contacts"),a)).andExpect(jsonPath("$.data").isEmpty());
+        action(id,b,"unblock").andExpect(status().isOk());
+        action(id,b,"accept").andExpect(status().isNotFound());
+        send(id,a,UUID.randomUUID().toString(),"no consent").andExpect(status().isNotFound());
     }
     @TestConfiguration static class FastPasswords { @Bean @Primary PasswordEncoder socialTestEncoder() { return new BCryptPasswordEncoder(4); } }
 }

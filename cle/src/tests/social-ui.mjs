@@ -15,11 +15,13 @@ async function set(node, value) { node.value = value; node.dispatchEvent(new Eve
 const identity = 'PKB-0123456789ABCDEF0123456789ABCDEF'
 let copied = '', searchedQuery = ''
 Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async value => { copied = value } } })
-const bob = { identityCode: identity, id: 11, userId: 2, username: 'bob', displayName: 'Bob', status: 'ACCEPTED', incoming: false, blockedByMe: false, available: true }
+const bob = { remark: '', pinned: false, muted: false, unreadCount: 1, clearedThrough: 0, identityCode: identity, id: 11, userId: 2, username: 'bob', displayName: 'Bob', status: 'ACCEPTED', incoming: false, blockedByMe: false, available: true }
 let people = [bob, { ...bob, id: 12, userId: 3, username: 'charlie', displayName: 'Charlie', status: 'PENDING', incoming: true }]
 let rows = [{ id: 1, senderId: 2, senderName: 'Bob', body: '<img src=x onerror=alert(1)>', clientId: 'synthetic', createdAt: '2026-10-06T00:00:00Z' }]
 let app, deferred, failSend = true, delayMessages = false
-const sends = [], saves = []
+const sends = [], saves = [], preferenceSaves = [], readReceipts = []
+let clearCalls = 0, latePreference = false, resolvePreference
+const confirmDialog = () => [...document.querySelectorAll('[role=alertdialog] button')].at(-1).click()
 let note = { id: 'one', title: 'Original', body: 'Original body', tags: [], library: '计算机学习', contentFormat: 'MARKDOWN', status: { code: 'DRAFT', label: '草稿' }, references: [], shareCount: 0, revision: 0, createdAt: '2026-10-06T00:00:00Z', updatedAt: '2026-10-06T00:00:00Z' }
 let conflict = false, delaySave = false
 window.confirm = () => true
@@ -29,11 +31,19 @@ window.fetch = async (url, init = {}) => {
   if (path.endsWith('/social/settings')) return envelope({ discoverable: true })
   if (path.endsWith('/social/contacts')) {
     if (init.method === 'POST') { people = [...people, { ...bob, id: 13, userId: 4, displayName: 'Dana', username: 'dana', status: 'PENDING' }]; return envelope(null) }
-    return envelope(people)
+    return envelope(authStore.state.user?.id === 9 ? [] : people.filter(p => ['ACCEPTED','PENDING'].includes(p.status) || p.blockedByMe))
   }
+  if (path.endsWith('/preferences')) {
+    const data = JSON.parse(init.body), id = Number(path.split('/').at(-2)); preferenceSaves.push(data)
+    people = people.map(p => p.id === id ? { ...p, ...data } : p)
+    if (latePreference) return new Promise(resolve => { resolvePreference = () => resolve(envelope(null)) })
+    return envelope(null)
+  }
+  if (path.endsWith('/read')) { readReceipts.push(JSON.parse(init.body)); return envelope(null) }
+  if (path.endsWith('/clear-history')) { clearCalls++; people = people.map(p => p.id === 11 ? { ...p, clearedThrough: rows.at(-1)?.id || 0, unreadCount: 0 } : p); rows = []; return envelope(null) }
   if (/\/social\/contacts\/\d+$/.test(path)) {
     const id = Number(path.split('/').at(-1)), action = JSON.parse(init.body).action
-    people = people.map(p => p.id !== id ? p : { ...p, status: action === 'accept' ? 'ACCEPTED' : 'REMOVED', blockedByMe: action === 'block', available: action === 'accept' })
+    people = people.map(p => p.id !== id ? p : action === 'block' ? { ...p, blockedByMe: true, available: false } : action === 'unblock' ? { ...p, blockedByMe: false, available: true } : { ...p, status: action === 'accept' ? 'ACCEPTED' : 'REMOVED' })
     return envelope(null)
   }
   if (path.includes('/social/contacts/11/messages')) {
@@ -66,14 +76,14 @@ async function mount(component, path) {
 }
 try {
   authStore.state.user = { id: 1, permissions: ['note:read','note:write'] }; tokenStorage.set('synthetic-social')
-  await mount(ContactsView, '/contacts'); await wait(() => button('同意'))
+  await mount(ContactsView, '/contacts'); await wait(() => fixture.querySelector('.person-select')); button('申请').click(); await wait(() => button('同意'))
   assert(fixture.textContent.includes('新的申请') && !fixture.querySelector('.chat-compose'), 'Pending contacts do not get a chat composer')
-  button('同意').click(); await wait(() => fixture.querySelectorAll('.person-select').length === 2)
+  button('同意').click(); await wait(() => !button('同意')); button('联系人').click(); await wait(() => fixture.querySelectorAll('.person-select').length === 2)
   assert(fixture.textContent.includes('Charlie'), 'Accepting an incoming request adds the contact')
   await set(fixture.querySelector('#people-query'), identity); fixture.querySelector('.people-search').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
   await wait(() => button('申请添加')); assert(searchedQuery === identity && fixture.querySelector('.person-line .identity-code').textContent.includes(identity), 'Full identity codes are searchable and shown on results'); button('申请添加').click(); await wait(() => button('等待处理'))
   assert(button('等待处理').disabled, 'Sent requests cannot be repeatedly submitted')
-  button('Bob').click(); await wait(() => fixture.querySelector('.chat-message'))
+  button('联系人').click(); await nextTick(); button('Bob').click(); await wait(() => fixture.querySelector('.chat-message'))
   fixture.querySelector('.chat-header [aria-label="复制身份码"]').click(); await wait(() => copied === identity)
   assert(copied === identity, 'Copying a contact identity code keeps its complete value')
   assert(!fixture.querySelector('.chat-message img') && fixture.textContent.includes('<img'), 'Chat markup is rendered as text without executing HTML')
@@ -85,8 +95,34 @@ try {
   await wait(() => fixture.querySelector('.chat-compose textarea').value === '')
   assert(sends.length === 2 && sends[0].clientId === sends[1].clientId, 'Retry reuses the idempotency key after a lost response')
   assert(fixture.querySelectorAll('.chat-message').length === 2, 'Retry produces one displayed copy of the message')
-  button('屏蔽').click(); await wait(() => !fixture.querySelector('.chat-compose'))
-  assert(!fixture.textContent.includes('<img'), 'Blocking clears the conversation from the view')
+  assert(readReceipts.some(r => r.through === 1), 'Opening a conversation acknowledges only its loaded messages')
+  button('联系人管理').click(); await nextTick()
+  await set(fixture.querySelector('#contact-remark'), '我的研究同伴'); button('保存备注').click()
+  await wait(() => fixture.querySelector('.chat-header h3').textContent.includes('我的研究同伴'))
+  assert(preferenceSaves.at(-1).remark === '我的研究同伴', 'A private remark is saved and displayed without changing the username')
+  button('置顶联系人').click(); await wait(() => fixture.querySelector('.person-pin'))
+  assert(fixture.querySelector('.person-select').textContent.includes('我的研究同伴'), 'Pinned contacts appear first')
+  button('消息免打扰').click(); await wait(() => fixture.querySelector('.chat-state'))
+  assert(preferenceSaves.at(-1).muted === true && !fixture.querySelector('.person-select.active .person-unread'), 'Muted conversations hide unread number reminders')
+  button('清空聊天记录').click(); await nextTick()
+  document.querySelector('[role=alertdialog] button').click(); await nextTick()
+  assert(clearCalls === 0 && fixture.querySelectorAll('.chat-message').length === 2, 'Cancelling history clearing leaves messages intact')
+  button('清空聊天记录').click(); await nextTick(); confirmDialog(); await wait(() => !document.querySelector('[role=alertdialog]'))
+  assert(clearCalls === 1 && !fixture.querySelector('.chat-message'), 'Confirmed history clearing removes only the current view of old messages')
+  button('加入黑名单').click(); await nextTick(); confirmDialog(); await wait(() => button('解除拉黑'))
+  assert(!fixture.querySelector('.chat-compose') && !fixture.textContent.includes('<img'), 'Blacklisting removes the active conversation and exposes an unblock action')
+  button('解除拉黑').click(); await wait(() => !button('解除拉黑')); button('联系人').click(); await nextTick()
+  assert(!!button('我的研究同伴'), 'Unblocking returns an accepted contact with personal preferences retained')
+  button('申请').click(); await wait(() => button('撤回')); button('撤回').click(); await nextTick(); confirmDialog(); await wait(() => !document.querySelector('[role=alertdialog]'))
+  assert(!button('撤回'), 'Withdrawn outgoing requests disappear from the request list')
+  button('联系人').click(); await nextTick(); button('我的研究同伴').click(); await wait(() => fixture.querySelector('.chat-compose'))
+  button('联系人管理').click(); await nextTick(); button('删除联系人').click(); await nextTick(); confirmDialog(); await wait(() => !document.querySelector('[role=alertdialog]'))
+  assert(!button('我的研究同伴') && !fixture.querySelector('.chat-compose'), 'Deleting a contact clears the current conversation')
+  button('Charlie').click(); await wait(() => fixture.querySelector('.chat-compose')); button('联系人管理').click(); await nextTick()
+  latePreference = true; button('置顶联系人').click(); await wait(() => resolvePreference)
+  authStore.state.user = { id: 9, permissions: [] }; tokenStorage.set('synthetic-switched'); await nextTick(); resolvePreference(); await sleep(30)
+  assert(!fixture.querySelector('.person-select') && !fixture.querySelector('.contact-manager'), 'Late contact changes cannot restore a previous account contacts or private preferences')
+  authStore.state.user = { id: 1, permissions: ['note:read','note:write'] }; tokenStorage.set('synthetic-social')
   app.unmount()
   await mount(NoteEditorView, '/notes/one'); await wait(() => fixture.querySelector('.note-title-input')?.value === 'Original')
   await set(fixture.querySelector('.note-title-input'), 'Auto-saved title')

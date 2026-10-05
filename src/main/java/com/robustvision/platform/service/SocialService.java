@@ -42,7 +42,8 @@ public class SocialService {
     public List<SocialDtos.Contact> list() {
         long me = current.requireCurrent().getId();
         return contacts.visible(me).stream().map(c -> new SocialDtos.Contact(c.getId(), c.getUserId(), c.getIdentityCode(), c.getUsername(), c.getDisplayName(),
-                c.getStatus(), c.getRequesterId() != me, c.getBlockedByMe(), c.getAvailable())).toList();
+                c.getStatus(), c.getRequesterId() != me, c.getBlockedByMe(), c.getAvailable(), c.getRemark(), c.getPinned(), c.getMuted(),
+                c.getAvailable() && "ACCEPTED".equals(c.getStatus()) ? c.getUnreadCount() : 0, c.getClearedThrough())).toList();
     }
     @Transactional
     public void request(long peer) {
@@ -70,19 +71,51 @@ public class SocialService {
                 if (users.findById(link.peer(me)).orElseThrow().getStatus() != UserStatus.ACTIVE) throw unavailable();
                 link.setStatus(action.equals("accept") ? "ACCEPTED" : "REJECTED");
             }
-            case "remove" -> link.setStatus("REMOVED");
+            case "withdraw" -> {
+                if (!"PENDING".equals(link.getStatus()) || link.getRequesterId() != me || link.blocked()) throw unavailable();
+                link.setStatus("REMOVED");
+            }
+            case "remove" -> {
+                if (!"ACCEPTED".equals(link.getStatus())) throw unavailable();
+                link.setStatus("REMOVED");
+            }
             case "block" -> link.block(me, true);
             case "unblock" -> link.block(me, false);
             default -> throw bad("不支持的联系人操作");
         }
     }
+    @Transactional
+    public void preferences(long id, SocialDtos.Preferences value) {
+        long me = current.requireCurrent().getId();
+        ContactLinkEntity link = locked(id, me);
+        if (!"ACCEPTED".equals(link.getStatus())) throw unavailable();
+        link.preferences(me, value.remark(), value.pinned(), value.muted());
+    }
+    @Transactional
+    public void read(long id, long through) {
+        long me = current.requireCurrent().getId();
+        ContactLinkEntity link = locked(id, me);
+        requireChat(link, me);
+        if (!chats.existsByIdAndContactId(through, id)) throw bad("消息不属于当前会话");
+        link.markRead(me, through);
+    }
+    @Transactional
+    public void clearHistory(long id) {
+        long me = current.requireCurrent().getId();
+        ContactLinkEntity link = locked(id, me);
+        long through = chats.findFirstByContactIdOrderByIdDesc(id).map(ChatMessageEntity::getId).orElse(0L);
+        link.clearHistory(me, through);
+    }
     @Transactional(readOnly = true)
     public List<SocialDtos.ChatMessage> messages(long id, Long after, Long before) {
         if (after != null && before != null || after != null && after < 0 || before != null && before < 1) throw bad("消息游标无效");
-        requireChat(owned(id, current.requireCurrent().getId()), current.requireCurrent().getId());
+        long me = current.requireCurrent().getId();
+        ContactLinkEntity link = owned(id, me);
+        requireChat(link, me);
+        long cleared = link.clearedThrough(me);
         List<ChatMessageEntity> rows = after != null
-                ? chats.findByContactIdAndIdGreaterThanOrderByIdAsc(id, after, PageRequest.of(0, 50))
-                : chats.findByContactIdAndIdLessThanOrderByIdDesc(id, before == null ? Long.MAX_VALUE : before, PageRequest.of(0, 50));
+                ? chats.findByContactIdAndIdGreaterThanOrderByIdAsc(id, Math.max(after, cleared), PageRequest.of(0, 50))
+                : chats.findByContactIdAndIdGreaterThanAndIdLessThanOrderByIdDesc(id, cleared, before == null ? Long.MAX_VALUE : before, PageRequest.of(0, 50));
         return rows.stream().sorted(Comparator.comparing(ChatMessageEntity::getId)).map(this::view).toList();
     }
     @Transactional

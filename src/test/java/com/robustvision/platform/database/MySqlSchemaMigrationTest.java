@@ -135,6 +135,30 @@ class MySqlSchemaMigrationTest {
         }
     }
 
+    @Test
+    void contactPreferencesUpgradePreservesRelationsAndDefaultsBothSidesIndependently() throws Exception {
+        try (TestDatabase database = new TestDatabase()) {
+            database.flyway("19").migrate();
+            try (Connection c = database.connect()) {
+                seedAllDomains(c);
+                execute(c, "INSERT INTO app_user (id,username,password_hash,display_name,email,status,role_id) VALUES (102,'contact-second','synthetic','Second','contact@example.invalid','ACTIVE',91)");
+                execute(c, "INSERT INTO contact_link (id,low_user_id,high_user_id,requester_id,status,low_blocked) VALUES (301,101,102,101,'ACCEPTED',TRUE)");
+            }
+            database.flyway(null).migrate();
+            try (Connection c = database.connect()) {
+                assertThat(scalar(c, "SELECT status FROM contact_link WHERE id=301")).isEqualTo("ACCEPTED");
+                assertThat(scalar(c, "SELECT low_blocked FROM contact_link WHERE id=301")).isEqualTo("1");
+                assertThat(scalar(c, "SELECT CONCAT(low_remark,high_remark) FROM contact_link WHERE id=301")).isEmpty();
+                assertThat(scalar(c, "SELECT low_pinned+high_pinned+low_muted+high_muted+low_read_through+high_read_through+low_cleared_through+high_cleared_through FROM contact_link WHERE id=301")).isEqualTo("0");
+                execute(c, "UPDATE contact_link SET low_remark='Private',low_pinned=TRUE,low_muted=TRUE,low_read_through=8,low_cleared_through=5 WHERE id=301");
+                assertThat(scalar(c, "SELECT high_remark FROM contact_link WHERE id=301")).isEmpty();
+                assertThat(scalar(c, "SELECT high_pinned+high_muted+high_read_through+high_cleared_through FROM contact_link WHERE id=301")).isEqualTo("0");
+                database.flyway(null).migrate();
+                assertThat(scalar(c, "SELECT low_remark FROM contact_link WHERE id=301")).isEqualTo("Private");
+            }
+        }
+    }
+
     private static void assertFixtureAndConstraints(Connection c) throws SQLException {
         assertThat(scalar(c, "SELECT COUNT(*) FROM internal_message WHERE workspace_id IS NOT NULL OR reply_to_id IS NOT NULL")).isEqualTo("0");
         assertThatThrownBy(() -> { try (Statement statement = c.createStatement()) {
