@@ -57,7 +57,7 @@ class MySqlBackupRestoreTest {
             execute(admin, "CREATE DATABASE `" + source + "` CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci");
             createdSource = true;
             Flyway sourceFlyway = flyway(server + source + options, username, password);
-            assertThat(sourceFlyway.migrate().migrationsExecuted).isGreaterThanOrEqualTo(12);
+            assertThat(sourceFlyway.migrate().migrationsExecuted).isGreaterThanOrEqualTo(13);
             sourceFlyway.validate();
             Path sourceFiles = Files.createDirectory(temporary.resolve("source-files"));
             Path binary = sourceFiles.resolve("fixture/图像 🧪.bin");
@@ -72,6 +72,8 @@ class MySqlBackupRestoreTest {
             try (Connection c = DriverManager.getConnection(server + source + options, username, password)) {
                 MySqlSchemaMigrationTest.seedAllDomains(c);
                 MySqlSchemaMigrationTest.seedAccountSettings(c);
+                execute(c, "UPDATE internal_message SET workspace_id=201 WHERE id='message-1'");
+                execute(c, "INSERT INTO internal_message (id,sender_id,subject,body,workspace_id,reply_to_id) VALUES ('group-reply',101,'群回复','回复资料',201,'message-1')");
                 try (var statement = c.prepareStatement("UPDATE file_asset SET storage_path=?, size_bytes=?, sha256=? WHERE id='file-1'")) {
                     statement.setString(1, "fixture/图像 🧪.bin");
                     statement.setLong(2, content.length);
@@ -112,7 +114,9 @@ class MySqlBackupRestoreTest {
             assertThat(Files.readAllBytes(restoredFiles.resolve("fixture/笔记.txt"))).isEqualTo(Files.readAllBytes(text));
             try (Connection c = DriverManager.getConnection(server + restored + options, username, password)) {
                 assertThat(scalar(c, "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE()")).isEqualTo("32");
-                assertThat(scalar(c, "SELECT COUNT(*) FROM information_schema.referential_constraints WHERE constraint_schema=DATABASE()")).isEqualTo("40");
+                assertThat(scalar(c, "SELECT COUNT(*) FROM information_schema.referential_constraints WHERE constraint_schema=DATABASE()")).isEqualTo("42");
+                assertThat(scalar(c, "SELECT workspace_id FROM internal_message WHERE id='group-reply'")).isEqualTo("201");
+                assertThat(scalar(c, "SELECT reply_to_id FROM internal_message WHERE id='group-reply'")).isEqualTo("message-1");
                 assertThat(scalar(c, "SELECT title FROM note WHERE id='note-1'")).isEqualTo("多模态评测 🧪");
                 assertThat(scalar(c, "SELECT balance_cny FROM user_wallet WHERE user_id=101")).isEqualTo("12.3456");
                 assertThat(scalar(c, "SELECT cost_cny FROM inference_task WHERE id='task-1'")).isEqualTo("0.123456");
