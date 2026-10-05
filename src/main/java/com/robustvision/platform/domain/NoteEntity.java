@@ -60,6 +60,10 @@ public class NoteEntity {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt = Instant.now();
 
+    @Column(nullable = false) private long revision;
+    public long getRevision() { return revision; }
+    public void incrementRevision() { revision++; }
+    public void assignClientId(String value) { id = value; }
     protected NoteEntity() {}
 
     public NoteEntity(UserEntity owner, String title, String body, String tags, NoteStatus status) {

@@ -48,6 +48,10 @@ public class UserEntity {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt = Instant.now();
 
+    @Column(nullable = false) private boolean discoverable = true;
+    public boolean isDiscoverable() { return discoverable; }
+    public void setDiscoverable(boolean value) { discoverable = value; }
+
     protected UserEntity() {}
 
     public UserEntity(String username, String passwordHash, String displayName, String email, RoleEntity role) {

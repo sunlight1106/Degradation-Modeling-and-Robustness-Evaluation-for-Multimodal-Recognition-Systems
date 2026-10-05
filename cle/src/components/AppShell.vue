@@ -36,6 +36,7 @@ const mainItems: NavItem[] = [
   { label: '优化对比', to: '/app/comparisons', icon: 'compare', any: ['experiment:read', 'experiment:read:any'] },
   { label: '下载中心', to: '/app/downloads', icon: 'download', any: ['file:read', 'file:read:any', 'experiment:read', 'experiment:read:any'] },
   { label: '余额与充值', to: '/app/billing', icon: 'wallet', permission: 'billing:read' },
+  { label: '联系人与聊天', to: '/app/contacts', icon: 'users' },
   { label: '站内信箱', to: '/app/mail', icon: 'mail' },
   { label: '群组协作', to: '/app/groups', icon: 'users' },
 ]

@@ -1,0 +1,17 @@
+import { request } from './client'
+
+export interface Person { id: number; username: string; displayName: string }
+export interface Contact extends Omit<Person, 'id'> { id: number; userId: number; status: 'PENDING' | 'ACCEPTED' | 'REMOVED' | 'REJECTED'; incoming: boolean; blockedByMe: boolean; available: boolean }
+export interface ChatMessage { id: number; senderId: number; senderName: string; clientId: string; body: string; createdAt: string }
+export type ContactAction = 'accept' | 'reject' | 'remove' | 'block' | 'unblock'
+const json = (method: string, body: unknown) => ({ method, body: JSON.stringify(body) })
+export const socialApi = {
+  search: (q: string) => request<Person[]>(`/social/people?q=${encodeURIComponent(q)}`),
+  contacts: () => request<Contact[]>('/social/contacts'),
+  settings: () => request<{ discoverable: boolean }>('/social/settings'),
+  discovery: (discoverable: boolean) => request<{ discoverable: boolean }>('/social/settings', json('PUT', { discoverable })),
+  add: (userId: number) => request<void>('/social/contacts', json('POST', { userId })),
+  act: (id: number, action: ContactAction) => request<void>(`/social/contacts/${id}`, json('PATCH', { action })),
+  messages: (id: number, cursor: { after?: number; before?: number } = {}) => request<ChatMessage[]>(`/social/contacts/${id}/messages?${new URLSearchParams(Object.entries(cursor).map(([key, value]) => [key, String(value)]))}`),
+  send: (id: number, clientId: string, body: string) => request<ChatMessage>(`/social/contacts/${id}/messages`, json('POST', { clientId, body })),
+}

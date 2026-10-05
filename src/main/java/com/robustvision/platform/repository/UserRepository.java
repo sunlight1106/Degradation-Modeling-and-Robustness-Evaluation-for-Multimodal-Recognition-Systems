@@ -32,7 +32,8 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
             select u.id as id, u.username as username, u.displayName as displayName, u.role.code as roleCode
             from UserEntity u where u.status = com.robustvision.platform.domain.UserStatus.ACTIVE
             and u.id <> :currentId and (:allTargets = true or u.id in :targetIds)
-            and (:admin = true or u.role.code = 'ADMIN' or exists (
+            and not exists (select c.id from ContactLinkEntity c where ((c.lowUserId = :currentId and c.highUserId = u.id) or (c.highUserId = :currentId and c.lowUserId = u.id)) and (c.lowBlocked = true or c.highBlocked = true))
+            and (:admin = true or u.role.code = 'ADMIN' or exists (select c.id from ContactLinkEntity c where c.status = 'ACCEPTED' and ((c.lowUserId = :currentId and c.highUserId = u.id) or (c.highUserId = :currentId and c.lowUserId = u.id))) or exists (
                 select mine.id from WorkspaceMemberEntity mine, WorkspaceMemberEntity other
                 where mine.workspace.id = other.workspace.id and mine.user.id = :currentId and other.user.id = u.id
                 and mine.role <> com.robustvision.platform.domain.WorkspaceMemberRole.VIEWER
@@ -42,6 +43,16 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
             """)
     List<MessageContactRow> findMessageContacts(@Param("currentId") Long currentId, @Param("admin") boolean admin,
             @Param("allTargets") boolean allTargets, @Param("targetIds") java.util.Collection<Long> targetIds);
+
+    @Query("""
+        select u.id as id, u.username as username, u.displayName as displayName
+        from UserEntity u where u.id <> :me and u.discoverable = true
+        and u.status = com.robustvision.platform.domain.UserStatus.ACTIVE
+        and (lower(u.username) like :query escape '!' or lower(u.displayName) like :query escape '!')
+        and not exists (select c.id from ContactLinkEntity c where ((c.lowUserId = :me and c.highUserId = u.id) or (c.highUserId = :me and c.lowUserId = u.id)) and (c.lowBlocked = true or c.highBlocked = true))
+        order by u.username, u.id
+        """)
+    List<MessageContactRow> searchPeople(@Param("me") long me, @Param("query") String query, org.springframework.data.domain.Pageable pageable);
 
     interface MessageContactRow {
         Long getId();

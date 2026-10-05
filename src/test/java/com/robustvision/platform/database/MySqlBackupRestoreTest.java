@@ -57,7 +57,7 @@ class MySqlBackupRestoreTest {
             execute(admin, "CREATE DATABASE `" + source + "` CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci");
             createdSource = true;
             Flyway sourceFlyway = flyway(server + source + options, username, password);
-            assertThat(sourceFlyway.migrate().migrationsExecuted).isGreaterThanOrEqualTo(15);
+            assertThat(sourceFlyway.migrate().migrationsExecuted).isGreaterThanOrEqualTo(16);
             sourceFlyway.validate();
             Path sourceFiles = Files.createDirectory(temporary.resolve("source-files"));
             Path binary = sourceFiles.resolve("fixture/图像 🧪.bin");
@@ -71,6 +71,10 @@ class MySqlBackupRestoreTest {
             String ciphertext = crypto.encrypt(SYNTHETIC_TOKEN);
             try (Connection c = DriverManager.getConnection(server + source + options, username, password)) {
                 MySqlSchemaMigrationTest.seedAllDomains(c);
+                execute(c, "INSERT INTO app_user (id,username,password_hash,display_name,email,status,role_id) VALUES (102,'social-fixture','synthetic','Friend','friend@example.invalid','ACTIVE',91)");
+                execute(c, "INSERT INTO contact_link (id,low_user_id,high_user_id,requester_id,status) VALUES (301,101,102,101,'ACCEPTED')");
+                execute(c, "INSERT INTO chat_message (contact_id,sender_id,client_id,body) VALUES (301,101,'00000000-0000-0000-0000-000000000001','恢复后仍可读取的私聊')");
+                execute(c, "UPDATE note SET revision=7 WHERE id='note-1'");
                 execute(c, "UPDATE note SET library = '英语学习', content_format = 'HTML', body = '<h2>Reading</h2><p>学习记录</p>' WHERE id = 'note-1'");
                 execute(c, "INSERT INTO note (id, owner_id, title, body, parent_id) VALUES ('note-child',101,'子页面','代码笔记','note-1')");
                 MySqlSchemaMigrationTest.seedAccountSettings(c);
@@ -115,8 +119,11 @@ class MySqlBackupRestoreTest {
             assertThat(Files.readAllBytes(restoredFiles.resolve("fixture/图像 🧪.bin"))).isEqualTo(content);
             assertThat(Files.readAllBytes(restoredFiles.resolve("fixture/笔记.txt"))).isEqualTo(Files.readAllBytes(text));
             try (Connection c = DriverManager.getConnection(server + restored + options, username, password)) {
-                assertThat(scalar(c, "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE()")).isEqualTo("32");
-                assertThat(scalar(c, "SELECT COUNT(*) FROM information_schema.referential_constraints WHERE constraint_schema=DATABASE()")).isEqualTo("43");
+                assertThat(scalar(c, "SELECT body FROM chat_message WHERE contact_id=301")).isEqualTo("恢复后仍可读取的私聊");
+                assertThat(scalar(c, "SELECT status FROM contact_link WHERE id=301")).isEqualTo("ACCEPTED");
+                assertThat(scalar(c, "SELECT revision FROM note WHERE id='note-1'")).isEqualTo("7");
+                assertThat(scalar(c, "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE()")).isEqualTo("34");
+                assertThat(scalar(c, "SELECT COUNT(*) FROM information_schema.referential_constraints WHERE constraint_schema=DATABASE()")).isEqualTo("48");
                 assertThat(scalar(c, "SELECT workspace_id FROM internal_message WHERE id='group-reply'")).isEqualTo("201");
                 assertThat(scalar(c, "SELECT reply_to_id FROM internal_message WHERE id='group-reply'")).isEqualTo("message-1");
                 assertThat(scalar(c, "SELECT parent_id FROM note WHERE id='note-child'")).isEqualTo("note-1");

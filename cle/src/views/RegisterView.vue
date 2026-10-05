@@ -54,7 +54,7 @@ async function submit() {
       <div class="login-copy">
         <span class="login-icon"><AppIcon name="users" :size="24" /></span>
         <h1>创建账号</h1>
-        <p>三项信息即可开始。注册后默认获得实验与个人账单权限。</p>
+        <p>账号保存在当前平台服务器，可在其他设备登录同一网站继续使用。</p>
       </div>
       <form class="login-form" @submit.prevent="submit">
         <label class="field-label">用户名
@@ -73,7 +73,7 @@ async function submit() {
           <div><i v-for="index in 3" :key="index" :class="{ active: index <= passwordScore }" /></div>
           <span>密码强度 · <b>{{ strength.label }}</b></span>
         </div>
-        <p class="password-guide">建议使用 12 位以上，并混合大小写、数字和符号。</p>
+        <p class="password-guide">建议使用 12 位以上，并混合大小写、数字和符号。注册后，其他登录用户可以按用户名或昵称搜索你；可在「联系人与聊天」关闭。邮箱和私密笔记不会公开。</p>
         <p v-if="error" class="form-error">{{ error }}</p>
         <button class="button button--dark button--full" type="submit" :disabled="busy">
           {{ busy ? '正在创建…' : '创建账号' }} <AppIcon v-if="!busy" name="arrow" :size="17" />

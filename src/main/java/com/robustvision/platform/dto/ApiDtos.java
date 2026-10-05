@@ -335,7 +335,7 @@ public final class ApiDtos {
     public record NoteView(
             String id, String title, String body, List<String> tags,
             NoteStatusView status, List<NoteReferenceView> references,
-            int shareCount, Instant createdAt, Instant updatedAt, String library, String contentFormat, String parentId
+            int shareCount, Instant createdAt, Instant updatedAt, String library, String contentFormat, String parentId, long revision
     ) {}
 
     /** 笔记列表使用的精简视图，不含正文，减少传输体积。 */
@@ -353,8 +353,11 @@ public final class ApiDtos {
             String status,
             @Size(max = 40) String library,
             @jakarta.validation.constraints.Pattern(regexp = "MARKDOWN|HTML") String contentFormat,
-            @Size(max = 36) String parentId
-    ) {}
+            @Size(max = 36) String parentId,
+            @jakarta.validation.constraints.Pattern(regexp = "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}") String clientId
+    ) {
+        public CreateNoteRequest(String title, String body, String tags, String status, String library, String contentFormat, String parentId) { this(title, body, tags, status, library, contentFormat, parentId, null); }
+    }
 
     public record UpdateNoteRequest(
             @Size(min = 1, max = 180) String title,
@@ -363,8 +366,11 @@ public final class ApiDtos {
             String status,
             @Size(max = 40) String library,
             @jakarta.validation.constraints.Pattern(regexp = "MARKDOWN|HTML") String contentFormat,
-            @Size(max = 36) String parentId
-    ) {}
+            @Size(max = 36) String parentId,
+            @jakarta.validation.constraints.PositiveOrZero Long baseRevision
+    ) {
+        public UpdateNoteRequest(String title, String body, String tags, String status, String library, String contentFormat, String parentId) { this(title, body, tags, status, library, contentFormat, parentId, null); }
+    }
 
     public record NoteReferenceView(
             Long id, String referenceType, String referenceId, String label,

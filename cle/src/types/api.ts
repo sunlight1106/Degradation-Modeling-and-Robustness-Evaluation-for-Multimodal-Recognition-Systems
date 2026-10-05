@@ -311,6 +311,7 @@ export interface NoteReferenceView {
 }
 
 export interface NoteView {
+  revision: number
   parentId: string | null
   library: string
   contentFormat: NoteContentFormat

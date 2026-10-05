@@ -44,14 +44,14 @@ class MySqlSchemaMigrationTest {
 
     private static final Set<String> DOMAIN_TABLES = java.util.stream.Stream.concat(
             LEGACY_DOMAIN_TABLES.stream(), java.util.stream.Stream.of("personal_ai_setting", "personal_ai_usage", "user_session",
-                    "vocabulary_book", "vocabulary_word", "vocabulary_profile", "vocabulary_progress", "vocabulary_question", "personal_recognition_result"))
+                    "vocabulary_book", "vocabulary_word", "vocabulary_profile", "vocabulary_progress", "vocabulary_question", "personal_recognition_result", "contact_link", "chat_message"))
             .collect(java.util.stream.Collectors.toUnmodifiableSet());
 
     @Test
     void freshMigrationsCoverAllEntitiesAndConstraintsOnMySql84() throws Exception {
         try (TestDatabase database = new TestDatabase()) {
             Flyway flyway = database.flyway(null);
-            assertThat(flyway.migrate().migrationsExecuted).isGreaterThanOrEqualTo(15);
+            assertThat(flyway.migrate().migrationsExecuted).isGreaterThanOrEqualTo(16);
             flyway.validate();
             assertThat(flyway.migrate().migrationsExecuted).isZero();
             try (Connection connection = database.connect()) {
@@ -126,7 +126,7 @@ class MySqlSchemaMigrationTest {
         assertThat(scalar(c, "SELECT balance_cny FROM user_wallet WHERE user_id = 101")).isEqualTo("12.3456");
         assertThat(scalar(c, "SELECT cost_cny FROM inference_task WHERE id = 'task-1'")).isEqualTo("0.123456");
         assertThat(scalar(c, "SELECT COUNT(*) FROM information_schema.referential_constraints WHERE constraint_schema = DATABASE()"))
-                .isEqualTo("43");
+                .isEqualTo("48");
         assertDuplicateRejected(c, "INSERT INTO workspace_member (workspace_id, user_id, member_role) VALUES (201, 101, 'MEMBER')");
         assertDuplicateRejected(c, "INSERT INTO note_reference (note_id, reference_type, reference_id) VALUES ('note-1', 'FILE', 'file-1')");
         assertDuplicateRejected(c, "INSERT INTO note_share (id, note_id, shared_by, token) VALUES ('duplicate-share', 'note-1', 101, '0123456789abcdef0123456789abcdef')");
@@ -191,6 +191,7 @@ class MySqlSchemaMigrationTest {
         for (String table : new TreeSet<>(LEGACY_DOMAIN_TABLES)) {
             // Compare original columns across V13 message and V14/V15 note additions.
             String columns = table.equals("internal_message") ? "id,sender_id,subject,body,created_at"
+                    : table.equals("app_user") ? "id,username,password_hash,display_name,email,status,role_id,created_at,updated_at"
                     : table.equals("note") ? "id,owner_id,title,body,tags,status,created_at,updated_at" : "*";
             List<String> values = rows(c, "SELECT " + columns + " FROM `" + table + "`");
             values.sort(String::compareTo);

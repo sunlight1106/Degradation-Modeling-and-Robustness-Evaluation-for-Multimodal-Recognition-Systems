@@ -58,8 +58,9 @@ const parentPage = computed(() => pageOptions.value.find(page => page.id === par
 const childPages = computed(() => currentId.value ? pageOptions.value.filter(page => page.parentId === currentId.value) : [])
 const annotationUndo = ref<{ before: string; after: string } | null>(null)
 async function loadPageOptions() {
-  try { pageOptions.value = await api.notes(); pageOptionsError.value = '' }
-  catch { pageOptionsError.value = '页面目录暂时无法加载，请刷新后重试。' }
+  const owner = authStore.state.user?.id
+  try { const items = await api.notes(); if (owner === authStore.state.user?.id) { pageOptions.value = items; pageOptionsError.value = '' } }
+  catch { if (owner === authStore.state.user?.id) pageOptionsError.value = '页面目录暂时无法加载，请刷新后重试。' }
 }
 function setCodeLanguage(event: Event) {
   if (selectedBlock.value) body.value = replaceFence(body.value, selectedBlock.value, selectedBlock.value.code, (event.target as HTMLSelectElement).value)
@@ -99,6 +100,24 @@ const saving = ref(false)
 const error = ref('')
 const dirty = ref(false)
 const ready = ref(false)
+const revision = ref(0), syncError = ref(''), syncConflict = ref(false)
+let createKey = crypto.randomUUID(), editSequence = 0, autoTimer: ReturnType<typeof setTimeout> | undefined
+function scheduleSave() {
+  clearTimeout(autoTimer)
+  if (ready.value && canWrite.value && dirty.value && !syncError.value && !syncConflict.value)
+    autoTimer = setTimeout(() => { if (dirty.value && ready.value && !syncError.value && !syncConflict.value && title.value.trim() && body.value.trim()) void save(true) }, 1500)
+}
+function downloadDraft() {
+  const url = URL.createObjectURL(new Blob([body.value], { type: 'text/plain;charset=utf-8' }))
+  const link = document.createElement('a'); link.href = url; link.download = 'unsaved-note.' + (contentFormat.value === 'HTML' ? 'html' : 'md'); link.click()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+async function reloadServer() {
+  if (!window.confirm('请先下载或复制当前草稿。重新加载会替换此页未保存的内容，继续？')) return
+  clearTimeout(autoTimer); syncError.value = ''; syncConflict.value = false; await load()
+}
+function retryOnline() { if (!syncConflict.value) { syncError.value = ''; scheduleSave() } }
+
 
 const bodyEl = ref<HTMLTextAreaElement | null>(null)
 
@@ -122,10 +141,11 @@ function formatDate(value: string | null) {
 }
 
 watch([title, body, tagsInput, status, library, contentFormat, parentId], () => {
-  if (ready.value) dirty.value = true
-})
+  if (ready.value) { dirty.value = true; editSequence++; if (!syncConflict.value) syncError.value = ''; scheduleSave() }
+}, { flush: 'sync' })
 
 function applyNote(note: NoteView) {
+  revision.value = note.revision ?? 0
   currentId.value = note.id
   parentId.value = note.parentId || ''
   library.value = note.library || "综合学习"
@@ -181,41 +201,42 @@ async function load() {
   }
 }
 
-async function save(): Promise<string | null> {
-  if (!canWrite.value || saving.value || loading.value || !ready.value) return currentId.value
-  if (!title.value.trim()) {
-    toastStore.error('请先填写标题')
+async function save(automatic = false): Promise<string | null> {
+  if (!canWrite.value || saving.value || loading.value || !ready.value || syncConflict.value) return null
+  clearTimeout(autoTimer)
+  if (!title.value.trim() || !body.value.trim()) {
+    if (!automatic) toastStore.error('请先填写标题和正文')
     return null
   }
-  if (body.value.length > 200000) { toastStore.error("正文超过 200,000 字符，请拆分笔记"); return null }
-  const version = loadVersion
-  saving.value = true
+  if (body.value.length > 200000) { syncError.value = '正文超过 200,000 字符，请拆分笔记'; return null }
+  const version = loadVersion, edits = editSequence
+  saving.value = true; syncError.value = ''
   try {
-    const payload = {
-      title: title.value.trim(),
-      body: body.value,
-      tags: tagsInput.value.trim(),
-      status: status.value,
-      library: library.value.trim() || "综合学习",
-      contentFormat: contentFormat.value,
-      parentId: parentId.value,
-    }
+    const payload = { title: title.value.trim(), body: body.value, tags: tagList.value.join(','), status: status.value,
+      library: library.value.trim() || '综合学习', contentFormat: contentFormat.value, parentId: parentId.value }
     const wasNew = isNew.value
     const saved = currentId.value
-      ? await api.updateNote(currentId.value, payload)
-      : await api.createNote(payload)
+      ? await api.updateNote(currentId.value, { ...payload, baseRevision: revision.value })
+      : await api.createNote({ ...payload, clientId: createKey })
     if (version !== loadVersion || !ready.value) return null
-    applyNote(saved)
-    await nextTick()
-    dirty.value = false
-    toastStore.success('已保存')
+    // Never replace the current editor text with an older in-flight save response.
+    currentId.value = saved.id; revision.value = saved.revision ?? 0; updatedAt.value = saved.updatedAt
+    references.value = saved.references; shareCount.value = saved.shareCount
+    dirty.value = edits !== editSequence || saved.body !== payload.body || saved.title !== payload.title
+      || saved.library !== payload.library || saved.contentFormat !== payload.contentFormat || (saved.parentId || '') !== payload.parentId
+      || saved.status.code !== payload.status || JSON.stringify(saved.tags) !== JSON.stringify([...new Set(payload.tags.split(/[,，、;；\s]+/).filter(Boolean))])
+    if (!automatic) toastStore.success('已保存到服务器')
     if (wasNew) await router.replace({ name: 'note-edit', params: { id: saved.id } })
     return saved.id
   } catch (reason) {
-    if (version === loadVersion) toastStore.error(errText(reason, '保存失败'))
+    if (version === loadVersion) {
+      syncError.value = errText(reason, '保存失败，当前草稿尚未同步。请保留此页面，连接恢复后重试。')
+      syncConflict.value = reason instanceof ApiClientError && reason.code === 'NOTE_SYNC_CONFLICT'
+      if (!automatic) toastStore.error(syncError.value)
+    }
     return null
   } finally {
-    saving.value = false
+    if (version === loadVersion) { saving.value = false; scheduleSave() }
   }
 }
 
@@ -468,16 +489,19 @@ onBeforeRouteUpdate((to, from) => {
 })
 watch(() => route.params.id, (next, previous) => {
   if (next === previous || (typeof next === 'string' && next === currentId.value)) return
+  clearTimeout(autoTimer); createKey = crypto.randomUUID(); revision.value = 0; syncError.value = ''; syncConflict.value = false
   annotationUndo.value = null; selectedCodeIndex.value = -1; parentId.value = ''; ready.value = false; currentId.value = null; title.value = ''; body.value = ''; tagsInput.value = ''; status.value = 'DRAFT'; references.value = []; shares.value = []; shareCount.value = 0; updatedAt.value = null; dirty.value = false
   void load()
 })
 function warnUnload(event: BeforeUnloadEvent) { if (dirty.value) { event.preventDefault(); event.returnValue = '' } }
-onMounted(() => { void load(); void loadPageOptions(); window.addEventListener('beforeunload', warnUnload) })
-onBeforeUnmount(() => { loadVersion++; refVersion++; window.removeEventListener('beforeunload', warnUnload) })
+onMounted(() => { void load(); void loadPageOptions(); window.addEventListener('beforeunload', warnUnload); window.addEventListener('online', retryOnline) })
+watch(() => authStore.state.user?.id, (next, previous) => { if (next !== previous) { clearTimeout(autoTimer); loadVersion++; refVersion++; ready.value = false; body.value = ''; title.value = ''; tagsInput.value = ''; library.value = '综合学习'; parentId.value = ''; currentId.value = null; pageOptions.value = []; references.value = []; shares.value = []; refOptions.value = []; annotationUndo.value = null; shareLabel.value = ''; refLabel.value = ''; refOpen.value = false; dirty.value = false; saving.value = false } }, { flush: 'sync' })
+onBeforeUnmount(() => { clearTimeout(autoTimer); window.removeEventListener('online', retryOnline); loadVersion++; refVersion++; window.removeEventListener('beforeunload', warnUnload) })
 </script>
 
 <template>
   <div class="page-stack note-editor-page">
+    <div v-if="syncError" class="inline-alert inline-alert--error" role="alert"><p>{{ syncError }}</p><button class="button button--ghost button--small" @click="downloadDraft">下载当前草稿</button> <button v-if="syncConflict" class="button button--ghost button--small" @click="reloadServer">重新加载服务器版本</button><button v-else class="button button--ghost button--small" :disabled="saving" @click="save()">重试保存</button></div>
     <section class="page-intro page-intro--split">
       <div>
         <p class="page-kicker">NOTE EDITOR</p>
@@ -491,7 +515,7 @@ onBeforeUnmount(() => { loadVersion++; refVersion++; window.removeEventListener(
         <button v-if="!isNew" class="button button--ghost note-danger" @click="remove">
           <AppIcon name="trash" :size="16" /> 删除
         </button>
-        <button class="button button--dark" :disabled="saving || !canWrite" @click="save">
+        <button class="button button--dark" :disabled="saving || !canWrite" @click="save()">
           <AppIcon name="check" :size="16" /> {{ saving ? '保存中…' : dirty ? '保存更改' : '已保存' }}
         </button>
       </div>
@@ -505,31 +529,31 @@ onBeforeUnmount(() => { loadVersion++; refVersion++; window.removeEventListener(
 
     <section class="panel note-editor-meta">
       <div class="note-editor-fields">
-        <input v-model="title" :disabled="loading || saving || !ready" class="field-input note-title-input" maxlength="180" placeholder="无标题笔记" />
+        <input v-model="title" :disabled="loading || !ready" class="field-input note-title-input" maxlength="180" placeholder="无标题笔记" />
         <div class="note-editor-row">
-          <label class="field-label">学习库<input v-model="library" :disabled="loading || saving || !ready" class="field-input" list="note-libraries" maxlength="40" placeholder="选择或输入自定义库名" /><datalist id="note-libraries"><option v-for="name in noteLibraries" :key="name" :value="name" /></datalist></label>
-          <label class="field-label">编写格式<select v-model="contentFormat" :disabled="loading || saving || !ready" class="field-input"><option value="MARKDOWN">Markdown</option><option value="HTML">HTML</option></select></label>
+          <label class="field-label">学习库<input v-model="library" :disabled="loading || !ready" class="field-input" list="note-libraries" maxlength="40" placeholder="选择或输入自定义库名" /><datalist id="note-libraries"><option v-for="name in noteLibraries" :key="name" :value="name" /></datalist></label>
+          <label class="field-label">编写格式<select v-model="contentFormat" :disabled="loading || !ready" class="field-input"><option value="MARKDOWN">Markdown</option><option value="HTML">HTML</option></select></label>
           <label class="field-label note-status-field">
             状态
-            <select v-model="status" :disabled="loading || saving || !ready" class="field-input">
+            <select v-model="status" :disabled="loading || !ready" class="field-input">
               <option v-for="option in statusOptions" :key="option.code" :value="option.code">{{ option.label }}</option>
             </select>
           </label>
           <label class="field-label note-tags-field">
             标签（逗号分隔）
-            <input v-model="tagsInput" :disabled="loading || saving || !ready" class="field-input" maxlength="500" placeholder="如：英语写作, Python, 复习" />
+            <input v-model="tagsInput" :disabled="loading || !ready" class="field-input" maxlength="500" placeholder="如：英语写作, Python, 复习" />
           </label>
         </div>
       </div>
       <label class="field-label note-parent-field">父页面
-        <select v-model="parentId" class="field-input" :disabled="loading || saving || !ready"><option value="">无 · 顶层页面</option><option v-for="page in pageOptions.filter(page => page.id !== currentId)" :key="page.id" :value="page.id">{{ page.title }} · {{ page.library }}</option></select>
+        <select v-model="parentId" class="field-input" :disabled="loading || !ready"><option value="">无 · 顶层页面</option><option v-for="page in pageOptions.filter(page => page.id !== currentId)" :key="page.id" :value="page.id">{{ page.title }} · {{ page.library }}</option></select>
         <span v-if="pageOptionsError" class="field-hint">{{ pageOptionsError }}</span>
       </label>
       <div class="note-editor-stats">
         <span><b>{{ wordCount }}</b> 字</span>
         <span>约 <b>{{ readMinutes }}</b> 分钟</span>
         <span v-if="updatedAt">更新于 {{ formatDate(updatedAt) }}</span>
-        <span v-if="dirty" class="note-dirty">未保存</span>
+        <span aria-live="polite" class="note-sync-status">{{ saving ? '正在保存到服务器…' : syncError ? '尚未同步' : dirty ? '待自动保存 · 停止输入后同步' : updatedAt ? '已保存到服务器' : '填写标题和正文后自动保存' }}</span>
       </div>
       <div class="note-editor-export">
         <span class="note-editor-export-label"><AppIcon name="export" :size="15" /> 导出</span>
@@ -547,13 +571,13 @@ onBeforeUnmount(() => { loadVersion++; refVersion++; window.removeEventListener(
       <article class="panel note-editor-pane">
         <header class="note-pane-head">
           <strong>{{ contentFormat === "HTML" ? "HTML 源码" : "Markdown" }}</strong>
-          <button class="button button--ghost button--small" :disabled="loading || saving || !ready" @click="useTemplate">插入学习模板</button>
+          <button class="button button--ghost button--small" :disabled="loading || !ready" @click="useTemplate">插入学习模板</button>
           <div v-if="contentFormat === 'MARKDOWN' && !selectedBlock" class="note-md-tools">
-            <button v-for="tool in tools" :key="tool.title" type="button" :disabled="loading || saving || !ready" :title="tool.title" @click="tool.run">{{ tool.label }}</button>
+            <button v-for="tool in tools" :key="tool.title" type="button" :disabled="loading || !ready" :title="tool.title" @click="tool.run">{{ tool.label }}</button>
           </div>
         </header>
         <div v-if="contentFormat === 'MARKDOWN'" class="code-editor-toolbar">
-          <label>编辑范围<select v-model.number="selectedCodeIndex" :disabled="loading || saving || !ready" aria-label="选择代码块"><option :value="-1">整篇笔记</option><option v-for="(block, index) in blocks" :key="index" :value="index">代码块 {{ index + 1 }} · {{ block.language }}</option></select></label>
+          <label>编辑范围<select v-model.number="selectedCodeIndex" :disabled="loading || !ready" aria-label="选择代码块"><option :value="-1">整篇笔记</option><option v-for="(block, index) in blocks" :key="index" :value="index">代码块 {{ index + 1 }} · {{ block.language }}</option></select></label>
           <label v-if="selectedBlock">语言<select :value="selectedBlock.language" :disabled="saving || loading" aria-label="代码语言" @change="setCodeLanguage"><option v-for="[value, label] in codeLanguages" :key="value" :value="value">{{ label }}</option></select></label>
           <button type="button" class="button button--ghost button--small" :disabled="saving || loading || !ready" @click="blockMenuOpen = !blockMenuOpen">＋ 插入块 <small>/</small></button>
         </div>
@@ -562,7 +586,7 @@ onBeforeUnmount(() => { loadVersion++; refVersion++; window.removeEventListener(
         <textarea
           ref="bodyEl"
           v-model="editorText"
-          :disabled="loading || saving || !ready"
+          :disabled="loading || !ready"
           class="note-editor-textarea"
           spellcheck="false"
           :placeholder="contentFormat === 'HTML' ? '<h2>学习目标</h2>\n<p>在这里开始记录。</p>' : '## 学习目标\n\n支持 Markdown、表格与 Python / HTML 等代码块。'"

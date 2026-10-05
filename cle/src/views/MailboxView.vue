@@ -18,7 +18,7 @@ const busy = ref(false), loading = ref(true), error = ref('')
 let epoch = 0, detailEpoch = 0
 const unread = computed(() => tab.value === 'inbox' ? messages.value.filter(item => !item.read).length : 0)
 const contacts = computed(() => directory.value.filter(user => `${user.displayName} ${user.username}`.toLowerCase().includes(query.value.toLowerCase())))
-const relation = { ADMIN: '平台管理员', GROUP_MEMBER: '同组成员', USER: '平台用户' }
+const relation = { ADMIN: '平台管理员', GROUP_MEMBER: '联系人或同组成员', USER: '平台用户' }
 const reasonText = (reason: unknown) => reason instanceof ApiClientError ? reason.message : '操作失败，请重试'
 function clearDraft() { recipients.value = []; subject.value = ''; body.value = ''; files.value = []; replyToId.value = undefined; query.value = '' }
 function reset() { epoch++; detailEpoch++; messages.value = []; directory.value = []; selected.value = null; composing.value = false; clearDraft(); error.value = ''; busy.value = false; loading.value = false }
@@ -41,7 +41,7 @@ async function open(item: MessageView) {
 }
 function compose(to?: number, original?: MessageView) {
   if (busy.value || loading.value) return
-  if (to && !directory.value.some(user => user.id === to)) { error.value = '此用户已不可联系，请刷新后选择平台管理员或同组成员。'; return }
+  if (to && !directory.value.some(user => user.id === to)) { error.value = '此用户已不可联系，请刷新后选择平台管理员或联系人或同组成员。'; return }
   clearDraft(); if (to) recipients.value = [to]
   if (original) { subject.value = (original.subject.startsWith('回复：') ? original.subject : `回复：${original.subject}`).slice(0, 180); replyToId.value = original.id }
   composing.value = true; error.value = ''
@@ -75,7 +75,7 @@ onBeforeUnmount(reset)
 
 <template>
   <div class="page-stack mailbox-page">
-    <section class="page-intro page-intro--split"><div><p class="page-kicker">COLLABORATION</p><h2>站内信箱</h2><p>联系平台管理员或同组成员；群内讨论和资料分享请进入群组协作。</p></div><button class="button button--dark" :disabled="loading || busy" @click="compose()"><AppIcon name="plus" :size="17" /> 写信</button></section>
+    <section class="page-intro page-intro--split"><div><p class="page-kicker">COLLABORATION</p><h2>站内信箱</h2><p>联系平台管理员或联系人或同组成员；群内讨论和资料分享请进入群组协作。</p></div><button class="button button--dark" :disabled="loading || busy" @click="compose()"><AppIcon name="plus" :size="17" /> 写信</button></section>
     <div class="mail-shortcuts"><RouterLink to="/app/groups">打开群组协作 →</RouterLink><button type="button" :disabled="loading || busy" @click="load">刷新联系人与消息</button><button v-for="admin in directory.filter(user => user.relationship === 'ADMIN')" :key="admin.id" type="button" :disabled="loading || busy" @click="compose(admin.id)">联系管理员 · {{ admin.displayName }}</button></div>
     <section class="mail-layout panel">
       <aside class="mail-list">
@@ -96,7 +96,7 @@ onBeforeUnmount(reset)
     <div v-if="composing" class="modal-backdrop" @click.self="!busy && (composing = false)">
       <form class="modal-card compose-modal" role="dialog" aria-modal="true" aria-label="写站内信" @submit.prevent="send">
         <header><h3>{{ replyToId ? '回复站内信' : '写站内信' }}</h3><button type="button" class="icon-button" aria-label="关闭写信" :disabled="busy" @click="composing = false"><AppIcon name="close" /></button></header>
-        <p>可联系平台管理员和有交流权限的同组成员，最多 20 人。</p>
+        <p>可联系平台管理员和有交流权限的联系人或同组成员，最多 20 人。</p>
         <label class="field-label">查找收件人<input v-model="query" class="field-input" type="search" placeholder="姓名或用户名" :disabled="busy" /></label>
         <fieldset class="mail-contacts"><legend>收件人 · 已选 {{ recipients.length }} 人</legend><label v-for="user in contacts" :key="user.id"><input v-model="recipients" type="checkbox" :value="user.id" :disabled="busy || (recipients.length >= 20 && !recipients.includes(user.id)) || (!!replyToId && !recipients.includes(user.id))" /><span>{{ user.displayName }} <small>@{{ user.username }} · {{ relation[user.relationship] }}</small></span></label><p v-if="!contacts.length">没有匹配的联系人，请检查群组成员或联系平台管理员。</p></fieldset>
         <label class="field-label">主题<input v-model="subject" class="field-input" maxlength="180" required :disabled="busy" /></label><label class="field-label">正文<textarea v-model="body" class="field-input" rows="7" maxlength="20000" required :disabled="busy" /></label>

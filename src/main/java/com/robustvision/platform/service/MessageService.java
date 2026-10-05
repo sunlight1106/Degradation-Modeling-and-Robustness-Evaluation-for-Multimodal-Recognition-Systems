@@ -64,7 +64,7 @@ public class MessageService {
         if (ids.isEmpty() || ids.size() > 20 || ids.contains(null)) throw new BusinessException(HttpStatus.BAD_REQUEST, "MESSAGE_RECIPIENTS_INVALID", "请选择 1 到 20 个收件人");
         if (sender.getStatus() != UserStatus.ACTIVE || userRepository.findMessageContacts(sender.getId(),
                 currentUserService.isSuperAdmin(sender), false, ids).size() != ids.size())
-            throw new BusinessException(HttpStatus.FORBIDDEN, "MESSAGE_RECIPIENT_FORBIDDEN", "只能联系平台管理员或有交流权限的同组成员，请刷新联系人列表");
+            throw new BusinessException(HttpStatus.FORBIDDEN, "MESSAGE_RECIPIENT_FORBIDDEN", "只能联系平台管理员或有交流权限的联系人或同组成员，请刷新联系人列表");
         if (replyToId != null) {
             MessageEntity parent = requireAccessible(replyToId, sender);
             Set<Long> participants = new HashSet<>();

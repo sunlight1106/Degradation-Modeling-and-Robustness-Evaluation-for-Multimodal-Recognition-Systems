@@ -86,9 +86,16 @@ public class NoteService {
     public ApiDtos.NoteView create(ApiDtos.CreateNoteRequest request) {
         UserEntity user = currentUserService.requireCurrent();
         users.lockNoteOwner(user.getId());
-        NoteEntity note = noteRepository.save(new NoteEntity(
-                user, request.title().trim(), request.body(),
-                trimToNull(request.tags()), parseStatusOrDefault(request.status())));
+        if (request.clientId() != null) {
+            var existing = noteRepository.findById(request.clientId());
+            if (existing.isPresent()) {
+                if (!existing.get().getOwner().getId().equals(user.getId())) throw new BusinessException(HttpStatus.CONFLICT, "NOTE_CREATE_CONFLICT", "创建标识已被使用，请重新新建笔记");
+                return toView(existing.get());
+            }
+        }
+        NoteEntity note = new NoteEntity(user, request.title().trim(), request.body(), trimToNull(request.tags()), parseStatusOrDefault(request.status()));
+        if (request.clientId() != null) note.assignClientId(request.clientId());
+        note = noteRepository.save(note);
         assignParent(note, request.parentId(), user);
         note.setLibrary(normalizeLibrary(request.library()));
         if (request.contentFormat() != null) note.setContentFormat(request.contentFormat());
@@ -98,8 +105,11 @@ public class NoteService {
     @Transactional
     public ApiDtos.NoteView update(String id, ApiDtos.UpdateNoteRequest request) {
         UserEntity user = currentUserService.requireCurrent();
-        if (request.parentId() != null) users.lockNoteOwner(user.getId());
-        NoteEntity note = requireOwn(id, user);
+        users.lockNoteOwner(user.getId());
+        NoteEntity note = noteRepository.lockOwned(id, user.getId()).orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "NOTE_NOT_FOUND", "笔记不存在或无权访问"));
+        if (request.baseRevision() != null && request.baseRevision() != note.getRevision())
+            throw new BusinessException(HttpStatus.CONFLICT, "NOTE_SYNC_CONFLICT", "这篇笔记已在其他页面或设备更新。当前内容未覆盖，请先复制或下载当前草稿，再重新加载服务器版本。");
+        note.incrementRevision();
         if (request.parentId() != null) assignParent(note, request.parentId(), user);
         if (request.title() != null && !request.title().isBlank()) note.setTitle(request.title().trim());
         if (request.body() != null) note.setBody(request.body());
@@ -187,7 +197,7 @@ public class NoteService {
                 statusView(note.getStatus()),
                 referenceService.resolveForNote(note.getId()),
                 shareRepository.findByNoteIdOrderByCreatedAtDesc(note.getId()).size(),
-                note.getCreatedAt(), note.getUpdatedAt(), note.getLibrary(), note.getContentFormat(), note.getParentId());
+                note.getCreatedAt(), note.getUpdatedAt(), note.getLibrary(), note.getContentFormat(), note.getParentId(), note.getRevision());
     }
 
     /** 去掉 Markdown 语法标记后取前若干字符作为列表摘要。 */

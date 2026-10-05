@@ -63,7 +63,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
         String category = category(request);
         int limit = switch (category) { case "auth" -> authLimit; case "inference" -> inferenceLimit;
-            case "files" -> uploadLimit; default -> generalLimit; };
+            case "files" -> uploadLimit; case "contacts" -> 10; case "chat" -> 60; default -> generalLimit; };
         long minute = Instant.now().getEpochSecond() / 60;
         // Authentication and security operations always have a source-IP budget, including logged-in requests.
         String actor = "auth".equals(category) ? "ip:" + sourceAddress(request) : actor(request);
@@ -134,6 +134,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
                 || path.matches("/api/v1/inference/tasks/[^/]+/recover")
                 || path.equals("/api/v1/personal-ai/execute") || path.equals("/api/v1/personal-ai/recognition/execute"))) return "inference";
         if ("POST".equals(request.getMethod()) && path.equals("/api/v1/files")) return "files";
+        if ("POST".equals(request.getMethod()) && path.equals("/api/v1/social/contacts")) return "contacts";
+        if ("POST".equals(request.getMethod()) && path.matches("/api/v1/social/contacts/[0-9]+/messages")) return "chat";
         return "general";
     }
 }

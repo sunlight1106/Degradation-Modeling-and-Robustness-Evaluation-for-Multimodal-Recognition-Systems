@@ -41,6 +41,7 @@ const router = createRouter({
         { path: 'logs', name: 'logs', component: () => import('@/views/LogsView.vue'), meta: { permissions: ['experiment:read', 'experiment:read:any'] } },
         { path: 'downloads', name: 'downloads', component: () => import('@/views/DownloadsView.vue'), meta: { permissions: ['file:read', 'file:read:any', 'experiment:read', 'experiment:read:any'] } },
         { path: 'billing', name: 'billing', component: () => import('@/views/BillingView.vue'), meta: { permission: 'billing:read' } },
+        { path: 'contacts', name: 'contacts', component: () => import('@/views/ContactsView.vue') },
         { path: 'mail', name: 'mail', component: () => import('@/views/MailboxView.vue') },
         { path: 'groups', name: 'groups', component: () => import('@/views/GroupsView.vue') },
         { path: 'users', name: 'users', component: () => import('@/views/UsersView.vue'), meta: { permission: 'user:read' } },

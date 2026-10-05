@@ -6,7 +6,7 @@ This is a **bounded local/development recovery tool**, not a production backup s
 
 A private ZIP contains:
 
-- A complete application-schema SQL dump: tables, indexes, constraints, every row, and the original `flyway_schema_history`. Current schema: 31 application tables plus Flyway, V1–V12, 40 foreign keys.
+- A complete application-schema SQL dump: tables, indexes, constraints, every row, and the original `flyway_schema_history`. Current schema: 33 application tables plus Flyway, V1–V16, 48 foreign keys.
 - All regular files under the explicitly selected **filesystem storage root**, including files not referenced by current metadata. Each relative path has a size and SHA-256 manifest entry; every `file_asset.storage_path`, size and SHA must match the actual bytes.
 - A table/engine/collation inventory, exact row counts, foreign-key inventory and migration versions/checksums.
 

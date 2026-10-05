@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "typecheck": "vue-tsc -b",
     "test:unit": "node --experimental-strip-types --test src/tests/requestGuard.test.mjs",
-    "test:ui": "node src/tests/run-personal-ui.mjs && node src/tests/run-personal-ui.mjs docs-ui.mjs && node src/tests/run-personal-ui.mjs vocabulary-ui.mjs && node src/tests/run-personal-ui.mjs queue-recovery-ui.mjs && node src/tests/run-personal-ui.mjs groups-ui.mjs && node src/tests/run-personal-ui.mjs learning-ui.mjs && node src/tests/run-personal-ui.mjs code-notes-ui.mjs"
+    "test:ui": "node src/tests/run-personal-ui.mjs && node src/tests/run-personal-ui.mjs docs-ui.mjs && node src/tests/run-personal-ui.mjs vocabulary-ui.mjs && node src/tests/run-personal-ui.mjs queue-recovery-ui.mjs && node src/tests/run-personal-ui.mjs groups-ui.mjs && node src/tests/run-personal-ui.mjs learning-ui.mjs && node src/tests/run-personal-ui.mjs code-notes-ui.mjs && node src/tests/run-personal-ui.mjs social-ui.mjs"
   },
   "dependencies": {
     "dompurify": "^3.4.15",
