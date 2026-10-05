@@ -5,8 +5,8 @@ import java.time.Instant;
 
 public final class SocialDtos {
     private SocialDtos() {}
-    public record Person(Long id, String username, String displayName) {}
-    public record Contact(Long id, Long userId, String username, String displayName, String status, boolean incoming, boolean blockedByMe, boolean available) {}
+    public record Person(Long id, String identityCode, String username, String displayName) {}
+    public record Contact(Long id, Long userId, String identityCode, String username, String displayName, String status, boolean incoming, boolean blockedByMe, boolean available) {}
     public record Discoverability(boolean discoverable) {}
     public record ContactRequest(@NotNull @Positive Long userId) {}
     public record Action(@NotNull @Pattern(regexp = "accept|reject|remove|block|unblock") String action) {}

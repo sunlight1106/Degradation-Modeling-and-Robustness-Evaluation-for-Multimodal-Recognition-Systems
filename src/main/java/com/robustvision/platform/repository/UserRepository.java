@@ -31,7 +31,7 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     List<UserEntity> findAllByOrderByCreatedAtDesc();
 
     @Query("""
-            select u.id as id, u.username as username, u.displayName as displayName, u.role.code as roleCode
+            select u.id as id, u.identityCode as identityCode, u.username as username, u.displayName as displayName, u.role.code as roleCode
             from UserEntity u where u.status = com.robustvision.platform.domain.UserStatus.ACTIVE
             and u.id <> :currentId and (:allTargets = true or u.id in :targetIds)
             and not exists (select c.id from ContactLinkEntity c where ((c.lowUserId = :currentId and c.highUserId = u.id) or (c.highUserId = :currentId and c.lowUserId = u.id)) and (c.lowBlocked = true or c.highBlocked = true))
@@ -47,17 +47,18 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
             @Param("allTargets") boolean allTargets, @Param("targetIds") java.util.Collection<Long> targetIds);
 
     @Query("""
-        select u.id as id, u.username as username, u.displayName as displayName
+        select u.id as id, u.identityCode as identityCode, u.username as username, u.displayName as displayName
         from UserEntity u where u.id <> :me and u.discoverable = true
         and u.status = com.robustvision.platform.domain.UserStatus.ACTIVE
-        and (lower(u.username) like :query escape '!' or lower(u.displayName) like :query escape '!')
+        and (u.identityCode = :identityCode or lower(u.username) like :query escape '!' or lower(u.displayName) like :query escape '!')
         and not exists (select c.id from ContactLinkEntity c where ((c.lowUserId = :me and c.highUserId = u.id) or (c.highUserId = :me and c.lowUserId = u.id)) and (c.lowBlocked = true or c.highBlocked = true))
         order by u.username, u.id
         """)
-    List<MessageContactRow> searchPeople(@Param("me") long me, @Param("query") String query, org.springframework.data.domain.Pageable pageable);
+    List<MessageContactRow> searchPeople(@Param("me") long me, @Param("query") String query, @Param("identityCode") String identityCode, org.springframework.data.domain.Pageable pageable);
 
     interface MessageContactRow {
         Long getId();
+        String getIdentityCode();
         String getUsername();
         String getDisplayName();
         String getRoleCode();

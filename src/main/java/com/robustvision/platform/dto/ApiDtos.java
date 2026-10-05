@@ -44,6 +44,7 @@ public final class ApiDtos {
 
     public record UserView(
             Long id,
+            String identityCode,
             String username,
             String displayName,
             String email,
@@ -273,7 +274,7 @@ public final class ApiDtos {
     ) {}
 
     public record UserDirectoryView(Long id, String username, String displayName, String email) {}
-    public record MessageContactView(Long id, String username, String displayName, String relationship) {}
+    public record MessageContactView(Long id, String identityCode, String username, String displayName, String relationship) {}
 
     public record MessageAttachmentView(Long id, String fileName, String contentType, long sizeBytes, String downloadUrl) {}
 

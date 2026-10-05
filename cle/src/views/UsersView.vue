@@ -5,6 +5,7 @@ import type { RoleView, UserView } from '@/types/api'
 import StatusBadge from '@/components/StatusBadge.vue'
 import AppIcon from '@/components/AppIcon.vue'
 import EmptyState from '@/components/EmptyState.vue'
+import IdentityCode from '@/components/IdentityCode.vue'
 import { authStore } from '@/stores/auth'
 import { toastStore } from '@/stores/toast'
 
@@ -87,7 +88,7 @@ const formatDate = (value: string) => new Intl.DateTimeFormat('zh-CN', { year: '
       <div v-if="loading" class="table-skeleton" />
       <EmptyState v-else-if="!users.length" title="暂无用户" icon="users" />
       <div v-else class="data-table-wrap"><table class="data-table"><thead><tr><th>用户</th><th>角色</th><th>状态</th><th>创建时间</th><th>操作</th></tr></thead><tbody>
-        <tr v-for="user in users" :key="user.id"><td><div class="table-primary"><span class="avatar avatar--small">{{ user.displayName.slice(0, 1) }}</span><span><strong>{{ user.displayName }} <i v-if="user.id === authStore.state.user?.id" class="self-label">当前账号</i></strong><small>@{{ user.username }} · {{ user.email }}</small></span></div></td><td><select v-if="canWrite && roles.length" class="compact-select" :value="user.roleId" :disabled="user.id === authStore.state.user?.id" @change="changeRole(user, $event)"><option v-for="role in roles" :key="role.id" :value="role.id">{{ role.name }}</option></select><span v-else>{{ user.roleName }}</span></td><td><StatusBadge :status="user.status" /></td><td>{{ formatDate(user.createdAt) }}</td><td><button v-if="canWrite" class="table-action" :disabled="user.id === authStore.state.user?.id" @click="toggleStatus(user)">{{ user.status === 'ACTIVE' ? '停用' : '启用' }}</button><span v-else class="table-muted">只读</span></td></tr>
+        <tr v-for="user in users" :key="user.id"><td><div class="table-primary"><span class="avatar avatar--small">{{ user.displayName.slice(0, 1) }}</span><span><strong>{{ user.displayName }} <i v-if="user.id === authStore.state.user?.id" class="self-label">当前账号</i></strong><small>@{{ user.username }} · {{ user.email }}</small><IdentityCode :value="user.identityCode" /></span></div></td><td><select v-if="canWrite && roles.length" class="compact-select" :value="user.roleId" :disabled="user.id === authStore.state.user?.id" @change="changeRole(user, $event)"><option v-for="role in roles" :key="role.id" :value="role.id">{{ role.name }}</option></select><span v-else>{{ user.roleName }}</span></td><td><StatusBadge :status="user.status" /></td><td>{{ formatDate(user.createdAt) }}</td><td><button v-if="canWrite" class="table-action" :disabled="user.id === authStore.state.user?.id" @click="toggleStatus(user)">{{ user.status === 'ACTIVE' ? '停用' : '启用' }}</button><span v-else class="table-muted">只读</span></td></tr>
       </tbody></table></div>
     </section>
   </div>

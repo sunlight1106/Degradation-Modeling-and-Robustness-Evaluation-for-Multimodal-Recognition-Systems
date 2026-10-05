@@ -111,6 +111,30 @@ class MySqlSchemaMigrationTest {
                 .isEqualTo("0");
     }
 
+    @Test
+    void identityUpgradeBackfillsEveryUserAndEnforcesUniqueNonNullCodes() throws Exception {
+        try (TestDatabase database = new TestDatabase()) {
+            database.flyway("18").migrate();
+            try (Connection c = database.connect()) {
+                seedAllDomains(c);
+                execute(c, "INSERT INTO app_user (id,username,password_hash,display_name,email,status,role_id) VALUES (102,'identity-second','synthetic','Second','second@example.invalid','ACTIVE',91)");
+            }
+            Flyway latest = database.flyway(null);
+            latest.migrate();
+            try (Connection c = database.connect()) {
+                assertThat(scalar(c, "SELECT COUNT(DISTINCT identity_code) FROM app_user")).isEqualTo("2");
+                String code = scalar(c, "SELECT identity_code FROM app_user WHERE id=101");
+                assertThat(code).matches("PKB-[0-9A-F]{32}");
+                assertDuplicateRejected(c, "UPDATE app_user SET identity_code='" + code + "' WHERE id=102");
+                assertThatThrownBy(() -> execute(c, "UPDATE app_user SET identity_code=NULL WHERE id=102")).isInstanceOf(SQLException.class);
+                latest.migrate();
+                assertThat(scalar(c, "SELECT identity_code FROM app_user WHERE id=101")).isEqualTo(code);
+                execute(c, "INSERT INTO app_user (id,username,password_hash,display_name,email,status,role_id) VALUES (103,'identity-third','synthetic','Third','third@example.invalid','ACTIVE',91)");
+                assertThat(scalar(c, "SELECT COUNT(DISTINCT identity_code) FROM app_user")).isEqualTo("3");
+            }
+        }
+    }
+
     private static void assertFixtureAndConstraints(Connection c) throws SQLException {
         assertThat(scalar(c, "SELECT COUNT(*) FROM internal_message WHERE workspace_id IS NOT NULL OR reply_to_id IS NOT NULL")).isEqualTo("0");
         assertThatThrownBy(() -> { try (Statement statement = c.createStatement()) {

@@ -18,6 +18,7 @@ export interface ApiEnvelope<T> {
 
 export interface UserView {
   id: number
+  identityCode: string
   username: string
   displayName: string
   email: string
@@ -244,7 +245,7 @@ export interface WorkspaceView {
 }
 
 export interface UserDirectoryView { id: number; username: string; displayName: string; email: string }
-export interface MessageContactView { id: number; username: string; displayName: string; relationship: 'ADMIN' | 'GROUP_MEMBER' | 'USER' }
+export interface MessageContactView { id: number; identityCode: string; username: string; displayName: string; relationship: 'ADMIN' | 'GROUP_MEMBER' | 'USER' }
 export interface MessageAttachmentView { id: number; fileName: string; contentType: string; sizeBytes: number; downloadUrl: string }
 export interface MessageView {
   id: string

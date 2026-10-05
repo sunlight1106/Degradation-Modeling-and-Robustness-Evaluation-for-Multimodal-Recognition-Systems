@@ -12,7 +12,10 @@ const wait = async predicate => { for (let i = 0; i < 550; i++) { await sleep(5)
 const button = text => [...fixture.querySelectorAll('button')].find(n => n.textContent.includes(text))
 const envelope = data => new Response(JSON.stringify({ success: true, data }), { headers: { 'Content-Type': 'application/json' } })
 async function set(node, value) { node.value = value; node.dispatchEvent(new Event('input', { bubbles: true })); await nextTick() }
-const bob = { id: 11, userId: 2, username: 'bob', displayName: 'Bob', status: 'ACCEPTED', incoming: false, blockedByMe: false, available: true }
+const identity = 'PKB-0123456789ABCDEF0123456789ABCDEF'
+let copied = '', searchedQuery = ''
+Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async value => { copied = value } } })
+const bob = { identityCode: identity, id: 11, userId: 2, username: 'bob', displayName: 'Bob', status: 'ACCEPTED', incoming: false, blockedByMe: false, available: true }
 let people = [bob, { ...bob, id: 12, userId: 3, username: 'charlie', displayName: 'Charlie', status: 'PENDING', incoming: true }]
 let rows = [{ id: 1, senderId: 2, senderName: 'Bob', body: '<img src=x onerror=alert(1)>', clientId: 'synthetic', createdAt: '2026-10-06T00:00:00Z' }]
 let app, deferred, failSend = true, delayMessages = false
@@ -22,7 +25,7 @@ let conflict = false, delaySave = false
 window.confirm = () => true
 window.fetch = async (url, init = {}) => {
   const path = String(url)
-  if (path.includes('/social/people?')) return envelope([{ id: 4, username: 'dana', displayName: 'Dana' }])
+  if (path.includes('/social/people?')) { searchedQuery = new URL(path, 'http://synthetic.test').searchParams.get('q'); return envelope([{ id: 4, identityCode: identity, username: 'dana', displayName: 'Dana' }]) }
   if (path.endsWith('/social/settings')) return envelope({ discoverable: true })
   if (path.endsWith('/social/contacts')) {
     if (init.method === 'POST') { people = [...people, { ...bob, id: 13, userId: 4, displayName: 'Dana', username: 'dana', status: 'PENDING' }]; return envelope(null) }
@@ -67,10 +70,12 @@ try {
   assert(fixture.textContent.includes('新的申请') && !fixture.querySelector('.chat-compose'), 'Pending contacts do not get a chat composer')
   button('同意').click(); await wait(() => fixture.querySelectorAll('.person-select').length === 2)
   assert(fixture.textContent.includes('Charlie'), 'Accepting an incoming request adds the contact')
-  await set(fixture.querySelector('#people-query'), 'dana'); fixture.querySelector('.people-search').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
-  await wait(() => button('申请添加')); button('申请添加').click(); await wait(() => button('等待处理'))
+  await set(fixture.querySelector('#people-query'), identity); fixture.querySelector('.people-search').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+  await wait(() => button('申请添加')); assert(searchedQuery === identity && fixture.querySelector('.person-line .identity-code').textContent.includes(identity), 'Full identity codes are searchable and shown on results'); button('申请添加').click(); await wait(() => button('等待处理'))
   assert(button('等待处理').disabled, 'Sent requests cannot be repeatedly submitted')
   button('Bob').click(); await wait(() => fixture.querySelector('.chat-message'))
+  fixture.querySelector('.chat-header [aria-label="复制身份码"]').click(); await wait(() => copied === identity)
+  assert(copied === identity, 'Copying a contact identity code keeps its complete value')
   assert(!fixture.querySelector('.chat-message img') && fixture.textContent.includes('<img'), 'Chat markup is rendered as text without executing HTML')
   await set(fixture.querySelector('.chat-compose textarea'), 'hello')
   fixture.querySelector('.chat-compose').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))

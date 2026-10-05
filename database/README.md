@@ -18,6 +18,7 @@
 | V10 | Vocabulary books, words, per-user settings/progress and one-use question records |
 | V11 | Original starter vocabulary (no third-party proprietary corpus) |
 | V12 | Owner-scoped personal image recognition results |
+| V19 | Permanent unique user identity codes; existing-user backfill |
 
 V1–V6 remain unchanged. V7 adds indexes only: it does not replace tables, change primary keys, reset passwords, rewrite content or modify balances. MySQL `CHAR` columns are explicitly mapped as `CHAR` in Hibernate, including fixed-width IDs, hashes and tokens; changing deployed IDs to `VARCHAR` is unnecessary.
 
@@ -27,7 +28,7 @@ There are **31 application tables**, **29 JPA entities**, two permission collect
 
 | Domain | Tables | Integrity / access paths |
 | --- | --- | --- |
-| Identity / permissions | `app_user`, `app_role`, `role_permission` | Unique username/email/role code; role FK; unique role-permission pair |
+| Identity / permissions | `app_user`, `app_role`, `role_permission` | Unique identity code/username/email/role code; role FK; unique role-permission pair |
 | Media / inference | `file_asset`, `model_definition`, `inference_task` | File/model/user FKs; unique trace ID and model code/version; owner and global recent-item indexes |
 | Billing sandbox | `user_wallet`, `wallet_ledger`, `recharge_order`, `provider_budget` | One wallet per user; exact decimal amounts; unique nullable payment-token hash; user/timestamp indexes |
 | Collaboration | `workspace`, `workspace_member`, `workspace_member_permission`, `internal_message`, `message_recipient`, `message_attachment` | Unique slug/member/recipient/attachment pairs; FK cascades for dependent rows; membership chronological indexes |
@@ -60,7 +61,7 @@ export MYSQL_TEST_USERNAME='local_test_user'
 ./mvnw -Dtest=MySqlSchemaMigrationTest test
 ```
 
-Without `MYSQL_TEST_URL`, the three schema contract cases are reported **skipped**, not passed. In CI or release verification, explicitly provide these variables and check `target/surefire-reports/com.robustvision.platform.database.MySqlSchemaMigrationTest.txt` for `Tests run: 3`, `Failures: 0`, `Errors: 0`, `Skipped: 0`.
+Without `MYSQL_TEST_URL`, the four schema contract cases are reported **skipped**, not passed. In CI or release verification, explicitly provide these variables and check `target/surefire-reports/com.robustvision.platform.database.MySqlSchemaMigrationTest.txt` for `Tests run: 4`, `Failures: 0`, `Errors: 0`, `Skipped: 0`.
 
 The tests verify:
 
@@ -106,3 +107,7 @@ mysql --host=127.0.0.1 --user=robust_user --password robust_vision < database/di
 5. MySQL DDL is not fully transactional. A failed index migration can leave earlier indexes committed. Inspect both `flyway_schema_history` and `SHOW INDEX` before recovery. Never blindly run `repair`, replay the entire migration or delete history. Reconcile the precise partial changes with a verified backup and an explicit maintenance plan first.
 
 Runtime MySQL, Redis and object-storage data belongs in Docker named volumes, not Git. `docker compose down` keeps volumes; `docker compose down -v` destroys them. Private runtime logs and local credentials must stay outside commits.
+
+## User identity codes
+
+V19 assigns every existing account a `PKB-` code without changing its internal ID, password, relationships or profile timestamp. New accounts receive a random UUID-based code automatically. The database requires non-null, unique codes; APIs expose them as `identityCode` but do not accept edits to them. Exact code lookup follows the same discovery, disabled-account and blocking rules as user search. Keep the database volume or restore its backup when moving deployments to retain existing codes.

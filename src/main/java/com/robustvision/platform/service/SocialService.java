@@ -32,15 +32,16 @@ public class SocialService {
     @Transactional(readOnly = true)
     public List<SocialDtos.Person> search(String query) {
         String text = query == null ? "" : query.trim();
-        if (text.length() < 2 || text.length() > 50) throw bad("请输入 2–50 个字符的用户名或昵称前缀");
+        if (text.length() < 2 || text.length() > 50) throw bad("请输入完整身份码，或 2–50 个字符的用户名、昵称前缀");
         String escaped = text.toLowerCase(Locale.ROOT).replace("!", "!!").replace("%", "!%").replace("_", "!_") + "%";
-        return users.searchPeople(current.requireCurrent().getId(), escaped, PageRequest.of(0, 20)).stream()
-                .map(u -> new SocialDtos.Person(u.getId(), u.getUsername(), u.getDisplayName())).toList();
+        if (text.matches("(?i)PKB-[0-9A-F]{32}")) escaped = ""; // A full identity code is an exact lookup, not a username prefix.
+        return users.searchPeople(current.requireCurrent().getId(), escaped, text.toUpperCase(Locale.ROOT), PageRequest.of(0, 20)).stream()
+                .map(u -> new SocialDtos.Person(u.getId(), u.getIdentityCode(), u.getUsername(), u.getDisplayName())).toList();
     }
     @Transactional(readOnly = true)
     public List<SocialDtos.Contact> list() {
         long me = current.requireCurrent().getId();
-        return contacts.visible(me).stream().map(c -> new SocialDtos.Contact(c.getId(), c.getUserId(), c.getUsername(), c.getDisplayName(),
+        return contacts.visible(me).stream().map(c -> new SocialDtos.Contact(c.getId(), c.getUserId(), c.getIdentityCode(), c.getUsername(), c.getDisplayName(),
                 c.getStatus(), c.getRequesterId() != me, c.getBlockedByMe(), c.getAvailable())).toList();
     }
     @Transactional

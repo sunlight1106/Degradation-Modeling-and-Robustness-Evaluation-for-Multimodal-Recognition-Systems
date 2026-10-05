@@ -11,6 +11,7 @@ import { toastStore } from '@/stores/toast'
 import AppIcon from '@/components/AppIcon.vue'
 import PersonalAiSettings from '@/components/PersonalAiSettings.vue'
 import WorkspaceSettingsPanel from '@/components/WorkspaceSettingsPanel.vue'
+import IdentityCode from '@/components/IdentityCode.vue'
 
 const router = useRouter(), route = useRoute()
 const tabs = computed(() => [
@@ -113,13 +114,14 @@ onBeforeUnmount(() => { active = false; loadVersion++; clearSecrets() })
       <aside class="panel settings-navigation">
         <div class="settings-identity"><span class="avatar">{{ authStore.state.user?.displayName?.slice(0, 1) || 'U' }}</span><div><strong>{{ authStore.state.user?.displayName }}</strong><small>@{{ authStore.state.user?.username }}</small></div></div>
         <nav aria-label="个人设置分类"><button v-for="tab in tabs" :key="tab.id" :aria-current="section === tab.id ? 'page' : undefined" :class="{ active: section === tab.id }" :disabled="!!busy" @click="select(tab.id)"><AppIcon :name="tab.icon" :size="17" />{{ tab.label }}</button></nav>
-        <p class="settings-nav-foot">{{ authStore.state.user?.roleName }}<br />账号 #{{ authStore.state.user?.id }}</p>
+        <p class="settings-nav-foot">{{ authStore.state.user?.roleName }}</p>
       </aside>
       <main class="settings-content" :aria-busy="loading || !!busy">
         <p v-if="error" class="inline-alert inline-alert--error" role="alert">{{ error }} <button class="table-action" :disabled="!!busy" @click="loadSection">重新加载</button></p>
         <article v-if="section === 'profile'" class="panel settings-card">
           <header><div><h3>个人资料</h3><p>用于笔记署名、工作空间和站内交流。</p></div><AppIcon name="users" :size="22" /></header>
           <form class="settings-form" @submit.prevent="saveProfile">
+            <div class="field-label">身份码 · Identity code<IdentityCode :value="authStore.state.user?.identityCode" prominent /><small>系统分配的唯一身份标识，永久固定。可复制给对方，用于查找并添加你。</small></div>
             <label class="field-label">用户名<input :value="authStore.state.user?.username" class="field-input" readonly /><small>登录用户名不可更改。</small></label>
             <div class="settings-fields"><label class="field-label">显示名称<input v-model="profile.displayName" class="field-input" required maxlength="80" :disabled="!!busy || loading" /></label><label class="field-label">电子邮箱<input v-model="profile.email" class="field-input" type="email" required maxlength="160" :disabled="!!busy || loading" /></label></div>
             <label v-if="emailChanged" class="field-label">确认当前密码以修改邮箱<input v-model="profile.currentPassword" class="field-input" type="password" autocomplete="current-password" required :disabled="!!busy" /></label>

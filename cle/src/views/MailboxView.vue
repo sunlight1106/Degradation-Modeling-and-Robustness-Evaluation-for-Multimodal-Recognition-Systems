@@ -5,6 +5,7 @@ import { api, ApiClientError } from '@/api/client'
 import type { MessageView, MessageContactView } from '@/types/api'
 import AppIcon from '@/components/AppIcon.vue'
 import EmptyState from '@/components/EmptyState.vue'
+import IdentityCode from '@/components/IdentityCode.vue'
 import { toastStore } from '@/stores/toast'
 import { authStore } from '@/stores/auth'
 
@@ -50,7 +51,7 @@ watch(composing, async opened => {
 }, { flush: 'post' })
 let epoch = 0, detailEpoch = 0
 const unread = computed(() => tab.value === 'inbox' ? messages.value.filter(item => !item.read).length : 0)
-const contacts = computed(() => directory.value.filter(user => `${user.displayName} ${user.username}`.toLowerCase().includes(query.value.trim().toLowerCase())))
+const contacts = computed(() => directory.value.filter(user => `${user.displayName} ${user.username} ${user.identityCode || ''}`.toLowerCase().includes(query.value.trim().toLowerCase())))
 const relation = { ADMIN: '平台管理员', GROUP_MEMBER: '联系人或同组成员', USER: '平台用户' }
 const reasonText = (reason: unknown) => reason instanceof ApiClientError ? reason.message : '操作失败，请重试'
 function clearDraft() { recipients.value = []; subject.value = ''; body.value = ''; files.value = []; replyToId.value = undefined; replyRecipientId.value = undefined; query.value = '' }
@@ -136,11 +137,11 @@ onBeforeUnmount(reset)
         <div class="compose-workspace">
           <aside class="compose-people" aria-label="选择收件人">
             <div class="compose-section-label"><span>联系人</span><small>{{ directory.length }} 人可联系</small></div>
-            <label class="compose-search"><AppIcon name="search" :size="16" /><input ref="contactSearch" v-model="query" type="search" aria-label="查找收件人" placeholder="搜索姓名或用户名" :disabled="busy" /></label>
+            <label class="compose-search"><AppIcon name="search" :size="16" /><input ref="contactSearch" v-model="query" type="search" aria-label="查找收件人" placeholder="搜索姓名、用户名或身份码" :disabled="busy" /></label>
             <fieldset class="mail-contacts"><legend class="compose-sr-only">选择收件人，已选 {{ recipients.length }} 人，最多 20 人</legend>
               <label v-for="user in contacts" :key="user.id" class="compose-contact" :class="{ 'is-selected': recipients.includes(user.id) }">
                 <input v-model="recipients" type="checkbox" :value="user.id" :aria-label="`选择 ${user.displayName} @${user.username}`" :disabled="busy || (recipients.length >= 20 && !recipients.includes(user.id)) || (!!replyToId && user.id !== replyRecipientId)" />
-                <span class="compose-avatar" aria-hidden="true">{{ user.displayName.slice(0, 1) }}</span><span class="compose-contact-name"><strong>{{ user.displayName }}</strong><small>@{{ user.username }}</small><small class="compose-contact-relation">{{ relation[user.relationship] }}</small></span><span class="compose-contact-check" aria-hidden="true"><AppIcon v-if="recipients.includes(user.id)" name="check" :size="14" /></span>
+                <span class="compose-avatar" aria-hidden="true">{{ user.displayName.slice(0, 1) }}</span><span class="compose-contact-name"><strong>{{ user.displayName }}</strong><small>@{{ user.username }}</small><IdentityCode :value="user.identityCode" :copyable="false" /><small class="compose-contact-relation">{{ relation[user.relationship] }}</small></span><span class="compose-contact-check" aria-hidden="true"><AppIcon v-if="recipients.includes(user.id)" name="check" :size="14" /></span>
               </label>
               <p v-if="!contacts.length" class="compose-no-contacts">{{ query.trim() ? '没有找到匹配的联系人，试试其他关键词。' : '暂无可联系用户，可刷新联系人后重试。' }}</p>
             </fieldset>

@@ -120,22 +120,46 @@ class AccountSecurityIntegrationTest {
     @Test void profilesAreSelfScopedAndEmailChangesRequireCurrentPassword() throws Exception {
         String token = login(alice);
         mvc.perform(json(patch("/api/v1/account/profile"), token,
-                Map.of("displayName", "  Updated Alice  ", "username", bob.getUsername(), "roleId", admin.getRole().getId())))
+                Map.of("displayName", "  Updated Alice  ", "username", bob.getUsername(), "roleId", admin.getRole().getId(), "identityCode", bob.getIdentityCode())))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.displayName").value("Updated Alice"))
                 .andExpect(jsonPath("$.data.username").value(alice.getUsername()))
-                .andExpect(jsonPath("$.data.roleCode").value(viewer.getCode()));
+                .andExpect(jsonPath("$.data.roleCode").value(viewer.getCode()))
+                .andExpect(jsonPath("$.data.identityCode").value(alice.getIdentityCode()));
         String email = "changed" + suffix + "@example.test";
         mvc.perform(json(patch("/api/v1/account/profile"), token, Map.of("email", email)))
                 .andExpect(status().isForbidden());
         mvc.perform(json(patch("/api/v1/account/profile"), token, Map.of("email", email, "currentPassword", "incorrect")))
                 .andExpect(status().isForbidden());
         mvc.perform(json(patch("/api/v1/account/profile"), token, Map.of("email", email, "currentPassword", PASSWORD)))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.data.email").value(email));
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.email").value(email))
+                .andExpect(jsonPath("$.data.identityCode").value(alice.getIdentityCode()));
         mvc.perform(json(patch("/api/v1/account/profile"), token, Map.of("email", bob.getEmail(), "currentPassword", PASSWORD)))
                 .andExpect(status().isConflict());
         mvc.perform(json(patch("/api/v1/account/profile"), token, Map.of("displayName", "    ")))
                 .andExpect(status().isBadRequest());
         assertThat(users.findById(bob.getId()).orElseThrow().getDisplayName()).isEqualTo("bob");
+    }
+    @Test void registrationAndAdminCreationAssignDistinctPermanentCodes() throws Exception {
+        roles.findByCode("RESEARCHER").orElseGet(() -> roles.save(new RoleEntity("RESEARCHER", "Researcher", "Synthetic", Set.of())));
+        String username = "identity" + suffix;
+        JsonNode registered = mapper.readTree(mvc.perform(post("/api/v1/auth/register").contentType(MediaType.APPLICATION_JSON)
+                .content(mapper.writeValueAsBytes(Map.of("username", username, "email", username + "@example.test", "password", PASSWORD, "identityCode", alice.getIdentityCode()))))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsByteArray()).path("data");
+        String code = registered.path("identityCode").asText();
+        assertThat(code).matches("PKB-[0-9A-F]{32}").isNotEqualTo(alice.getIdentityCode());
+        UserEntity registeredUser = users.findByUsername(username).orElseThrow();
+        mvc.perform(get("/api/v1/auth/me").header("Authorization", "Bearer " + login(registeredUser)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.identityCode").value(code));
+        String adminToken = login(admin);
+        JsonNode created = mapper.readTree(mvc.perform(json(post("/api/v1/users"), adminToken,
+                Map.of("username", "created" + suffix, "displayName", "Created", "email", "created" + suffix + "@example.test", "password", PASSWORD, "roleId", viewer.getId())))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsByteArray()).path("data");
+        String createdCode = created.path("identityCode").asText();
+        assertThat(createdCode).matches("PKB-[0-9A-F]{32}").isNotEqualTo(code);
+        mvc.perform(json(patch("/api/v1/users/{id}", created.path("id").asLong()), adminToken,
+                Map.of("roleId", registeredUser.getRole().getId(), "identityCode", code)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.identityCode").value(createdCode));
+        assertThat(users.findById(registeredUser.getId()).orElseThrow().getIdentityCode()).isEqualTo(code);
     }
 
     @Test void forgedCrossUserSessionDeletionIsDeniedAndCurrentSessionIsMarked() throws Exception {

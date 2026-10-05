@@ -19,7 +19,7 @@ const groups = [
 const message = (id, workspaceId = 1) => ({ id, workspaceId, senderId: 10, senderName: 'Owner', subject: 'Question', body: '<img src=x onerror=alert(1)> Synthetic content', attachments: [], recipients: [], read: false, createdAt: '2026-10-05T10:00:00Z', replyToId: null })
 let app, deferredSend, deferredList, delayAlpha = false
 const sends = [], requests = []
-const contacts = [{ id: 10, displayName: 'Admin', username: 'admin', relationship: 'ADMIN' }, { id: 12, displayName: 'Colleague', username: 'colleague', relationship: 'GROUP_MEMBER' }]
+const contacts = [{ id: 10, displayName: 'Admin', username: 'admin', relationship: 'ADMIN' }, { id: 12, identityCode: 'PKB-0123456789ABCDEF0123456789ABCDEF', displayName: 'Colleague', username: 'colleague', relationship: 'GROUP_MEMBER' }]
 window.fetch = async (url, init = {}) => {
   const path = String(url); requests.push({ path, method: init.method || 'GET' })
   if (path === '/api/v1/workspaces') return envelope(groups)
@@ -79,8 +79,8 @@ try {
   assert(document.body.style.overflow === 'hidden', 'Writing locks background scrolling and focuses recipient search')
   const checkboxes = [...fixture.querySelectorAll('.mail-contacts input')]
   for (const checkbox of checkboxes) { checkbox.checked = true; checkbox.dispatchEvent(new Event('change', { bubbles: true })); await nextTick() }
-  const searchInput = fixture.querySelector('.compose-search input'); searchInput.value = 'colleague'; searchInput.dispatchEvent(new Event('input', { bubbles: true })); await nextTick()
-  assert(fixture.querySelectorAll('.compose-contact').length === 1 && fixture.querySelectorAll('.compose-recipient-chip').length === 2, 'Filtering contacts keeps selected recipient chips visible')
+  const searchInput = fixture.querySelector('.compose-search input'); searchInput.value = 'pkb-0123456789abcdef0123456789abcdef'; searchInput.dispatchEvent(new Event('input', { bubbles: true })); await nextTick()
+  assert(fixture.querySelectorAll('.compose-contact').length === 1 && fixture.querySelectorAll('.compose-recipient-chip').length === 2, 'Searching an identity code matches the contact and keeps selected recipient chips visible')
   fixture.querySelector('[aria-label="移除收件人 Admin"]').click(); await nextTick()
   assert(fixture.querySelectorAll('.compose-recipient-chip').length === 1 && fixture.querySelector('.compose-recipient-chip').textContent.includes('Colleague'), 'Removing a chip removes only its recipient')
   const fileInput = fixture.querySelector('input[type="file"]')

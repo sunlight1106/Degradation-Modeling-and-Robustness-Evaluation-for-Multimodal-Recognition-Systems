@@ -1,6 +1,6 @@
 import { request } from './client'
 
-export interface Person { id: number; username: string; displayName: string }
+export interface Person { id: number; identityCode: string; username: string; displayName: string }
 export interface Contact extends Omit<Person, 'id'> { id: number; userId: number; status: 'PENDING' | 'ACCEPTED' | 'REMOVED' | 'REJECTED'; incoming: boolean; blockedByMe: boolean; available: boolean }
 export interface ChatMessage { id: number; senderId: number; senderName: string; clientId: string; body: string; createdAt: string }
 export type ContactAction = 'accept' | 'reject' | 'remove' | 'block' | 'unblock'

@@ -22,6 +22,9 @@ public class UserEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "identity_code", nullable = false, unique = true, updatable = false, length = 36)
+    private String identityCode = "PKB-" + java.util.UUID.randomUUID().toString().replace("-", "").toUpperCase(java.util.Locale.ROOT);
+
     @Column(nullable = false, unique = true, length = 60)
     private String username;
 
@@ -66,6 +69,7 @@ public class UserEntity {
     void touch() { this.updatedAt = Instant.now(); }
 
     public Long getId() { return id; }
+    public String getIdentityCode() { return identityCode; }
     public String getUsername() { return username; }
     public String getPasswordHash() { return passwordHash; }
     public String getDisplayName() { return displayName; }

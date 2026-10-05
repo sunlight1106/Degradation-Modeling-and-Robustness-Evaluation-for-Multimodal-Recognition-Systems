@@ -36,7 +36,7 @@ public class MessageService {
     public List<ApiDtos.MessageContactView> directory() {
         UserEntity current = currentUserService.requireCurrent();
         return userRepository.findMessageContacts(current.getId(), currentUserService.isSuperAdmin(current), true, List.of(current.getId()))
-                .stream().map(user -> new ApiDtos.MessageContactView(user.getId(), user.getUsername(), user.getDisplayName(),
+                .stream().map(user -> new ApiDtos.MessageContactView(user.getId(), user.getIdentityCode(), user.getUsername(), user.getDisplayName(),
                         "ADMIN".equals(user.getRoleCode()) ? "ADMIN" : currentUserService.isSuperAdmin(current) ? "USER" : "GROUP_MEMBER")).toList();
     }
 

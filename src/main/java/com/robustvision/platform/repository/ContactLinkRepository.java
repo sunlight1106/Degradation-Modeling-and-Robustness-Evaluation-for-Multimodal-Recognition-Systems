@@ -15,11 +15,11 @@ public interface ContactLinkRepository extends JpaRepository<ContactLinkEntity, 
     long countActive(@Param("user") long user);
 
     interface Row {
-        Long getId(); Long getUserId(); String getUsername(); String getDisplayName();
+        Long getId(); Long getUserId(); String getIdentityCode(); String getUsername(); String getDisplayName();
         Long getRequesterId(); String getStatus(); boolean getBlockedByMe(); boolean getAvailable();
     }
     @Query("""
-        select c.id as id, u.id as userId, u.username as username, u.displayName as displayName,
+        select c.id as id, u.id as userId, u.identityCode as identityCode, u.username as username, u.displayName as displayName,
         c.requesterId as requesterId, c.status as status,
         case when c.lowUserId = :user then c.lowBlocked else c.highBlocked end as blockedByMe,
         case when c.lowBlocked = false and c.highBlocked = false and u.status = com.robustvision.platform.domain.UserStatus.ACTIVE then true else false end as available

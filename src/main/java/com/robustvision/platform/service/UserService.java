@@ -184,7 +184,7 @@ public class UserService {
 
     public ApiDtos.UserView toView(UserEntity user) {
         return new ApiDtos.UserView(
-                user.getId(), user.getUsername(), user.getDisplayName(), user.getEmail(), user.getStatus(),
+                user.getId(), user.getIdentityCode(), user.getUsername(), user.getDisplayName(), user.getEmail(), user.getStatus(),
                 user.getRole().getId(), user.getRole().getCode(), user.getRole().getName(),
                 new LinkedHashSet<>(user.getRole().getPermissions()), user.getCreatedAt()
         );

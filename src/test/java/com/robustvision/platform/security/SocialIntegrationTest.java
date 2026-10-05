@@ -48,7 +48,7 @@ class SocialIntegrationTest {
     @Test void discoveryIsAuthenticatedLimitedPrivateAndCanBeDisabled() throws Exception {
         mvc.perform(get("/api/v1/social/people").param("q","bob")).andExpect(status().isUnauthorized());
         JsonNode result = data(mvc.perform(auth(get("/api/v1/social/people").param("q",bob.getUsername()),a)).andExpect(status().isOk()).andReturn());
-        assertThat(result).hasSize(1); assertThat(result.get(0).properties()).hasSize(3);
+        assertThat(result).hasSize(1); assertThat(result.get(0).properties()).hasSize(4);
         assertThat(result.get(0).has("email")).isFalse();
         mvc.perform(auth(get("/api/v1/social/people").param("q","%_"),a)).andExpect(status().isOk()).andExpect(jsonPath("$.data").isEmpty());
         mvc.perform(auth(get("/api/v1/social/people").param("q","b"),a)).andExpect(status().isBadRequest());
@@ -66,6 +66,8 @@ class SocialIntegrationTest {
         mvc.perform(json(post("/api/v1/social/contacts"),b,Map.of("userId",alice.getId()))).andExpect(status().isOk());
         send(id,b,key,"hello").andExpect(status().isNotFound());
         action(id,b,"accept").andExpect(status().isOk());
+        mvc.perform(auth(get("/api/v1/social/contacts"), a)).andExpect(jsonPath("$.data[0].identityCode").value(bob.getIdentityCode()));
+        mvc.perform(auth(get("/api/v1/messages/directory"), a)).andExpect(jsonPath("$.data[?(@.id == " + bob.getId() + ")].identityCode").value(org.hamcrest.Matchers.contains(bob.getIdentityCode())));
         JsonNode message = data(send(id,a,key,"<script>hello</script>").andExpect(status().isOk()).andReturn());
         send(id,a,key,"<script>hello</script>").andExpect(status().isOk()).andExpect(jsonPath("$.data.id").value(message.path("id").asLong()));
         send(id,a,key,"changed").andExpect(status().isConflict());
@@ -76,6 +78,25 @@ class SocialIntegrationTest {
         }
         JsonNode note = data(mvc.perform(json(post("/api/v1/notes"),a,Map.of("title","Private","body","secret"))).andExpect(status().isOk()).andReturn());
         mvc.perform(auth(get("/api/v1/notes/{id}",note.path("id").asText()),b)).andExpect(status().isNotFound());
+    }
+    @Test void identitySearchIsExactCaseInsensitiveAndRespectsVisibilityAndBlocks() throws Exception {
+        String code = bob.getIdentityCode();
+        // A username resembling a code must not introduce an ambiguous second match.
+        user(code, alice.getRole());
+        mvc.perform(get("/api/v1/social/people").param("q", code)).andExpect(status().isUnauthorized());
+        mvc.perform(auth(get("/api/v1/social/people").param("q", "  " + code.toLowerCase(Locale.ROOT) + "  "), a))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.length()").value(1))
+                .andExpect(jsonPath("$.data[0].identityCode").value(code))
+                .andExpect(jsonPath("$.data[0].id").value(bob.getId()));
+        mvc.perform(auth(get("/api/v1/social/people").param("q", alice.getIdentityCode()), a)).andExpect(jsonPath("$.data").isEmpty());
+        mvc.perform(json(put("/api/v1/social/settings"), b, Map.of("discoverable", false))).andExpect(status().isOk());
+        mvc.perform(auth(get("/api/v1/social/people").param("q", code), a)).andExpect(jsonPath("$.data").isEmpty());
+        mvc.perform(json(put("/api/v1/social/settings"), b, Map.of("discoverable", true))).andExpect(status().isOk());
+        long id = request(); action(id, b, "block").andExpect(status().isOk());
+        mvc.perform(auth(get("/api/v1/social/people").param("q", code), a)).andExpect(jsonPath("$.data").isEmpty());
+        mvc.perform(auth(get("/api/v1/social/people").param("q", alice.getIdentityCode()), b)).andExpect(jsonPath("$.data").isEmpty());
+        bob.setStatus(UserStatus.DISABLED); users.save(bob);
+        mvc.perform(auth(get("/api/v1/social/people").param("q", code), o)).andExpect(jsonPath("$.data").isEmpty());
     }
     @Test void blockingStopsChatDiscoveryAndExistingDirectMailAndUnblockDoesNotRestoreFriendship() throws Exception {
         long id=request(); action(id,b,"accept").andExpect(status().isOk());
