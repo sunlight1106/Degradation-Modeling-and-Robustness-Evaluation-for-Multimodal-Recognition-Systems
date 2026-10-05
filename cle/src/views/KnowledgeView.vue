@@ -252,7 +252,7 @@ onMounted(load)
           :key="item.id"
           class="kb-card"
           :class="{ active: activeEntry?.id === item.id }"
-          @click="openEntry(item)"
+          @click="openEntry(item)" tabindex="0" role="button" @keydown.enter="openEntry(item)" @keydown.space.prevent="openEntry(item)"
         >
           <header>
             <span class="kb-card-domain">{{ item.domain }} · {{ item.topicName }}</span>

@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
-import AppLogo from './AppLogo.vue'
+import { sectionLinks as vSectionLinks } from '@/directives/sectionLinks'
 import AppIcon from './AppIcon.vue'
 import { authStore } from '@/stores/auth'
 import { themeStore } from '@/stores/theme'
@@ -16,31 +16,9 @@ interface NavItem {
 
 const route = useRoute()
 const router = useRouter()
-const mobileOpen = ref(false)
-const mobileQuery = window.matchMedia('(max-width: 900px)')
-const isMobile = ref(mobileQuery.matches)
-const sidebar = ref<HTMLElement | null>(null)
-const menuButton = ref<HTMLButtonElement | null>(null)
-function syncViewport() { isMobile.value = mobileQuery.matches; if (!isMobile.value) mobileOpen.value = false }
-onMounted(() => mobileQuery.addEventListener('change', syncViewport))
-onBeforeUnmount(() => mobileQuery.removeEventListener('change', syncViewport))
-watch(mobileOpen, async open => {
-  await nextTick()
-  if (open) sidebar.value?.querySelector<HTMLElement>('a, button')?.focus()
-  else if (isMobile.value) menuButton.value?.focus()
-})
-function menuKeydown(event: KeyboardEvent) {
-  if (!isMobile.value || !mobileOpen.value) return
-  if (event.key === 'Escape') { mobileOpen.value = false; event.preventDefault() }
-  if (event.key !== 'Tab') return
-  const items = sidebar.value?.querySelectorAll<HTMLElement>('a[href], button:not([disabled])')
-  if (!items?.length) return
-  const first = items[0], last = items[items.length - 1]
-  if (event.shiftKey && document.activeElement === first) { last.focus(); event.preventDefault() }
-  else if (!event.shiftKey && document.activeElement === last) { first.focus(); event.preventDefault() }
-}
-watch(() => route.fullPath, () => { mobileOpen.value = false })
-
+const menu = ref<HTMLDetailsElement | null>(null)
+function closeMenu() { menu.value?.removeAttribute('open') }
+watch(() => route.fullPath, closeMenu)
 const mainItems: NavItem[] = [
   { label: '工作台', to: '/app/home', icon: 'home', permission: 'dashboard:read' },
   { label: '知识库', to: '/app/knowledge', icon: 'book', permission: 'knowledge:read' },
@@ -81,7 +59,7 @@ const title = computed(() => {
   return all.find(item => route.path === item.to)?.label || '控制台'
 })
 
-const initials = computed(() => authStore.state.user?.displayName?.slice(0, 1).toUpperCase() || 'U')
+const quickItems = computed(() => visible(mainItems.filter(item => ['/app/home', '/app/upload', '/app/knowledge'].includes(item.to))))
 
 function logout() {
   authStore.logout()
@@ -90,64 +68,30 @@ function logout() {
 </script>
 
 <template>
-  <div class="app-layout portal-app">
+  <div class="portal-app">
     <a class="portal-skip" href="#workspace-content">跳转到内容</a>
-    <div v-if="mobileOpen" class="sidebar-backdrop" @click="mobileOpen = false" />
-    <aside ref="sidebar" :inert="isMobile && !mobileOpen" @keydown="menuKeydown" id="workspace-navigation" class="sidebar" :class="{ 'sidebar--open': mobileOpen }">
-      <RouterLink to="/" class="sidebar-brand" aria-label="返回首页"><AppLogo light /></RouterLink>
-
-      <nav class="sidebar-nav" aria-label="控制台导航">
-        <template v-for="group in navGroups" :key="group.label">
-          <p v-if="group.items.length" class="nav-caption">{{ group.label }}</p>
-          <RouterLink v-for="item in group.items" :key="item.to" :to="item.to" class="nav-item" @click="mobileOpen = false">
-            <AppIcon :name="item.icon" :size="18" /><span>{{ item.label }}</span><i class="nav-active-marker" aria-hidden="true" />
-          </RouterLink>
-        </template>
-
-        <template v-if="visible(adminItems).length">
-          <p class="nav-caption nav-caption--spaced">系统管理</p>
-          <RouterLink v-for="item in visible(adminItems)" :key="item.to" :to="item.to" class="nav-item" @click="mobileOpen = false">
-            <AppIcon :name="item.icon" :size="19" />
-            <span>{{ item.label }}</span>
-          </RouterLink>
-        </template>
-
-        <p class="nav-caption nav-caption--spaced">帮助</p>
-        <RouterLink v-for="item in supportItems" :key="item.to" :to="item.to" class="nav-item" @click="mobileOpen = false">
-          <AppIcon :name="item.icon" :size="19" />
-          <span>{{ item.label }}</span>
-        </RouterLink>
+    <header class="workspace-header">
+      <nav class="workspace-breadcrumb" aria-label="当前位置"><RouterLink to="/">HOME</RouterLink><span>/</span><RouterLink to="/app/home">WORKSPACE</RouterLink><span>/</span><span>{{ title }}</span></nav>
+      <nav class="workspace-quick" aria-label="常用页面">
+        <RouterLink v-for="item in quickItems" :key="item.to" :to="item.to">{{ item.label }}</RouterLink>
+        <RouterLink to="/docs">操作文档</RouterLink>
       </nav>
-
-      <div class="sidebar-user">
-        <div class="avatar">{{ initials }}</div>
-        <div class="sidebar-user-copy">
-          <strong>{{ authStore.state.user?.displayName }}</strong>
-          <span>@{{ authStore.state.user?.username }} · {{ authStore.state.user?.roleName }}</span>
-        </div>
-        <button class="icon-button" title="退出登录" @click="logout"><AppIcon name="logout" :size="19" /></button>
+      <div class="workspace-tools">
+        <button class="topbar-tool" :aria-label="themeStore.isDark() ? '切换到浅色' : '切换到暗色'" @click="themeStore.toggle()"><AppIcon :name="themeStore.isDark() ? 'sun' : 'moon'" :size="16" /></button>
+        <details ref="menu" class="workspace-directory" @keydown.esc="closeMenu(); menu?.querySelector('summary')?.focus()">
+          <summary>目录与账户</summary>
+          <div class="workspace-directory-body">
+            <nav aria-label="全部页面">
+              <section v-for="group in [...navGroups, {label:'系统管理',items:visible(adminItems)}, {label:'帮助',items:supportItems}].filter(group => group.items.length)" :key="group.label">
+                <p>{{ group.label }}</p>
+                <RouterLink v-for="item in group.items" :key="item.to" :to="item.to">{{ item.label }}</RouterLink>
+              </section>
+            </nav>
+            <footer><span>{{ authStore.state.user?.displayName }}</span><button type="button" @click="logout">退出登录</button></footer>
+          </div>
+        </details>
       </div>
-    </aside>
-
-    <main class="app-main">
-      <header class="app-topbar">
-        <button ref="menuButton" class="icon-button mobile-menu" aria-label="打开菜单" :aria-expanded="mobileOpen" aria-controls="workspace-navigation" @click="mobileOpen = true"><AppIcon name="menu" /></button>
-        <div>
-          <span class="topbar-eyebrow">PERSONAL WORKSPACE</span>
-          <h1>{{ title }}</h1>
-        </div>
-        <div class="topbar-tools">
-          <span class="topbar-user"><i>{{ initials }}</i>{{ authStore.state.user?.displayName }}</span>
-          <button class="topbar-tool" type="button" :title="themeStore.isDark() ? '切换到浅色' : '切换到暗色'" @click="themeStore.toggle()">
-            <AppIcon :name="themeStore.isDark() ? 'sun' : 'moon'" :size="18" />
-          </button>
-
-          <RouterLink to="/docs" class="topbar-tool" title="查看文档"><AppIcon name="docs" :size="18" /></RouterLink>
-          <RouterLink to="/app/settings" class="topbar-tool" title="设置"><AppIcon name="settings" :size="18" /></RouterLink>
-
-        </div>
-      </header>
-      <div id="workspace-content" class="app-content" tabindex="-1"><RouterView /></div>
-    </main>
+    </header>
+    <main id="workspace-content" v-section-links class="app-content" :class="{'app-content--reader':route.path === '/app/upload'}" tabindex="-1"><RouterView /></main>
   </div>
 </template>

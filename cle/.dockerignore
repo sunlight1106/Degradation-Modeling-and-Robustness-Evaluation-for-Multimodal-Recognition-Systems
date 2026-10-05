@@ -2,3 +2,9 @@ node_modules
 dist
 .idea
 *.log
+
+public/art
+src/styles/editorial.css
+src/components/FloatingEntryBadge.vue
+src/components/GearCluster.vue
+src/components/HomeExperiment.vue

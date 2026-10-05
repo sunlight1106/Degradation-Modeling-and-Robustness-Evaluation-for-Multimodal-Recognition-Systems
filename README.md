@@ -72,6 +72,9 @@ Windows（PowerShell）：
 powershell -ExecutionPolicy Bypass -File .\deploy.ps1
 ```
 
+已经部署过的 Windows 用户可以双击 `start.cmd` 启动，复用已有镜像；修改源码后请重新运行 `deploy.ps1` 构建。
+Windows 启动脚本会自动打开 Docker Desktop。若本次启动日志明确报告残留通信文件无法访问，会停止故障进程、将两处仅含已知空通信文件的运行目录改名留存，再重试一次。不会重置 Docker 或移动数据库、镜像和数据卷；其他错误会停止并提示检查。
+
 Linux / macOS：
 
 ```sh
@@ -235,4 +238,4 @@ CI（`.github/workflows/verify.yml`）在每次推送时执行前端 `npm ci && 
 
 ## 素材与许可
 
-原创代码适用根目录 `LICENSE`（MIT）。`cle/public/art/` 中的弹丸论破相关图片、视频与角色素材为第三方内容，**不属于本项目原创代码，不在 MIT 授权范围内**；来源见 `SOURCE.txt` 与 `home/SOURCES.json`，权利归原作者及权利人所有。本项目与 Spike Chunsoft 无隶属或背书关系。请勿在未获授权的情况下将该目录素材用于任何公开分发场景。
+原创代码适用根目录 `LICENSE`（MIT）。当前前端使用原创排版和界面组件，不包含第三方游戏宣传素材。

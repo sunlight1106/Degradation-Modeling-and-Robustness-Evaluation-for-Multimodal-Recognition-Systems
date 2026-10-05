@@ -39,18 +39,6 @@ async function exportDataset() {
   } finally { exporting.value = false }
 }
 
-/**
- * 任务类型 → 官方角色素材（仓库内 cle/public/art/，含 SOURCE.txt 署名）。
- * 素材为第三方版权内容，仅本私有仓库自用展示，不做公开分发。
- */
-const artFor = (model: ModelView) =>
-  model.taskType === 'RECEIPT' ? '/art/hinata.webp'
-  : model.taskType === 'VIDEO_ANALYSIS' ? '/art/komaeda.webp'
-  : '/art/nanami.webp'
-const artAlt = (model: ModelView) =>
-  model.taskType === 'RECEIPT' ? '官方角色素材：日向创'
-  : model.taskType === 'VIDEO_ANALYSIS' ? '官方角色素材：狛枝斗'
-  : '官方角色素材：七海千秋'
 const taskLabel = (model: ModelView) => model.taskType === 'LICENSE_PLATE' ? '车牌识别 · 质量分析' : model.taskType === 'RECEIPT' ? '票据 OCR · 字段抽取' : '视频理解 · 音轨降噪'
 const modelTarget = (model: ModelView) => authStore.state.user ? `/app/upload?model=${model.id}` : '/login'
 const providerName = (model: ModelView) => model.provider === 'DEEPSEEK' ? 'DeepSeek' : model.provider === 'KIMI' ? 'Kimi' : 'Qwen'
@@ -71,7 +59,7 @@ const providerName = (model: ModelView) => model.provider === 'DEEPSEEK' ? 'Deep
 
     <template v-else>
       <section class="recommended-section">
-        <header><div><p class="page-kicker">RECOMMENDED</p><h3>Recommended models</h3></div><p>悬停卡片，查看输入示例与运行能力。</p></header>
+        <header><div><p class="page-kicker">RECOMMENDED</p><h3>Recommended models</h3></div><p>选择模型，查看能力说明与官方文档。</p></header>
         <div class="recommended-grid">
           <article class="model-utility-card">
             <RouterLink :to="authStore.state.user ? '/app/upload' : '/login'"><span><AppIcon name="spark" :size="22" /> 在 Playground 中运行</span><AppIcon name="arrow" :size="18" /></RouterLink>
@@ -81,12 +69,6 @@ const providerName = (model: ModelView) => model.provider === 'DEEPSEEK' ? 'Deep
           </article>
 
           <article v-for="model in models" :key="model.id" class="model-showcase-card" :class="`provider-${model.provider.toLowerCase()}`">
-            <div class="model-showcase-image">
-              <img class="model-art" :src="artFor(model)" :alt="artAlt(model)" loading="lazy" />
-              <span class="model-scan-line" />
-              <div class="model-detection-box" :class="{ receipt: model.taskType === 'RECEIPT', video: model.taskType === 'VIDEO_ANALYSIS' }"><i /><span>{{ model.taskType === 'LICENSE_PLATE' ? 'plate · 0.91' : model.taskType === 'RECEIPT' ? 'fields · 8' : 'events · 4' }}</span></div>
-              <div class="model-hover-readout"><span><small>QUALITY</small><b>{{ model.taskType === 'LICENSE_PLATE' ? '0.71' : '0.84' }}</b></span><span><small>OUTPUT</small><b>JSON</b></span><span><small>MEDIA</small><b>{{ model.taskType === 'VIDEO_ANALYSIS' ? 'VIDEO' : 'IMAGE' }}</b></span></div>
-            </div>
             <div class="model-showcase-top"><span class="model-cube"><AppIcon :name="model.taskType === 'VIDEO_ANALYSIS' ? 'video' : 'model'" :size="24" /></span><span class="model-badge">{{ providerName(model) }}</span></div>
             <div class="model-showcase-copy"><p>{{ taskLabel(model) }}</p><h3>{{ model.name }}</h3><span>{{ model.description }}</span></div>
             <div class="model-showcase-foot"><code>{{ model.code }}</code><span>v{{ model.version }}</span><span class="model-card-actions"><a :href="model.officialDocsUrl" target="_blank" rel="noreferrer">官方 API 文档 <AppIcon name="external" :size="14" /></a><RouterLink :to="modelTarget(model)">调用模型 <AppIcon name="arrow" :size="16" /></RouterLink></span></div>

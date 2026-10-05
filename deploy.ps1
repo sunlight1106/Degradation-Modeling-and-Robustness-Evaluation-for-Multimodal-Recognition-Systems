@@ -1,8 +1,8 @@
-param([int]$Port = 4173)
+param([int]$Port = 4173, [switch]$SkipBuild)
 $ErrorActionPreference = 'Stop'
 Set-Location $PSScriptRoot
-& docker info *> $null
-if ($LASTEXITCODE -ne 0) { throw 'Start Docker Desktop, then run this script again.' }
+. "$PSScriptRoot\scripts\ensure-docker.ps1"
+Ensure-Docker
 if (-not (Test-Path -LiteralPath '.env')) {
     function New-Secret {
         $bytes = New-Object byte[] 32
@@ -18,8 +18,10 @@ if (-not (Test-Path -LiteralPath '.env')) {
     [IO.File]::WriteAllText((Join-Path $PSScriptRoot '.env'), $config, (New-Object Text.UTF8Encoding($false)))
     Write-Host 'Generated .env (random DB/JWT secrets). Admin password uses the fixed default from .env.example.'
 }
-& docker compose up -d --build --wait --wait-timeout 600
+$composeArgs = @('compose', 'up', '-d', '--wait', '--wait-timeout', '600')
+if (-not $SkipBuild) { $composeArgs += '--build' }
+& docker @composeArgs
 if ($LASTEXITCODE -ne 0) { throw 'Deployment failed. Inspect: docker compose logs --tail 100' }
 $portLine = Get-Content '.env' | Where-Object { $_ -match '^WEB_PORT=' } | Select-Object -First 1
 $actualPort = if ($portLine) { $portLine.Split('=',2)[1] } else { '4173' }
-Write-Host "Ready: http://localhost:$actualPort (username admin; password 1926648785ljz)"
+Write-Host "Ready: http://localhost:$actualPort"

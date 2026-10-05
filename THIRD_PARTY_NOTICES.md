@@ -1,5 +1,6 @@
-Third-party artwork notice
+Third-party notices
 
-The MIT license in LICENSE applies to original project code, not third-party artwork.
-Danganronpa images, video, character designs and logos under cle/public/art remain the property of their respective rights holders, including Spike Chunsoft.
-Source provenance is recorded in cle/public/art/SOURCE.txt and cle/public/art/home/SOURCES.json. No ownership, endorsement, or separate redistribution license for that artwork is asserted by this repository.
+Original project code is licensed under MIT. Frontend dependencies retain their own licenses.
+The current website does not bundle third-party game artwork, character images, logos or promotional videos.
+
+Design direction: side-by-side research notes and understated navigation, informed by https://nn.labml.ai/ and https://github.com/labmlai/annotated_deep_learning_paper_implementations. The reading components, styling, examples, and research mark in this project are independently implemented; no LabML source code, prose, logos, or images are bundled.

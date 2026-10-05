@@ -5,6 +5,7 @@ import { api, ApiClientError } from '@/api/client'
 import type { FileView, ModelRuntimeView, ModelView, TaskType } from '@/types/api'
 import UploadDropzone from '@/components/UploadDropzone.vue'
 import AppIcon from '@/components/AppIcon.vue'
+import DocRow from '@/components/DocRow.vue'
 import { toastStore } from '@/stores/toast'
 
 const route = useRoute()
@@ -109,61 +110,52 @@ async function run() {
 </script>
 
 <template>
-  <div class="page-stack">
-    <section class="page-intro">
-      <p class="page-kicker">新建实验</p>
-      <h2>选择样本，开启一次识别实验。</h2>
-      <p>上传图片或视频，选择任务和模型，并排查看处理前后的识别结果。</p>
-    </section>
-
-    <div class="experiment-builder">
-      <section class="panel builder-upload">
-        <div class="panel-header builder-heading"><span class="step-pill">01</span><div><h3>输入样本</h3><p>选择或拖入你的图片、视频</p></div></div>
+  <div class="lab-docs workspace-reader">
+    <DocRow id="experiment" title="新建识别实验" intro>
+      <p>从一个样本开始，观察模型看到了什么。</p>
+      <p class="experiment-caption">上传素材、选择模型，再对照原始与优化后的结果。</p>
+      <template #detail><nav class="experiment-index" aria-label="实验步骤"><a href="#sample">01 输入样本</a><a href="#configuration">02 选择模型</a><a href="#run">03 运行实验</a></nav></template>
+    </DocRow>
+    <DocRow id="sample" title="输入样本">
+      <p>选择一张图片，或一段视频。你也可以把文件直接拖入右侧。</p>
+      <p class="experiment-caption">JPEG、PNG、WEBP / MP4、WEBM<br />单个文件最大 20 MB</p>
+      <template #detail>
         <UploadDropzone v-if="!selectedFile" @selected="handleFile" />
-        <div v-else class="selected-preview">
+        <div v-else class="experiment-preview">
           <video v-if="selectedFile.type.startsWith('video/')" :src="previewUrl" controls playsinline muted />
           <img v-else :src="previewUrl" alt="待识别图片预览" />
-          <div class="selected-file-info">
-            <span class="file-avatar"><AppIcon name="file" :size="18" /></span>
-            <div><strong>{{ selectedFile.name }}</strong><small>{{ (selectedFile.size / 1024 / 1024).toFixed(2) }} MB · {{ selectedFile.type }}</small></div>
-            <button class="button button--ghost button--small" type="button" @click="selectedFile = null; uploadedFile = null">重新选择</button>
+          <div><span>{{ selectedFile.name }} <small>{{ (selectedFile.size / 1024 / 1024).toFixed(2) }} MB</small></span><button class="button" :disabled="busyStage !== 'idle'" @click="selectedFile = null; uploadedFile = null">重新选择</button></div>
+        </div>
+      </template>
+    </DocRow>
+    <DocRow id="configuration" title="模型与任务">
+      <p>任务决定模型的识别目标。选择文件后，会自动匹配图片或视频任务。</p>
+      <p><RouterLink to="/app/models">查看模型说明 ↗</RouterLink></p>
+      <template #detail>
+        <fieldset class="experiment-fields" :disabled="busyStage !== 'idle'">
+          <legend>任务类型</legend>
+          <div class="experiment-tasks">
+            <button v-for="option in taskOptions" :key="option.id" type="button" :aria-pressed="taskType === option.id" @click="taskType = option.id"><span>{{ option.title }}</span><small>{{ option.hint }}</small></button>
+          </div>
+          <label class="field-label">识别模型<select v-model.number="modelId" class="field-input"><option v-if="!availableModels.length" :value="null" disabled>暂无可用模型</option><option v-for="model in availableModels" :key="model.id" :value="model.id">{{ model.name }} · v{{ model.version }}</option></select></label>
+        </fieldset>
+      </template>
+    </DocRow>
+    <DocRow id="run" title="运行与对照">
+      <p>打开优化后，将对同一样本进行两路识别，便于比较处理前后的结果。</p>
+      <p class="experiment-caption">优化效果取决于输入质量和模型能力。</p>
+      <template #detail>
+        <div class="experiment-run">
+          <label class="experiment-check"><input v-model="enhancementEnabled" :disabled="busyStage !== 'idle'" type="checkbox" /><span>启用质量感知优化<small>{{ taskType === 'VIDEO_ANALYSIS' ? '视频降噪与音轨处理' : '原始图片与增强图片对照' }}</small></span></label>
+          <p class="experiment-runtime">{{ runtime?.mode === 'demo' ? '演示模式 · 结果仅用于体验流程，不代表真实模型性能。' : runtime?.credentialConfigured ? '已连接模型服务，将按所选模型运行。' : '模型服务尚未就绪，请检查服务配置。' }}</p>
+          <p v-if="(selectedFile || uploadedFile) && !mediaMatchesTask" class="inline-alert inline-alert--error">视频请选择“视频分析”，图片请选择车牌或票据任务。</p>
+          <p v-if="error" class="inline-alert inline-alert--error" role="alert">{{ error }}</p>
+          <div class="experiment-action">
+            <button class="button button--dark" :disabled="!canRun" @click="run"><template v-if="busyStage !== 'idle'"><span class="button-spinner" />{{ busyStage === 'uploading' ? '正在上传…' : busyStage === 'queued' ? '等待处理…' : '正在识别…' }}</template><template v-else>运行实验 <AppIcon name="arrow" :size="16" /></template></button>
+            <span v-if="!selectedFile && !uploadedFile">请先选择文件</span>
           </div>
         </div>
-      </section>
-
-      <section class="panel builder-config">
-        <div class="panel-header builder-heading"><span class="step-pill">02</span><div><h3>实验配置</h3><p>选择任务类型和识别模型</p></div></div>
-        <div class="task-type-picker" role="group" aria-label="选择识别任务">
-          <button v-for="option in taskOptions" :key="option.id" type="button" :aria-pressed="taskType === option.id" @click="taskType = option.id">
-            <AppIcon :name="option.icon" :size="24" /><strong>{{ option.title }}</strong><small>{{ option.hint }}</small><span class="task-selected-mark"><AppIcon name="check" :size="12" /></span>
-          </button>
-        </div>
-        <label class="field-label">模型版本
-          <select v-model.number="modelId" class="field-input">
-            <option v-for="model in availableModels" :key="model.id" :value="model.id">{{ model.name }} · v{{ model.version }}</option>
-          </select>
-        </label>
-        <label class="toggle-row">
-          <span><strong>启用质量感知优化</strong><small>{{ taskType === 'VIDEO_ANALYSIS' ? '生成降噪、响度归一化视频并做双路对照' : '运行基线与视觉增强双路对照' }}</small></span>
-          <input v-model="enhancementEnabled" type="checkbox" /><i />
-        </label>
-        <div class="mode-notice" :class="{ 'mode-notice--live': runtime?.mode !== 'demo' && runtime?.credentialConfigured }"><AppIcon name="spark" :size="19" /><div><strong>{{ runtime?.mode === 'demo' ? '当前使用演示适配器' : '多供应商真实模型 Worker' }}</strong><p v-if="runtime?.mode !== 'demo'">根据所选模型安全调用 DeepSeek、Kimi 或千问；密钥不会发送到浏览器。</p><p v-else>用于验证业务链路，不代表真实模型性能。</p></div></div>
-        <div v-if="(selectedFile || uploadedFile) && !mediaMatchesTask" class="inline-alert inline-alert--error">视频只能运行“视频分析”，图片请选择车牌或票据任务。</div>
-        <div v-if="error" class="inline-alert inline-alert--error">{{ error }}</div>
-        <button class="button button--dark button--full builder-submit" :disabled="!canRun" @click="run">
-          <template v-if="busyStage === 'uploading'"><span class="button-spinner" /> 正在安全上传…</template>
-          <template v-else-if="busyStage === 'queued'"><span class="button-spinner" /> 已入队，等待模型 Worker…</template>
-          <template v-else-if="busyStage === 'running'"><span class="button-spinner" /> Worker 正在运行双路推理…</template>
-          <template v-else>运行识别实验 <AppIcon name="arrow" :size="18" /></template>
-        </button>
-      </section>
-    </div>
-
-    <section class="process-preview">
-      <div><span class="process-number">1</span><strong>安全入库</strong><small>文件头 · ClamAV · MinIO</small></div><AppIcon name="arrow" />
-      <div><span class="process-number">2</span><strong>Redis 排队</strong><small>配额 · 限流 · trace_id</small></div><AppIcon name="arrow" />
-      <div><span class="process-number">3</span><strong>Worker 优化</strong><small>图像增强或视频音轨降噪</small></div><AppIcon name="arrow" />
-      <div><span class="process-number">4</span><strong>模型归档</strong><small>结果 · token · 人民币成本</small></div>
-    </section>
+      </template>
+    </DocRow>
   </div>
 </template>
