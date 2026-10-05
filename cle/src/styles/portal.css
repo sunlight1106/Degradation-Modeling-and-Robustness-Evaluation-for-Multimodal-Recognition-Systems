@@ -19,7 +19,7 @@ a:hover { color:var(--green); }
 /* Anchors reserve their space, so appearing never moves the heading. */
 .lab-heading,.reading-heading { position:relative; }
 .heading-anchor { position:absolute; left:-24px; top:0; opacity:0; padding:0 5px; color:var(--muted); font-size:.72em; font-weight:400; line-height:inherit; text-decoration:none!important; transition:opacity .12s; }
-.lab-prose:hover>.lab-heading>.heading-anchor,.lab-heading:focus-within>.heading-anchor,.reading-heading:hover>.heading-anchor,.reading-heading:focus-within>.heading-anchor { opacity:1; }
+.lab-heading:hover>.heading-anchor,.reading-heading:hover>.heading-anchor,.heading-anchor:focus-visible { opacity:1; }
 /* Public reading pages: explanations on the left, aligned examples on the right. */
 .lab-docs { min-height:100vh; background:linear-gradient(to right,var(--canvas) 40%,var(--code-paper) 40%); }
 .lab-header { position:relative; min-height:118px; padding:18px 50px; border-block:1px solid var(--line); font-size:13px; }
@@ -32,7 +32,7 @@ a:hover { color:var(--green); }
 .lab-contents nav { padding:16px 22px; margin-top:8px; background:var(--paper); border:1px solid var(--line); display:grid; gap:8px; min-width:180px; }
 .lab-contents a { text-decoration:underline; }
 .lab-row { display:grid; grid-template-columns:40% minmax(0,60%); border-bottom:1px solid var(--line); transition:background-color .12s; }
-.lab-row:hover,.lab-row:focus-within { background:var(--hover-paper); }
+.lab-row:hover { background:var(--hover-paper); }
 .lab-prose { padding:27px 35px 30px 50px; min-width:0; }
 .lab-detail { padding:27px 35px 30px 24px; min-width:0; border-left:1px solid var(--line); }
 .lab-row-intro .lab-prose { padding-top:50px; padding-bottom:40px; }
@@ -57,7 +57,7 @@ a:hover { color:var(--green); }
 .code-line { display:flex; min-height:23px; gap:13px; scroll-margin-top:35px; }
 .code-line>code { display:block; white-space:pre; font:inherit; }
 .code-line-number { display:block; flex:0 0 22px; text-align:right; font-size:10px; color:var(--muted); text-decoration:none; user-select:none; }
-.code-line:target { background:var(--green-soft); outline:1px solid var(--line); }
+.code-line:focus-visible { outline:2px solid var(--green); outline-offset:2px; }
 .code-symbol { color:var(--ink-soft); text-decoration:none; border-bottom:1px solid transparent; }
 .code-symbol:hover,.code-symbol:focus-visible { color:#147b94; border-bottom-color:currentColor; }
 .syntax-keyword { color:#ac3c78; }.syntax-string{color:#587e38}.syntax-number{color:#9a763b}.syntax-comment{color:var(--muted)}

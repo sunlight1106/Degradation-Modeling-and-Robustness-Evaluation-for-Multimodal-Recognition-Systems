@@ -184,4 +184,4 @@ Linux / macOS: sh deploy.sh</code></pre></div>
             <li>退出后换另一个测试账户，确认看不到前一个账户的个人 AI 配置、私有词书与进度。次日本地日期再验收复习到期；不要修改正式数据库日期。</li>
           </ol>
           <p>这是一份操作清单，不是这些步骤已在你的部署执行完成的声明。自动化模拟验证不能替代真实模型联调、浏览器视觉检查和你自己的账户验收。</p></div></details></template></DocRow>
-<DocRow id="interactive-notes" title="阅读代码示例"><p>将鼠标移到变量上，可以查看对应关系；点击变量可跳转到它的定义行。</p><p>下方仅演示阅读交互，不会发送实验或模型请求。</p></DocRow><AnnotatedExample /></article><footer class="lab-footer"><RouterLink to="/app/home">返回工作台</RouterLink><span>更新于 2026-10-05</span></footer></div></template>
+<DocRow id="interactive-notes" title="阅读代码示例"><p>悬停变量可查看对应关系，移开即取消高亮；点击可定位定义行，不会留下整行底色。使用 Tab 也可聚焦并打开链接。</p><p>下方仅演示阅读交互，不会发送实验或模型请求。</p></DocRow><AnnotatedExample /></article><footer class="lab-footer"><RouterLink to="/app/home">返回工作台</RouterLink><span>更新于 2026-10-05</span></footer></div></template>
