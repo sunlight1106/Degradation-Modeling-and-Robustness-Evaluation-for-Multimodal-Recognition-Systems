@@ -8,6 +8,7 @@ import EmptyState from '@/components/EmptyState.vue'
 import { toastStore } from '@/stores/toast'
 import { authStore } from '@/stores/auth'
 import { noteLibraries } from '@/lib/noteLibraries'
+import LoraColabCard from '@/components/LoraColabCard.vue'
 
 const route = useRoute()
 const notes = ref<NoteSummaryView[]>([])
@@ -78,6 +79,7 @@ onBeforeUnmount(() => { version++; clearTimeout(timer) })
         <RouterLink v-if="library === '英语学习'" to="/app/vocabulary" class="learning-related"><span>词汇复习</span><span>↗</span></RouterLink>
       </aside>
       <section class="learning-list">
+        <LoraColabCard v-if="library === '计算机学习'" />
         <div class="learning-toolbar">
           <nav aria-label="笔记状态"><button v-for="tab in tabs" :key="tab.code" :class="{ selected: status === tab.code }" :aria-pressed="status === tab.code" @click="status = tab.code">{{ tab.label }} <small>{{ tabCount(tab.code) }}</small></button></nav>
           <label class="learning-search"><AppIcon name="search" :size="16" /><input v-model="keyword" type="search" placeholder="搜索标题、正文、标签" aria-label="搜索笔记" /></label>

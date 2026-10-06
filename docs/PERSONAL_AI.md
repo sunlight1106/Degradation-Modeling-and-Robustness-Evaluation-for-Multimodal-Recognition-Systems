@@ -50,6 +50,12 @@
 
 当前训练能力是**文本分类**，不是聊天大模型或 LoRA 微调；不能修改第三方供应商的模型。服务器只执行固定训练模板，不接受用户 Python 脚本、模型权重或任意命令。
 
+## LoRA 在线实验
+
+在「设置 → 个人 AI → 本地训练」或「我的笔记 → 计算机学习」顶部，点击 **打开 Colab 实验**，即可在新标签页进入 [GPT-2 / LoRA 交互式笔记本](https://colab.research.google.com/github/labmlai/annotated_deep_learning_paper_implementations/blob/master/labml_nn/lora/experiment.ipynb#scrollTo=c5ed37230628ee76)。操作文档的「PyTorch 与 LoRA 训练」章节也提供相同入口。
+
+按笔记本中的单元格顺序安装依赖、初始化模型并运行训练。实验由 Colab 执行；此入口不会上传平台笔记、记忆或本地训练数据。
+
 ## 部署训练环境
 
 使用根目录的 `deploy.ps1`（Windows）或 `deploy.sh`（Linux/macOS）即可构建和启动。脚本为已有部署补齐独立的 `TRAINING_SERVICE_TOKEN`，不会覆盖其他密钥。首次下载 PyTorch CPU 依赖需要联网和额外磁盘空间；运行时不需要下载基座模型。

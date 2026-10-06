@@ -4,6 +4,7 @@ import { RouterLink } from 'vue-router'
 import AppIcon from '@/components/AppIcon.vue'
 import DocRow from '@/components/DocRow.vue'
 import AnnotatedExample from '@/components/AnnotatedExample.vue'
+import LoraColabCard from '@/components/LoraColabCard.vue'
 import { toastStore } from '@/stores/toast'
 import { authStore } from '@/stores/auth'
 
@@ -22,7 +23,7 @@ const docLinks = [
   { id: 'requirements', label: '启动与部署', keywords: 'Docker localhost 4173 环境' },
   { id: 'model-contract', label: '个人 AI 配置', keywords: 'BYOK key 密钥 供应商 模型 remote' },
   { id: 'ai-memory', label: '个人 AI 共享记忆', keywords: 'memory 偏好 修改 删除 隔离' },
-  { id: 'local-training', label: '本地 PyTorch 训练', keywords: 'CPU 分类 训练 JSON 标注 模型 下载' },
+  { id: 'local-training', label: 'PyTorch 与 LoRA 训练', keywords: 'CPU 分类 训练 JSON 标注 模型 下载 LoRA GPT-2 Colab 微调' },
   { id: 'first-request', label: '发送预览与确认', keywords: 'API JSON preview execute 取消' },
   { id: 'quality-route', label: '图片内容理解与识别', keywords: 'image recognition 视频 5 MiB' },
   { id: 'code-notes', label: '代码块与 AI 注释', keywords: 'Java Python main 代码 语法高亮 变量 注释 父子页面 Notion' },
@@ -180,7 +181,7 @@ async function copyCode() {
           <p>通过受信任的 HTTPS 设置页输入密钥；不要放入源码、<code>VITE_*</code>、浏览器本地存储、URL、日志或截图。部署者须保管独立生成、至少 32 UTF-8 字节的 <code>CREDENTIAL_MASTER_KEY</code>；丢失或直接更换会使原有加密密钥无法解密。</p>
           <p>托管 Llama 需使用 Groq、Together 等实际托管服务。Qwen 区域和密钥必须匹配。自定义或区域地址由部署者通过 <code>PERSONAL_AI_ALLOWED_BASE_URLS</code> 审核精确 HTTPS API 地址；不允许任意域名、私网或环回地址。网关运营方会接收你的密钥和获准内容。</p></div></details></template></DocRow>
 <DocRow id="ai-memory" title="让不同 AI 共用你的记忆"><p>你的表达偏好、学习目标与常用背景，可以统一保存在个人记忆库。</p><template #detail><div class="guide-instructions"><ol><li>进入「设置 → 个人 AI → 共享记忆」。</li><li>填写标题与内容，例如「请用中文解释 Java，先举例再讲原理」。</li><li>勾选使用并保存；以后在笔记 AI 和图片理解中均可使用。</li><li>不想发送某条记忆时点「停用」，或直接编辑、删除。</li></ol><p>每次发送前，预览会包含本次启用的记忆。改动记忆后需要重新预览。其他账户（包括平台管理员）无法通过页面或接口读写你的记忆。</p><RouterLink to="/app/settings?section=ai">管理我的记忆 →</RouterLink></div></template></DocRow>
-<DocRow id="local-training" title="训练自己的文本分类模型"><p>无需 API 密钥或显卡。在平台提供的 PyTorch CPU 环境中，用自己的标注数据训练小型分类模型。</p><template #detail><div class="guide-instructions"><ol><li>进入「设置 → 个人 AI → 本地训练」，确认环境已就绪。</li><li>下载示例 JSON，按其中的 text（文字）和 label（类别）格式准备样本。</li><li>上传文件，填写名称、轮数与学习率，再点「开始训练」。</li><li>观察训练损失、验证准确率及逐轮指标；完成后输入新文字试用。</li><li>点击「下载模型与数据」保存权重、原始样本、指标和离线预测脚本。</li></ol><p>需要 2–12 个类别，每类至少 4 条不同样本，总计 8–500 条。约 20% 留作验证；同样文字不能重复。小样本的验证结果只用于了解本次训练，不能当作通用性能结论。</p><p>记忆库用于发送背景，训练用于学习分类权重，两者分开。当前提供固定文本分类模板，不执行上传的 Python 代码，也不微调第三方聊天模型。</p><RouterLink to="/app/settings?section=ai">打开本地训练 →</RouterLink></div></template></DocRow>
+<DocRow id="local-training" title="训练自己的文本分类模型"><p>无需 API 密钥或显卡。在平台提供的 PyTorch CPU 环境中，用自己的标注数据训练小型分类模型。</p><template #detail><div class="guide-instructions"><ol><li>进入「设置 → 个人 AI → 本地训练」，确认环境已就绪。</li><li>下载示例 JSON，按其中的 text（文字）和 label（类别）格式准备样本。</li><li>上传文件，填写名称、轮数与学习率，再点「开始训练」。</li><li>观察训练损失、验证准确率及逐轮指标；完成后输入新文字试用。</li><li>点击「下载模型与数据」保存权重、原始样本、指标和离线预测脚本。</li></ol><p>需要 2–12 个类别，每类至少 4 条不同样本，总计 8–500 条。约 20% 留作验证；同样文字不能重复。小样本的验证结果只用于了解本次训练，不能当作通用性能结论。</p><p>记忆库用于发送背景，训练用于学习分类权重，两者分开。当前提供固定文本分类模板，不执行上传的 Python 代码，也不微调第三方聊天模型。</p><RouterLink to="/app/settings?section=ai">打开本地训练 →</RouterLink><LoraColabCard /></div></template></DocRow>
 <DocRow id="first-request" title="预览，然后发送"><p>先看清楚要发送的内容，再决定是否使用自己的模型额度。</p><template #detail><div class="guide-instructions"><ol><li>选择个人模型与操作，准备发送预览。</li><li>核对模型、接收地址和完整内容。</li><li>同意后勾选确认并发送；不发送就点击「取消，不发送」。</li><li>结果生成后先检查，再手动应用和保存。</li></ol><p class="guide-outcome">离开页面或停止等待，不能保证撤回供应商已经收到的请求。</p></div><details class="guide-more"><summary>开发者接口示例与限制</summary><div><ol class="developer-flow"><li><span>01</span><div><strong>准备内容</strong><p>在笔记的「整理与写作」选择已启用的个人模型，然后选摘要、大纲、标签、格式整理或报告草稿。</p></div></li><li><span>02</span><div><strong>逐项核对预览</strong><p>确认供应商、模型、实际端点、系统指令、完整发送内容和大小。预览不会调用模型。</p></div></li><li><span>03</span><div><strong>明确同意本次发送</strong><p>勾选授权并点击「确认发送并生成」。不想发送时选「取消，不发送」。</p></div></li><li><span>04</span><div><strong>审核后手动应用</strong><p>生成内容先展示结果预览；检查事实后插入、替换正文或合并标签，最后保存笔记。</p></div></li></ol>
           <p>API 使用同源地址，例如本机 <code>http://localhost:4173/api/v1</code>。先通过 <code>POST /api/v1/auth/login</code> 登录取得平台会话令牌；后续请求带 <code>Authorization: Bearer &lt;自己的平台会话令牌&gt;</code> 和 <code>Content-Type: application/json</code>。供应商密钥不放在以下请求中。</p>
           <div class="docs-code-window" aria-label="个人 AI 请求示例">

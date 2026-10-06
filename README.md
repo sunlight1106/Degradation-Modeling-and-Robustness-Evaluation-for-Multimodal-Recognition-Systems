@@ -27,6 +27,8 @@
 
 详细操作见 [个人 AI、共享记忆与训练指南](docs/PERSONAL_AI.md)。
 
+**[打开 GPT-2 / LoRA 的 Colab 实验 ↗](https://colab.research.google.com/github/labmlai/annotated_deep_learning_paper_implementations/blob/master/labml_nn/lora/experiment.ipynb#scrollTo=c5ed37230628ee76)**：在「设置 → 个人 AI → 本地训练」和「我的笔记 → 计算机学习」也有醒目入口，点击后在新标签页打开。该实验在 Colab 中运行。
+
 ## 下载项目
 
 群组快速使用：研究员打开「群组协作」→「新建群组」→ 展开「成员与权限」添加账号 → 在本群发言、回复或附上资料。所有登录用户都可以给平台管理员发站内信；同组成员按群内权限私信。具体操作和权限边界见 [群组与站内信指南](docs/GROUPS.md)。

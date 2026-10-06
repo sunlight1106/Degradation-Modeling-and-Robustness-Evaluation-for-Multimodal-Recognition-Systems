@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { personalApi } from '@/api/personal'
 import type { TrainingEnvironment, TrainingJob, TrainingSample } from '@/types/personal'
+import LoraColabCard from './LoraColabCard.vue'
 
 const environment = ref<TrainingEnvironment | null>(null), jobs = ref<TrainingJob[]>([]), selected = ref('')
 const name = ref('我的文本分类实验'), epochs = ref(15), learningRate = ref(.01), samples = ref<TrainingSample[]>([]), filename = ref('')
@@ -70,6 +71,7 @@ onBeforeUnmount(() => { active = false; fileGeneration++; clearTimeout(timer); s
 <template>
   <section class="ai-training">
     <header class="ai-section-heading"><div><h3>训练一个自己的分类模型</h3><p>上传标注好的短文本，让模型学会区分类别。训练在此平台的服务器上运行，无需 API 密钥。</p></div><span>{{ loading ? '检查环境…' : environment ? `PyTorch ${environment.version} · CPU` : '环境未就绪' }}</span></header>
+    <LoraColabCard />
     <p v-if="error" class="inline-alert inline-alert--error" role="alert">{{ error }} <button class="table-action" :disabled="busy" @click="load(true)">重新检查</button></p>
     <div class="training-workspace">
       <form class="training-setup" @submit.prevent="create">
