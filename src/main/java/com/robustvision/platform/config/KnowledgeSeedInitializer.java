@@ -64,10 +64,16 @@ public class KnowledgeSeedInitializer implements CommandLineRunner {
                 createdTopics++;
             }
 
-            // 已有卡片标题集合，用于判重；用户编辑过的内容不会被覆盖；缺失的入门卡片会补齐
-            Set<String> existingTitles = entryRepository
-                    .findByTopicIdOrderBySortOrderAscCreatedAtAsc(topic.getId())
-                    .stream().map(KnowledgeEntryEntity::getTitle).collect(Collectors.toSet());
+        }
+
+        var topicIds = java.util.Arrays.stream(TOPICS)
+                .map(seed -> existingTopics.get(seed.domain() + "/" + seed.name()).getId()).toList();
+        var titlesByTopic = entryRepository.findTitlesByTopicIds(topicIds).stream().collect(Collectors.groupingBy(
+                KnowledgeEntryRepository.TopicEntryTitle::getTopicId,
+                Collectors.mapping(KnowledgeEntryRepository.TopicEntryTitle::getTitle, Collectors.toSet())));
+        for (SeedTopic seed : TOPICS) {
+            KnowledgeTopicEntity topic = existingTopics.get(seed.domain() + "/" + seed.name());
+            Set<String> existingTitles = titlesByTopic.getOrDefault(topic.getId(), Set.of());
 
             int sort = 0;
             for (SeedEntry entry : seed.entries()) {

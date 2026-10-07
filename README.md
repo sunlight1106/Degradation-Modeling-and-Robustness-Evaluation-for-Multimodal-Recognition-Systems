@@ -77,7 +77,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\deploy.ps1
 sh deploy.sh
 ```
 
-脚本生成私有 `.env`、构建镜像并等待服务就绪。看到 `Ready: http://localhost:4173` 后打开该地址。首次构建较慢，以终端显示的完成状态为准。
+首次运行脚本会生成私有 `.env`、构建镜像并等待服务就绪。已有完整安装时，默认直接启动现有容器，不再构建或下载镜像。看到 `Ready: http://localhost:4173` 后打开该地址。首次构建较慢，以终端显示的完成状态为准。
 
 Windows 脚本会尝试启动 Docker Desktop；仅识别到特定残留通信文件故障时执行一次受限恢复。其他故障会停止并提示检查。Linux / macOS 需先启动 Docker 引擎。
 
@@ -183,10 +183,14 @@ DEMO 用于检查上传、扫描、媒体处理、队列和报告流程。它不
 
 ## 再次启动与停止
 
-Windows 完成首次部署后，双击 **start.cmd**，复用已有镜像。各系统也可运行：
+Windows 完成首次部署后，双击 **start.cmd**，复用已有镜像。
+
+日常启动不会重复编译。代码更新使用下方「更新版本」中的 `-Build` / `--build`。同机对照实测，完整服务启动由约 91 秒降至 34–38 秒；Docker Desktop 自身的冷启动另计。测量条件与接口响应见 [启动性能记录](docs/STARTUP.md)。
+
+各系统也可在项目目录运行：
 
 ```sh
-docker compose up -d --wait --wait-timeout 600
+docker compose start --wait --wait-timeout 600
 docker compose ps
 ```
 
@@ -232,14 +236,16 @@ git remote -v
 git pull --ff-only
 ```
 
-Windows 重新运行 `deploy.ps1`；Linux / macOS 重新运行 `sh deploy.sh`。源码更新必须重建镜像，`start.cmd` 仅用于日常启动。Git 提示冲突时先处理本地改动，不要强制覆盖。Flyway 会在后端启动时应用新增数据库迁移。
+Windows 执行 `powershell -NoProfile -ExecutionPolicy Bypass -File .\deploy.ps1 -Build`；Linux / macOS 执行 `sh deploy.sh --build`。这会重建并更新应用、任务服务与训练服务，保留已安装的存储容器。`start.cmd` 或不带参数的部署脚本用于日常启动，不会安装新的代码。若修改了数据库、缓存、杀毒或对象存储的 Compose 配置，需要使用 `-FullBuild` / `--full-build` 应用完整配置；可能重新构建基础组件。Git 提示冲突时先处理本地改动，不要强制覆盖。Flyway 会在后端启动时应用新增数据库迁移。
+
+启动耗时会分为 Docker 与项目两个阶段显示。优化原理、复测方法及限制见 [启动与更新说明](docs/STARTUP.md)。
 
 ### ZIP 下载的用户
 
 1. 下载最新 ZIP 并解压到临时目录。
 2. 停止当前服务，将新版源码覆盖到**原项目目录**。
 3. 保留原 `.env`，不要替换为空配置；不要删除 Docker 数据卷。
-4. 在原目录重新运行部署脚本，完成后刷新网页。
+4. 在原目录运行 `deploy.ps1 -Build`（Windows）或 `sh deploy.sh --build`，完成后刷新网页。
 
 Compose 项目名固定为 `robust-vision`。同一台电脑上的多个源码目录默认共用这组服务和数据，第二次解压不代表独立测试环境。
 
@@ -272,7 +278,7 @@ Compose 项目名固定为 `robust-vision`。同一台电脑上的多个源码�
 | `docs/` | 配置、功能、验证与维护文档 |
 | `scripts/` | Docker 恢复、组件运行、备份及验证工具 |
 | `compose.yaml` | 7 个运行服务的编排 |
-| `deploy.ps1` / `deploy.sh` | 首次部署及更新时构建 |
+| `deploy.ps1` / `deploy.sh` | 首次自动安装；平时直接启动；显式 `-Build` / `--build` 更新应用 |
 | `start.cmd` | Windows 已部署项目的启动入口 |
 
 `database/` 存结构与工具，不是运行时数据目录。MySQL、Redis、MinIO 和 ClamAV 使用 Docker 命名卷。备份需覆盖数据库、对象存储及原 `.env`，加密密钥依赖原主密钥解密。

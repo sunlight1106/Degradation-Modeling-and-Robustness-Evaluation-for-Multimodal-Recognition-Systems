@@ -1,11 +1,23 @@
 # Recover only the known Windows Docker Desktop runtime-socket failure.
 function Test-DockerReady {
-    $previous = $ErrorActionPreference
+    $probe = New-Object Diagnostics.Process
     try {
-        $ErrorActionPreference = 'Continue'
-        & docker info --format '{{.ServerVersion}}' *> $null
-        return ($LASTEXITCODE -eq 0)
-    } finally { $ErrorActionPreference = $previous }
+        $probe.StartInfo.FileName = (Get-Command docker -ErrorAction Stop).Source
+        $probe.StartInfo.Arguments = 'info --format "{{.ServerVersion}}"'
+        $probe.StartInfo.UseShellExecute = $false
+        $probe.StartInfo.CreateNoWindow = $true
+        $probe.StartInfo.RedirectStandardOutput = $true
+        $probe.StartInfo.RedirectStandardError = $true
+        [void]$probe.Start()
+        $stdout = $probe.StandardOutput.ReadToEndAsync()
+        $stderr = $probe.StandardError.ReadToEndAsync()
+        if (-not $probe.WaitForExit(5000)) {
+            $probe.Kill()
+            return $false
+        }
+        return ($probe.ExitCode -eq 0)
+    } catch { return $false }
+    finally { $probe.Dispose() }
 }
 
 function Get-DockerSocketFailure([datetime]$Since) {

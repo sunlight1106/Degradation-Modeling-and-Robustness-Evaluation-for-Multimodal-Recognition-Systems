@@ -18,6 +18,8 @@ spring:
         cachePrepStmts: true
         prepStmtCacheSize: 250
         prepStmtCacheSqlLimit: 2048
+        # The offline vocabulary migration submits prepared batches of 500 rows.
+        rewriteBatchedStatements: true
   jpa:
     open-in-view: false
     hibernate:

@@ -15,6 +15,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 12
+      start_period: 40s
+      start_interval: 1s
 
   redis:
     image: redis:7.4-alpine
@@ -25,6 +27,8 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
+      start_period: 20s
+      start_interval: 1s
 
   minio:
     platform: linux/amd64
@@ -52,7 +56,8 @@ services:
       interval: 15s
       timeout: 8s
       retries: 30
-      start_period: 60s
+      start_period: 120s
+      start_interval: 2s
 
   backend:
     volumes: ["./.runtime/backups:/app/backup-status:ro"]
@@ -66,9 +71,11 @@ services:
       interval: 10s
       timeout: 5s
       retries: 30
-      start_period: 15s
-      start_interval: 2s
+      start_period: 90s
+      start_interval: 1s
     environment: &backend-environment
+      # Bound competing JIT compiler threads while keeping full C1/C2 optimization.
+      JAVA_TOOL_OPTIONS: "-XX:CICompilerCount=${JAVA_COMPILER_THREADS:-2}"
       SPRING_JPA_HIBERNATE_DDL_AUTO: validate
       DB_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-robust_vision}?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC&allowPublicKeyRetrieval=true&useSSL=false
       DB_USERNAME: ${MYSQL_USER:-robust_user}
@@ -121,7 +128,7 @@ services:
       SMS_WEBHOOK_URL: ${SMS_WEBHOOK_URL:-}
       WORKER_ENABLED: "false"
       LOGGING_PATTERN_CONSOLE: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level [%thread] traceId=%X{traceId:-none} %logger{36} - %msg%n"
-    depends_on:
+    depends_on: &application-dependencies
       mysql:
         condition: service_healthy
       redis:
@@ -129,7 +136,9 @@ services:
       minio:
         condition: service_healthy
       clamav:
-        condition: service_healthy
+        # Load virus signatures while Spring initializes. Readiness still checks
+        # ClamAV PONG before the backend is declared usable; uploads fail closed.
+        condition: service_started
 
   model-worker:
     restart: unless-stopped
@@ -139,17 +148,17 @@ services:
       interval: 10s
       timeout: 5s
       retries: 30
-      start_period: 15s
-      start_interval: 2s
+      start_period: 90s
+      start_interval: 1s
     environment:
       <<: *backend-environment
       SERVER_PORT: 8081
       WORKER_ENABLED: "true"
       APP_BOOTSTRAP_ENABLED: "false"
-      SPRING_FLYWAY_ENABLED: "false"
-    depends_on:
-      backend:
-        condition: service_healthy
+      # Each process waits for the migration lock before validating its schema.
+      # Never disable Flyway here: the worker now initializes beside the API.
+      SPRING_FLYWAY_ENABLED: "true"
+    depends_on: *application-dependencies
 
   training:
     image: robust-vision-training:local
@@ -170,7 +179,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 12
-      start_period: 30s
+      start_period: 60s
+      start_interval: 2s
 
   frontend:
     build: ./cle
@@ -181,6 +191,8 @@ services:
       interval: 10s
       timeout: 3s
       retries: 10
+      start_period: 20s
+      start_interval: 1s
     depends_on:
       backend:
         condition: service_healthy

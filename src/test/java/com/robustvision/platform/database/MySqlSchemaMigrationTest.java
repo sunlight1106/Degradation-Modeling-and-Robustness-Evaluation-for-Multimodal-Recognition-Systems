@@ -68,6 +68,45 @@ class MySqlSchemaMigrationTest {
     }
 
     @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"0", "18"})
+    void simultaneousApplicationStartsSerializeMigrations(String baseline) throws Exception {
+        try (TestDatabase database = new TestDatabase()) {
+            if (!baseline.equals("0")) database.flyway(baseline).migrate();
+            var ready = new java.util.concurrent.CountDownLatch(2);
+            var start = new java.util.concurrent.CountDownLatch(1);
+            var pool = java.util.concurrent.Executors.newFixedThreadPool(2);
+            try {
+                java.util.concurrent.Callable<Integer> migrate = () -> {
+                    Flyway flyway = database.flyway(null);
+                    ready.countDown();
+                    if (!start.await(10, java.util.concurrent.TimeUnit.SECONDS))
+                        throw new IllegalStateException("Concurrent migration start timed out");
+                    int count = flyway.migrate().migrationsExecuted;
+                    flyway.validate();
+                    return count;
+                };
+                var api = pool.submit(migrate);
+                var worker = pool.submit(migrate);
+                assertThat(ready.await(10, java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+                start.countDown();
+                int executed = api.get(90, java.util.concurrent.TimeUnit.SECONDS)
+                        + worker.get(90, java.util.concurrent.TimeUnit.SECONDS);
+                try (Connection c = database.connect()) {
+                    int total = Integer.parseInt(scalar(c, "SELECT COUNT(*) FROM flyway_schema_history WHERE success = 1"));
+                    assertThat(executed).isEqualTo(total - Integer.parseInt(baseline));
+                    assertThat(scalar(c, "SELECT COUNT(*) FROM flyway_schema_history WHERE success = 0")).isEqualTo("0");
+                }
+                assertThat(database.flyway(null).migrate().migrationsExecuted).isZero();
+                database.validateHibernateMappings();
+            } finally {
+                start.countDown();
+                pool.shutdownNow();
+                assertThat(pool.awaitTermination(15, java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+            }
+        }
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
     @org.junit.jupiter.params.provider.ValueSource(strings = {"6", "7"})
     void populatedBaselineUpgradePreservesEveryDomainRowAndAppliedChecksums(String baseline) throws Exception {
         try (TestDatabase database = new TestDatabase()) {
@@ -339,7 +378,9 @@ class MySqlSchemaMigrationTest {
                 throw new IllegalArgumentException("MYSQL_TEST_URL must be a single-server jdbc:mysql://host:port/database URL");
             }
             int queryStart = configuredUrl.indexOf('?', pathStart);
-            String options = queryStart < 0 ? "" : configuredUrl.substring(queryStart);
+            // Match the application's Hikari batch setting when using DriverManager.
+            String options = (queryStart < 0 ? "?" : configuredUrl.substring(queryStart) + "&")
+                    + "rewriteBatchedStatements=true";
             String server = configuredUrl.substring(0, pathStart + 1);
             adminUrl = server + options;
             url = server + schema + options;

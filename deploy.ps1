@@ -1,8 +1,11 @@
-param([int]$Port = 4173, [switch]$SkipBuild)
+param([int]$Port = 4173, [switch]$SkipBuild, [switch]$Build, [switch]$FullBuild)
 $ErrorActionPreference = 'Stop'
 Set-Location $PSScriptRoot
+$startupWatch = [Diagnostics.Stopwatch]::StartNew()
 . "$PSScriptRoot\scripts\ensure-docker.ps1"
+. "$PSScriptRoot\scripts\start-project.ps1"
 Ensure-Docker
+$dockerSeconds = $startupWatch.Elapsed.TotalSeconds
 function New-Secret {
         $bytes = New-Object byte[] 32
         $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
@@ -24,10 +27,11 @@ if (-not $trainingLine) {
     $config = $config.TrimEnd() + "`nTRAINING_SERVICE_TOKEN=$(New-Secret)`n"
     [IO.File]::WriteAllText((Join-Path $PSScriptRoot '.env'), $config, (New-Object Text.UTF8Encoding($false)))
 }
-$composeArgs = @('compose', 'up', '-d', '--wait', '--wait-timeout', '600')
-if (-not $SkipBuild) { $composeArgs += '--build' }
-& docker @composeArgs
-if ($LASTEXITCODE -ne 0) { throw 'Deployment failed. Inspect: docker compose logs --tail 100' }
+Start-Platform -Build:$Build -FullBuild:$FullBuild -SkipBuild:$SkipBuild
+$readySeconds = $startupWatch.Elapsed.TotalSeconds
 $portLine = Get-Content '.env' | Where-Object { $_ -match '^WEB_PORT=' } | Select-Object -First 1
 $actualPort = if ($portLine) { $portLine.Split('=',2)[1] } else { '4173' }
 Write-Host "Ready: http://localhost:$actualPort (administrator credentials are in the local .env file)"
+Write-Host ('Startup: Docker {0:N1}s; project {1:N1}s; total {2:N1}s.' -f $dockerSeconds, ($readySeconds-$dockerSeconds), $readySeconds)
+New-Item -ItemType Directory -Path '.runtime' -Force | Out-Null
+@{ completedAt = [datetime]::UtcNow.ToString('o'); dockerSeconds = [math]::Round($dockerSeconds,2); projectSeconds = [math]::Round($readySeconds-$dockerSeconds,2); totalSeconds = [math]::Round($readySeconds,2) } | ConvertTo-Json | Set-Content -Encoding UTF8 '.runtime/startup-last.json'

@@ -11,6 +11,12 @@ import java.util.Optional;
 
 public interface KnowledgeEntryRepository extends JpaRepository<KnowledgeEntryEntity, String> {
 
+    interface TopicEntryTitle { Long getTopicId(); String getTitle(); }
+
+    /** Bootstrap only needs identities, never every existing card body or entity. */
+    @Query("select e.topic.id as topicId, e.title as title from KnowledgeEntryEntity e where e.topic.id in :topicIds")
+    List<TopicEntryTitle> findTitlesByTopicIds(@Param("topicIds") Collection<Long> topicIds);
+
     @Query("""
             select e from KnowledgeEntryEntity e join fetch e.topic
             where e.topic.id = :topicId order by e.sortOrder, e.createdAt, e.id

@@ -6,3 +6,15 @@ output
 **/target
 **/node_modules
 **/*.log
+.runtime
+.tools
+.playwright-cli
+.idea
+.vscode
+backups
+data
+uploads
+**/__pycache__
+**/*.pyc
+**/*.pkb
+**/*.pkb.partial

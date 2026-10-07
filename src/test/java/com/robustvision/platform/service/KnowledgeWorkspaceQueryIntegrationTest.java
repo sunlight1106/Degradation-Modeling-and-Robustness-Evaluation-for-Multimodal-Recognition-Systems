@@ -36,6 +36,8 @@ class KnowledgeWorkspaceQueryIntegrationTest {
     @Autowired EntityManagerFactory entityManagerFactory;
     @Autowired KnowledgeService knowledgeService;
     @Autowired WorkspaceService workspaceService;
+    @Autowired com.robustvision.platform.repository.KnowledgeTopicRepository topicRepository;
+    @Autowired com.robustvision.platform.repository.KnowledgeEntryRepository entryRepository;
     @MockBean CurrentUserService currentUserService;
 
     private UserEntity current;
@@ -43,6 +45,24 @@ class KnowledgeWorkspaceQueryIntegrationTest {
     private Statistics statistics;
     private int nextUser;
     private int nextTopic;
+
+    @Test
+    void repeatedBootstrapReadsTwoQueriesWithoutLoadingOrOverwritingCardBodies() {
+        var initializer = new com.robustvision.platform.config.KnowledgeSeedInitializer(topicRepository, entryRepository);
+        initializer.run();
+        entityManager.flush();
+        long count = entryRepository.count();
+        var edited = entryRepository.findAll().get(0);
+        String id = edited.getId();
+        edited.setBody("User-edited content that bootstrap must preserve");
+        clearPersistenceContextAndStatistics();
+        initializer.run();
+        entityManager.flush();
+        assertThat(statistics.getPrepareStatementCount()).isEqualTo(2);
+        assertThat(statistics.getEntityStatistics(KnowledgeEntryEntity.class.getName()).getLoadCount()).isZero();
+        assertThat(entryRepository.count()).isEqualTo(count);
+        assertThat(entryRepository.findById(id).orElseThrow().getBody()).isEqualTo("User-edited content that bootstrap must preserve");
+    }
 
     @BeforeEach
     void setUp() {

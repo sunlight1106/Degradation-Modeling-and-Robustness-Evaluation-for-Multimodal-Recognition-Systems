@@ -2,14 +2,14 @@
 
 ## Recommended complete stack (Docker)
 
-Prerequisites: Docker Engine and Compose **2.20.2+**, Linux x86_64 (the MinIO source/toolchain lock is x86_64), at least 4GB RAM. The source-build replacement for archived MinIO downloads needs additional first-build disk/time. These Dockerfiles/Compose have been statically checked; Docker is unavailable in the current cloud executor, so the container build and complete MinIO runtime are **not yet executed here**.
+Prerequisites: Docker Engine and Compose **2.20.2+**, Linux x86_64 (the MinIO source/toolchain lock is x86_64), at least 4GB RAM. The source-build replacement for archived MinIO downloads needs additional first-build disk/time. Local timing results and their exact scope are recorded in [STARTUP.md](STARTUP.md); they exclude the initial dependency download and MinIO source build.
 
-1. `sh deploy.sh` securely creates `.env` and builds/starts all services.
+1. `sh deploy.sh` securely creates `.env` and installs missing services on first use. A complete existing installation starts without building; use `--build` for application updates or `--full-build` to apply infrastructure changes. See [startup instructions](STARTUP.md).
 2. `scripts/stack.sh stop` stops while preserving all database/object/antivirus volumes.
 3. `scripts/stack.sh start` starts already-built images with readiness checks and **no Maven/npm rebuild**.
 4. After source edits, `scripts/stack.sh rebuild` rebuilds changed layers.
 
-MySQL 8.4 owns the 31 application tables; Flyway V1–V12 is the sole schema authority. API migrates and bootstraps first; the independent Redis worker starts only after API readiness, runs Hibernate schema validation and does not rerun migrations or seeds. Backend and worker share one built image. Redis uses AOF. Uploads require real ClamAV; MinIO is private by default and the API idempotently creates its bucket. All data ports remain internal to Compose; only the frontend binds 127.0.0.1 (default port 4173). The same-origin Nginx proxy serves `/api/`, `/swagger-ui.html` and `/v3/api-docs`; no extra backend port is needed.
+MySQL 8.4 owns the application tables; versioned Flyway scripts in `database/migrations` are the schema authority. API and worker initialize concurrently, each awaiting Flyway's migration lock before Hibernate schema validation. Only the API bootstraps seed records. Backend and worker share one built image, with extracted application libraries for faster class loading. Redis uses AOF. Uploads require real ClamAV; MinIO is private by default and the API idempotently creates its bucket. All data ports remain internal to Compose; only the frontend binds 127.0.0.1 (default port 4173). The same-origin Nginx proxy serves `/api/`, `/swagger-ui.html` and `/v3/api-docs`; no extra backend port is needed.
 
 Migration validation remains enabled. Never set ddl-auto=create/update against persisted data. Do not edit applied SQL or automatically run Flyway repair/clean. See [database/README.md](../database/README.md) for schema inventory, fresh/upgrade contracts, backup and diagnostics. Back up MySQL, objects and the encryption secrets together. Never use `docker compose down -v` as a restart.
 
