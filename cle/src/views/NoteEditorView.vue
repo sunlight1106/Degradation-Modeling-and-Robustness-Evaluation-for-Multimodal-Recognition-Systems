@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch, nextTick } from 'vue'
 import { RouterLink, useRoute, useRouter, onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router'
-import { api, ApiClientError } from '@/api/client'
+import { api, ApiClientError, request } from '@/api/client'
 import { personalApi } from '@/api/personal'
 import type {
   FileView,
@@ -14,6 +14,8 @@ import type {
   NoteStatusCode,
   NoteView,
 } from '@/types/api'
+import NoteHistory from '@/components/NoteHistory.vue'
+import { draftKey, readDraft, writeDraft, clearDraft, type NoteDraft } from '@/lib/noteDraft'
 import AppIcon from '@/components/AppIcon.vue'
 import NotePreview from '@/components/NotePreview.vue'
 import { codeFences, codeLanguages, fencedCode, replaceFence } from '@/lib/codeBlocks'
@@ -25,6 +27,18 @@ import { noteLibraries, noteTemplates } from '@/lib/noteLibraries'
 import { countWords, extractOutline, readingMinutes, renderNote } from '@/lib/markdown'
 
 const route = useRoute()
+const draftOwner=authStore.state.user?.id
+const recoveredDraft=ref<NoteDraft|null>(null), localDraftError=ref('')
+const localKey=()=>draftKey(draftOwner||0,typeof route.params.id==='string'?route.params.id:'new')
+function cacheDraft(){
+ if(!ready.value||!dirty.value||draftOwner!==authStore.state.user?.id)return
+ try{writeDraft(localKey(),{title:title.value,body:body.value,tags:tagsInput.value,library:library.value,contentFormat:contentFormat.value,status:status.value,parentId:parentId.value,revision:revision.value,savedAt:new Date().toISOString()});localDraftError.value=''}
+ catch{localDraftError.value='浏览器草稿空间不足，请下载草稿保存。'}
+}
+function checkDraft(){const d=readDraft(localKey());recoveredDraft.value=d&&(d.body!==body.value||d.title!==title.value||d.tags!==tagsInput.value||d.library!==library.value||d.status!==status.value||d.contentFormat!==contentFormat.value||d.parentId!==parentId.value)?d:null}
+function recoverDraft(){const d=recoveredDraft.value;if(!d)return;title.value=d.title;body.value=d.body;tagsInput.value=d.tags;library.value=d.library;contentFormat.value=d.contentFormat;status.value=d.status as NoteStatusCode;parentId.value=d.parentId;syncConflict.value=!!currentId.value&&d.revision!==revision.value;clearTimeout(autoTimer);recoveredDraft.value=null;if(syncConflict.value)syncError.value='恢复的草稿基于旧版本，请与服务器版本核对后另存，避免覆盖。'}
+function discardLocalDraft(){clearDraft(localKey());recoveredDraft.value=null}
+
 const router = useRouter()
 
 const canWrite = computed(() => authStore.has('note:write'))
@@ -141,7 +155,7 @@ function formatDate(value: string | null) {
 }
 
 watch([title, body, tagsInput, status, library, contentFormat, parentId], () => {
-  if (ready.value) { dirty.value = true; editSequence++; if (!syncConflict.value) syncError.value = ''; scheduleSave() }
+  if (ready.value) { dirty.value = true; editSequence++; if (!syncConflict.value) syncError.value = ''; scheduleSave(); cacheDraft() }
 }, { flush: 'sync' })
 
 function applyNote(note: NoteView) {
@@ -178,6 +192,7 @@ async function load() {
     await nextTick()
     dirty.value = false
     ready.value = true
+    checkDraft()
     return
   }
   loading.value = true
@@ -197,6 +212,7 @@ async function load() {
       loading.value = false
       ready.value = !error.value
       dirty.value = false
+      if(ready.value) checkDraft()
     }
   }
 }
@@ -225,6 +241,7 @@ async function save(automatic = false): Promise<string | null> {
     dirty.value = edits !== editSequence || saved.body !== payload.body || saved.title !== payload.title
       || saved.library !== payload.library || saved.contentFormat !== payload.contentFormat || (saved.parentId || '') !== payload.parentId
       || saved.status.code !== payload.status || JSON.stringify(saved.tags) !== JSON.stringify([...new Set(payload.tags.split(/[,，、;；\s]+/).filter(Boolean))])
+    if (!dirty.value) clearDraft(localKey()); else cacheDraft()
     if (!automatic) toastStore.success('已保存到服务器')
     if (wasNew) await router.replace({ name: 'note-edit', params: { id: saved.id } })
     return saved.id
@@ -247,10 +264,10 @@ async function ensureSaved(): Promise<string | null> {
 
 async function remove() {
   if (!currentId.value) return
-  if (!window.confirm(`删除笔记「${title.value || '未命名'}」？此操作不可撤销。`)) return
+  if (!window.confirm(`删除笔记「${title.value || '未命名'}」？将移入回收站，可在学习中心恢复。`)) return
   try {
     await api.deleteNote(currentId.value)
-    toastStore.success('笔记已删除')
+    toastStore.success('笔记已移入回收站')
     router.push({ name: 'notes' })
   } catch (reason) {
     toastStore.error(errText(reason, '删除失败'))
@@ -300,6 +317,11 @@ function useTemplate() {
   contentFormat.value = "MARKDOWN"
 }
 
+async function collectWord(){
+  const el=bodyEl.value;const term=el?.value.slice(el.selectionStart,el.selectionEnd).trim()
+  if(!term||term.length>80){toastStore.error('先在编辑区选中一个英文单词，再点击加入生词本');return}
+  try{await request('/vocabulary/collect',{method:'POST',body:JSON.stringify({term})});toastStore.success('已加入背单词模块的单词本')}catch(e){toastStore.error((e as Error).message)}
+}
 function onBodyKeydown(event: KeyboardEvent) {
   if (event.key === 'Escape') blockMenuOpen.value = false
   if (event.key === '/' && contentFormat.value === 'MARKDOWN' && !selectedBlock.value) {
@@ -502,6 +524,8 @@ onBeforeUnmount(() => { clearTimeout(autoTimer); window.removeEventListener('onl
 <template>
   <div class="page-stack note-editor-page">
     <div v-if="syncError" class="inline-alert inline-alert--error" role="alert"><p>{{ syncError }}</p><button class="button button--ghost button--small" @click="downloadDraft">下载当前草稿</button> <button v-if="syncConflict" class="button button--ghost button--small" @click="reloadServer">重新加载服务器版本</button><button v-else class="button button--ghost button--small" :disabled="saving" @click="save()">重试保存</button></div>
+    <div v-if="recoveredDraft" class="inline-alert" role="status">发现此账号在本浏览器保存的未同步草稿（{{ new Date(recoveredDraft.savedAt).toLocaleString() }}）。<button class="button button--ghost" @click="recoverDraft">恢复草稿到编辑区</button><button class="button button--ghost" @click="discardLocalDraft">丢弃本地草稿</button></div>
+    <p v-if="localDraftError" role="alert">{{ localDraftError }}</p>
     <section class="page-intro page-intro--split">
       <div>
         <p class="page-kicker">NOTE EDITOR</p>
@@ -512,6 +536,8 @@ onBeforeUnmount(() => { clearTimeout(autoTimer); window.removeEventListener('onl
         <RouterLink :to="{ name: 'notes', query: { library } }" class="button button--ghost">
           <AppIcon name="chevron" :size="16" /> 返回列表
         </RouterLink>
+        <button class="button button--ghost" @click="collectWord">选中词加入生词本</button>
+        <RouterLink v-if="currentId" :to="`/app/research?tab=cards&note=${currentId}`" class="button button--ghost">制作复习卡</RouterLink>
         <button v-if="!isNew" class="button button--ghost note-danger" @click="remove">
           <AppIcon name="trash" :size="16" /> 删除
         </button>
@@ -521,6 +547,7 @@ onBeforeUnmount(() => { clearTimeout(autoTimer); window.removeEventListener('onl
       </div>
     </section>
 
+    <NoteHistory v-if="currentId" :key="currentId" :id="currentId" :revision="revision" :body="body" :dirty="dirty||saving" @restored="load()" />
     <nav v-if="parentPage || childPages.length" class="note-page-path" aria-label="页面关联">
       <RouterLink v-if="parentPage" :to="{ name: 'note-edit', params: { id: parentPage.id } }">上级：{{ parentPage.title }}</RouterLink>
       <RouterLink v-for="child in childPages" :key="child.id" :to="{ name: 'note-edit', params: { id: child.id } }">子页：{{ child.title }}</RouterLink>

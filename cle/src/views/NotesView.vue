@@ -53,8 +53,8 @@ async function load() {
 watch(keyword, () => { version++; clearTimeout(timer); timer = setTimeout(load, 250) })
 watch(library, () => { status.value = 'ALL' })
 async function remove(note: NoteSummaryView) {
-  if (!window.confirm(`删除笔记「${note.title}」？此操作不可撤销。`)) return
-  try { await api.deleteNote(note.id); toastStore.success('笔记已删除'); await load() }
+  if (!window.confirm(`删除笔记「${note.title}」？将移入回收站，可随时恢复。`)) return
+  try { await api.deleteNote(note.id); toastStore.success('已移入回收站'); await load() }
   catch (reason) { toastStore.error(reason instanceof ApiClientError ? reason.message : '删除失败') }
 }
 onMounted(load)
@@ -62,7 +62,7 @@ onBeforeUnmount(() => { version++; clearTimeout(timer) })
 </script>
 
 <template>
-  <div class="page-stack learning-notes-page">
+  <div class="page-stack learning-notes-page"><RouterLink to="/app/research?tab=trash" class="button button--ghost">打开回收站</RouterLink>
     <section class="page-intro page-intro--split">
       <div><p class="page-kicker">KNOWLEDGE / NOTEBOOKS</p><h2>{{ library || '我的学习库' }}</h2><p>把理解写下来，把知识连接起来。笔记仅自己可见，主动分享后他人才能阅读。</p></div>
       <div class="intro-actions">

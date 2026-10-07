@@ -20,6 +20,7 @@ import java.util.UUID;
 /** 私有学习笔记。保存 Markdown 或 HTML 源文，显示与导出分别进行安全处理。 */
 @Entity
 @Table(name = "note")
+@org.hibernate.annotations.SQLRestriction("deleted_at IS NULL")
 public class NoteEntity {
 
     @Id
@@ -64,6 +65,8 @@ public class NoteEntity {
     public long getRevision() { return revision; }
     public void incrementRevision() { revision++; }
     public void assignClientId(String value) { id = value; }
+    @Column(name="deleted_at") private Instant deletedAt;
+    public void trash() { deletedAt=Instant.now(); incrementRevision(); }
     protected NoteEntity() {}
 
     public NoteEntity(UserEntity owner, String title, String body, String tags, NoteStatus status) {

@@ -55,6 +55,7 @@ services:
       start_period: 60s
 
   backend:
+    volumes: ["./.runtime/backups:/app/backup-status:ro"]
     image: robust-vision-backend:local
     build:
       context: .

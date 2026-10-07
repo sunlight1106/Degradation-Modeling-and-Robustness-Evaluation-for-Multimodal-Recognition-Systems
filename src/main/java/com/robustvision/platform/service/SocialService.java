@@ -13,6 +13,7 @@ import java.util.*;
 
 @Service
 public class SocialService {
+    @org.springframework.beans.factory.annotation.Autowired private LiveUpdateService live;
     @jakarta.persistence.PersistenceContext private jakarta.persistence.EntityManager entityManager;
     private final UserRepository users;
     private final ContactLinkRepository contacts;
@@ -60,6 +61,7 @@ public class SocialService {
             throw new BusinessException(HttpStatus.CONFLICT, "CONTACT_LIMIT", "联系人和待处理申请已达上限（200），请先处理已有申请");
         if (link == null) link = new ContactLinkEntity(me, peer, me); else link.request(me);
         contacts.save(link);
+        live.changed(List.of(me,peer));
     }
     @Transactional
     public void act(long id, String action) {
@@ -131,7 +133,16 @@ public class SocialService {
                 throw new BusinessException(HttpStatus.CONFLICT, "CHAT_RETRY_MISMATCH", "发送内容已变化，请重新发送");
             return view(message);
         }
-        return view(chats.save(new ChatMessageEntity(link, me, request.clientId(), request.body().trim())));
+        var saved=view(chats.save(new ChatMessageEntity(link, me, request.clientId(), request.body().trim())));
+        live.changed(List.of(me.getId(),link.peer(me.getId())));
+        return saved;
+    }
+    @Transactional(readOnly=true)
+    public List<SocialDtos.ChatMessage> searchMessages(long id,String query,int page) {
+        if(query==null||query.isBlank()||query.length()>160||page<0||page>10000) throw bad("请输入 1–160 个字符的搜索词");
+        long me=current.requireCurrent().getId();ContactLinkEntity link=owned(id,me);requireChat(link,me);
+        String pattern="%"+query.trim().toLowerCase(Locale.ROOT).replace("!","!!").replace("%","!%").replace("_","!_")+"%";
+        return chats.searchHistory(id,link.clearedThrough(me),pattern,PageRequest.of(page,30)).stream().map(this::view).toList();
     }
     private SocialDtos.ChatMessage view(ChatMessageEntity message) {
         return new SocialDtos.ChatMessage(message.getId(), message.getSender().getId(), message.getSender().getDisplayName(),

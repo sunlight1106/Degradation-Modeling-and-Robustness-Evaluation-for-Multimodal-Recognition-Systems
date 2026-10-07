@@ -195,6 +195,14 @@ public class VocabularyService {
         var p=wordProgress(owner,wordId);p.starred=starred;return wordView(w,p);
     }
     @Transactional(isolation=Isolation.READ_COMMITTED)
+    public Word collectTerm(String term) {
+        long owner=lockedOwner();
+        var matches=em.createQuery("select w from VocabularyWordEntity w join VocabularyBookEntity b on b.id=w.bookId where (b.ownerId is null or b.ownerId=:owner) and lower(w.term)=:term order by case when b.ownerId is null then 1 else 0 end, w.id",VocabularyWordEntity.class)
+            .setParameter("owner",owner).setParameter("term",term.trim().toLowerCase(Locale.ROOT)).setMaxResults(1).getResultList();
+        if(matches.isEmpty())throw bad("TERM_NOT_FOUND","词库中还没有这个单词，可以先为它制作一张复习卡");
+        var word=matches.get(0);var p=wordProgress(owner,word.id);p.starred=true;return wordView(word,p);
+    }
+    @Transactional(isolation=Isolation.READ_COMMITTED)
     public Book importBook(ImportRequest request) {
         long owner=lockedOwner();
         // Unversioned original imports remain compatible; future schemas must not be silently reinterpreted.

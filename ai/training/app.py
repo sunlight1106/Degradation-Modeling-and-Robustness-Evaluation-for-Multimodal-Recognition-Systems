@@ -2,7 +2,7 @@ import hmac
 import os
 import re
 from contextlib import asynccontextmanager
-from typing import Annotated
+from typing import Annotated, Literal
 
 import torch
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response
@@ -24,6 +24,9 @@ class TrainingRequest(BaseModel):
     name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=80)]
     samples: list[Sample] = Field(min_length=8, max_length=500)
     epochs: int = Field(default=15, ge=1, le=50, strict=True)
+    architecture: Literal["mlp", "linear"] = "mlp"
+    seed: int = Field(default=42, ge=0, le=2147483647, strict=True)
+    validationFraction: float = Field(default=.2, ge=.15, le=.4, allow_inf_nan=False)
     learningRate: float = Field(default=.01, ge=.0001, le=.05, allow_inf_nan=False)
 
 
@@ -69,7 +72,7 @@ def create_app(root=None, token=None):
 
     @application.get("/environment")
     def environment(user=Depends(owner)):
-        return dict(ready=True, framework="PyTorch", version=torch.__version__, device="CPU", template="文本分类 · 哈希特征 + 双层神经网络", maxSamples=500, maxEpochs=50)
+        return dict(ready=True, framework="PyTorch", version=torch.__version__, device="CPU", template="文本分类 · 线性分类器 / 双层神经网络", maxSamples=500, maxEpochs=50)
 
     @application.get("/jobs")
     def jobs(user=Depends(owner)): return engine.list(user)

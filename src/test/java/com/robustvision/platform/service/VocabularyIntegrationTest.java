@@ -238,7 +238,9 @@ class VocabularyIntegrationTest {
         settings(alice,"Asia/Shanghai",1,ownId);
         var answer=answer(alice,next(alice,ownId,"LEARN").path("question"),true);
         call(json(put("/api/v1/vocabulary/words/{id}/star",answer.path("wordId").asText()),alice,Map.of("starred",true)));
-        JsonNode original=export(alice);assertThat(original.path("schemaVersion").asInt()).isEqualTo(2);
+        JsonNode original=export(alice);assertThat(original.path("schemaVersion").asInt()).isEqualTo(3);
+        assertThat(original.path("learningRecords").isArray()).isTrue();
+        assertThat(original.path("noteVersions").isArray()).isTrue();
         assertThat(original.path("vocabularyBookImports").size()).isEqualTo(1);
         ObjectNode portable=(ObjectNode)original.path("vocabularyBookImports").get(0);
         assertThat(portable.path("schemaVersion").asInt()).isEqualTo(1);

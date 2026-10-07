@@ -27,6 +27,8 @@ __pycache__/
 # Private local recovery bundles (source scripts remain tracked)
 backups/
 *.backup.zip
+*.pkb
+*.pkb.partial
 
 # Retired artwork and unused visual experiments are not distributed.
 /cle/public/art/

@@ -22,5 +22,6 @@ public class SocialController {
     @PostMapping("/contacts/{id}/read") public ApiResponse<Void> read(@PathVariable long id, @Valid @RequestBody SocialDtos.ReadReceipt body) { service.read(id, body.through()); return ApiResponse.ok(null); }
     @PostMapping("/contacts/{id}/clear-history") public ApiResponse<Void> clearHistory(@PathVariable long id) { service.clearHistory(id); return ApiResponse.ok(null); }
     @GetMapping("/contacts/{id}/messages") public ApiResponse<List<SocialDtos.ChatMessage>> messages(@PathVariable long id, @RequestParam(required = false) Long after, @RequestParam(required = false) Long before) { return ApiResponse.ok(service.messages(id, after, before)); }
+    @GetMapping("/contacts/{id}/search") public Object searchMessages(@PathVariable long id,@RequestParam String q,@RequestParam(defaultValue="0") int page){return ApiResponse.ok(service.searchMessages(id,q,page));}
     @PostMapping("/contacts/{id}/messages") public ApiResponse<SocialDtos.ChatMessage> send(@PathVariable long id, @Valid @RequestBody SocialDtos.ChatRequest body) { return ApiResponse.ok(service.send(id, body)); }
 }

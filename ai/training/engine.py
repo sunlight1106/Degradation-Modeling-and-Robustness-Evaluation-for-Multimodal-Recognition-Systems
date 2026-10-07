@@ -1,3 +1,4 @@
+import hashlib
 import copy
 import io
 import json
@@ -78,7 +79,7 @@ class Engine:
                 raise HTTPException(429, "训练队列或存储已满，请稍后重试")
             job_id = str(uuid.uuid4())
             job = dict(id=job_id, owner=owner, name=request.name, status="QUEUED", createdAt=time.time(),
-                       epochs=request.epochs, learningRate=request.learningRate, seed=42, epoch=0,
+                       epochs=request.epochs, learningRate=request.learningRate, seed=request.seed, architecture=request.architecture, validationFraction=request.validationFraction, epoch=0,
                        samples=len(request.samples), labels=sorted(groups), metrics=[], message="等待 CPU 训练资源")
             self.jobs[job_id] = job
             self.cancels[job_id] = threading.Event()
@@ -95,22 +96,28 @@ class Engine:
     def _train(self, job_id, groups):
         job, cancel = self.jobs[job_id], self.cancels[job_id]
         try:
-            torch.manual_seed(42)
-            rng = random.Random(42)
+            torch.manual_seed(job.get("seed", 42))
+            rng = random.Random(job.get("seed", 42))
             train, validation = [], []
             for index, label in enumerate(job["labels"]):
                 rows = list(groups[label]); rng.shuffle(rows)
-                count = max(1, round(len(rows) * .2))
+                count = max(1, round(len(rows) * job.get("validationFraction", .2)))
                 validation += [(text, index) for text in rows[:count]]
                 train += [(text, index) for text in rows[count:]]
             x, y = features([t for t, _ in train]), torch.tensor([i for _, i in train])
             vx, vy = features([t for t, _ in validation]), torch.tensor([i for _, i in validation])
-            model = classifier(len(groups))
+            model = classifier(len(groups), job.get("architecture", "mlp"))
             optimizer = torch.optim.Adam(model.parameters(), lr=job["learningRate"])
             loss_fn = torch.nn.CrossEntropyLoss()
             self._update(job_id, status="RUNNING", message="正在训练", trainSamples=len(train), validationSamples=len(validation))
             started = time.monotonic()
+            split = {"train": [{"text": t, "label": job["labels"][i]} for t, i in train],
+                     "validation": [{"text": t, "label": job["labels"][i]} for t, i in validation]}
+            split_bytes = json.dumps(split, ensure_ascii=False, sort_keys=True).encode()
+            (self.root / job_id / "split.json").write_bytes(split_bytes)
+            self._update(job_id, datasetHash=hashlib.sha256(split_bytes).hexdigest())
             metrics = []
+            best_loss, best_weights, best_epoch = float("inf"), None, 0
             for epoch in range(job["epochs"]):
                 if cancel.is_set():
                     self._update(job_id, status="CANCELLED", message="已取消训练"); return
@@ -124,14 +131,25 @@ class Engine:
                     total += loss.item() * len(indices)
                 model.eval()
                 with torch.inference_mode():
-                    accuracy = (model(vx).argmax(1) == vy).float().mean().item()
-                metrics.append(dict(epoch=epoch+1, loss=round(total/len(y), 6), accuracy=round(accuracy, 6)))
+                    logits = model(vx)
+                    prediction = logits.argmax(1)
+                    accuracy = (prediction == vy).float().mean().item()
+                    validation_loss = loss_fn(logits, vy).item()
+                    matrix = [[int(((vy == a) & (prediction == b)).sum()) for b in range(len(groups))] for a in range(len(groups))]
+                    f1s = []
+                    for a in range(len(groups)):
+                        tp = matrix[a][a]; fp = sum(row[a] for row in matrix)-tp; fn = sum(matrix[a])-tp
+                        f1s.append(2*tp/(2*tp+fp+fn) if 2*tp+fp+fn else 0)
+                    if validation_loss < best_loss:
+                        best_loss, best_weights, best_epoch = validation_loss, copy.deepcopy(model.state_dict()), epoch+1
+                        best_matrix, best_f1 = matrix, sum(f1s)/len(f1s)
+                metrics.append(dict(epoch=epoch+1, loss=round(total/len(y), 6), accuracy=round(accuracy, 6), validationLoss=round(validation_loss, 6), macroF1=round(sum(f1s)/len(f1s), 6)))
                 self._update(job_id, epoch=epoch+1, metrics=metrics)
             with self.lock:
                 if cancel.is_set():
                     self._update(job_id, status="CANCELLED", message="已取消训练"); return
-                torch.save(model.state_dict(), self.root / job_id / "weights.pt")
-                self._update(job_id, status="COMPLETED", message="训练完成，可试用或下载模型")
+                torch.save(best_weights, self.root / job_id / "weights.pt")
+                self._update(job_id, status="COMPLETED", bestEpoch=best_epoch, confusionMatrix=best_matrix, bestMacroF1=best_f1, message="训练完成，已保留验证损失最低的模型；验证集不是独立测试集")
         except Exception:
             self._update(job_id, status="FAILED", message="训练未完成，请检查样本后重试；单次训练限时 5 分钟")
         finally:
@@ -159,7 +177,7 @@ class Engine:
             job = self._own(owner, job_id)
             if job["status"] != "COMPLETED":
                 raise HTTPException(409, "训练完成后才能试用模型")
-            model = classifier(len(job["labels"]))
+            model = classifier(len(job["labels"]), job.get("architecture", "mlp"))
             model.load_state_dict(torch.load(self.root / job_id / "weights.pt", map_location="cpu", weights_only=True))
             model.eval()
             with torch.inference_mode():
@@ -175,6 +193,8 @@ class Engine:
             with zipfile.ZipFile(data, "w", zipfile.ZIP_DEFLATED) as archive:
                 archive.write(self.root / job_id / "weights.pt", "weights.pt")
                 archive.write(self.root / job_id / "dataset.json", "dataset.json")
+                split_path = self.root / job_id / "split.json"
+                if split_path.exists(): archive.write(split_path, "split.json")
                 archive.writestr("training.json", json.dumps(self._view(job), ensure_ascii=False, indent=2))
                 for filename in ("model.py", "predict.py", "MODEL_README.md"):
                     archive.write(Path(__file__).parent / filename, filename)

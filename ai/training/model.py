@@ -24,5 +24,9 @@ def features(texts):
     return nn.functional.normalize(vectors, p=2, dim=1)
 
 
-def classifier(classes):
+def classifier(classes, architecture="mlp"):
+    if architecture == "linear":
+        return nn.Sequential(nn.Linear(DIMENSIONS, classes))
+    if architecture != "mlp":
+        raise ValueError("Unsupported architecture")
     return nn.Sequential(nn.Linear(DIMENSIONS, 64), nn.ReLU(), nn.Linear(64, classes))

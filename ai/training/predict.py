@@ -8,7 +8,7 @@ from model import classifier, features
 if __name__ == "__main__":
     directory = Path(__file__).resolve().parent
     metadata = json.loads((directory / "training.json").read_text(encoding="utf-8"))
-    model = classifier(len(metadata["labels"]))
+    model = classifier(len(metadata["labels"]), metadata.get("architecture", "mlp"))
     model.load_state_dict(torch.load(directory / "weights.pt", weights_only=True, map_location="cpu"))
     model.eval()
     with torch.inference_mode():

@@ -37,6 +37,21 @@ class TrainingTest(unittest.TestCase):
             time.sleep(.02)
         self.fail("Training timed out")
 
+    def test_linear_architecture_reproducible_split_and_metrics(self):
+        payload=data();payload.update(architecture="linear",seed=73,validationFraction=.3)
+        first=self.call("POST","/jobs",json=payload).json()
+        job=self.complete(first["id"])
+        self.assertEqual(job["status"],"COMPLETED")
+        self.assertEqual(job["architecture"],"linear")
+        self.assertEqual(len(job["confusionMatrix"]),2)
+        self.assertGreaterEqual(job["bestMacroF1"],0)
+        self.assertLessEqual(job["bestMacroF1"],1)
+        self.assertGreaterEqual(job["bestEpoch"],1)
+        second=self.call("POST","/jobs",json=payload).json()
+        self.assertEqual(self.complete(second["id"])["datasetHash"],job["datasetHash"])
+        package=self.call("GET","/jobs/"+job["id"]+"/download").content
+        self.assertIn("split.json",zipfile.ZipFile(io.BytesIO(package)).namelist())
+
     def test_real_training_prediction_export_and_cross_owner_isolation(self):
         self.assertEqual(self.client.get("/jobs").status_code, 401)
         job = self.call("POST", "/jobs", json=data()).json()

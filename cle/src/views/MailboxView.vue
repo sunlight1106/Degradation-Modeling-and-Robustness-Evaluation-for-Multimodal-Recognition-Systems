@@ -64,6 +64,21 @@ async function load() {
   finally { if (version === epoch) loading.value = false }
 }
 async function switchTab(next: 'inbox' | 'sent') { if (busy.value) return; detailEpoch++; tab.value = next; selected.value = null; await load() }
+async function openNotification() {
+  const id = route.query.message
+  if (typeof id !== 'string' || composing.value || busy.value) return
+  const version = epoch, selection = ++detailEpoch
+  selected.value = null
+  try {
+    const message = await api.message(id)
+    if (version === epoch && selection === detailEpoch) {
+      selected.value = message
+      const item = messages.value.find(m => m.id === id)
+      if (item) item.read = true
+    }
+  } catch (reason) { if (version === epoch && selection === detailEpoch) error.value = reasonText(reason) }
+}
+watch(() => route.query.message, openNotification)
 async function open(item: MessageView) {
   const version = epoch, selection = ++detailEpoch
   selected.value = null
@@ -114,7 +129,10 @@ async function download(file: MessageView['attachments'][number]) {
   catch (reason) { if (version === epoch) error.value = reasonText(reason) }
 }
 watch(() => authStore.state.user?.id, () => { reset(); if (authStore.state.user) void load() }, { flush: 'sync' })
-onMounted(async () => { const version = epoch + 1; await load(); if (epoch === version && route.query.to) compose(Number(route.query.to)) })
+function liveRefresh(){if(!busy.value&&!composing.value)void load()}
+onMounted(()=>window.addEventListener("pkb:live-update",liveRefresh))
+onBeforeUnmount(()=>window.removeEventListener("pkb:live-update",liveRefresh))
+onMounted(async () => { const version = epoch + 1; await load(); if (epoch === version) { if (route.query.to) compose(Number(route.query.to)); else void openNotification() } })
 onBeforeUnmount(reset)
 </script>
 

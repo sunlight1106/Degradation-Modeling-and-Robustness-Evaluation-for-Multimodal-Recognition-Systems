@@ -44,7 +44,7 @@ class MySqlSchemaMigrationTest {
 
     private static final Set<String> DOMAIN_TABLES = java.util.stream.Stream.concat(
             LEGACY_DOMAIN_TABLES.stream(), java.util.stream.Stream.of("personal_ai_setting", "personal_ai_usage", "user_session",
-                    "vocabulary_book", "vocabulary_word", "vocabulary_profile", "vocabulary_progress", "vocabulary_question", "personal_recognition_result", "contact_link", "chat_message", "personal_ai_memory"))
+                    "vocabulary_book", "vocabulary_word", "vocabulary_profile", "vocabulary_progress", "vocabulary_question", "personal_recognition_result", "contact_link", "chat_message", "personal_ai_memory", "note_version", "learning_record"))
             .collect(java.util.stream.Collectors.toUnmodifiableSet());
 
     @Test
@@ -174,7 +174,10 @@ class MySqlSchemaMigrationTest {
         assertThat(scalar(c, "SELECT balance_cny FROM user_wallet WHERE user_id = 101")).isEqualTo("12.3456");
         assertThat(scalar(c, "SELECT cost_cny FROM inference_task WHERE id = 'task-1'")).isEqualTo("0.123456");
         assertThat(scalar(c, "SELECT COUNT(*) FROM information_schema.referential_constraints WHERE constraint_schema = DATABASE()"))
-                .isEqualTo("49");
+                .isEqualTo("51");
+        assertThatThrownBy(() -> execute(c,
+                "INSERT INTO learning_record (id,owner_id,kind,title,payload,created_at,updated_at) VALUES ('orphan-record',999999,'CARD','orphan','{}',CURRENT_TIMESTAMP(6),CURRENT_TIMESTAMP(6))"))
+                .isInstanceOf(SQLException.class).satisfies(error -> assertThat(((SQLException) error).getErrorCode()).isEqualTo(1452));
         assertDuplicateRejected(c, "INSERT INTO workspace_member (workspace_id, user_id, member_role) VALUES (201, 101, 'MEMBER')");
         assertDuplicateRejected(c, "INSERT INTO note_reference (note_id, reference_type, reference_id) VALUES ('note-1', 'FILE', 'file-1')");
         assertDuplicateRejected(c, "INSERT INTO note_share (id, note_id, shared_by, token) VALUES ('duplicate-share', 'note-1', 101, '0123456789abcdef0123456789abcdef')");

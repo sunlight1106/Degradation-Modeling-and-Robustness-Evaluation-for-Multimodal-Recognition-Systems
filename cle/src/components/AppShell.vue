@@ -2,6 +2,7 @@
 import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { sectionLinks as vSectionLinks } from '@/directives/sectionLinks'
+import WorkspaceTools from './WorkspaceTools.vue'
 import AppIcon from './AppIcon.vue'
 import { authStore } from '@/stores/auth'
 import { themeStore } from '@/stores/theme'
@@ -23,6 +24,7 @@ const menu = ref<HTMLDetailsElement | null>(null)
 function closeMenu() { menu.value?.removeAttribute('open') }
 watch(() => route.fullPath, closeMenu)
 const mainItems: NavItem[] = [
+  { label: '学习中心', to: '/app/research', icon: 'book' },
   { label: '工作台', to: '/app/home', icon: 'home', permission: 'dashboard:read' },
   { label: '知识库', to: '/app/knowledge', icon: 'book', permission: 'knowledge:read' },
   { label: '背单词', to: '/app/vocabulary', icon: 'book' },
@@ -56,7 +58,7 @@ function visible(items: NavItem[]) {
 }
 
 const navGroups = computed(() => [
-  { label: '探索与创作', items: visible(mainItems.filter(item => ['/app/home', '/app/knowledge', '/app/vocabulary', '/app/notes'].includes(item.to))) },
+  { label: '探索与创作', items: visible(mainItems.filter(item => ['/app/home', '/app/knowledge', '/app/vocabulary', '/app/notes', '/app/research'].includes(item.to))) },
   { label: '识别与评测', items: visible(mainItems.filter(item => ['/app/upload', '/app/models', '/app/images', '/app/comparisons'].includes(item.to))) },
   { label: '记录与账户', items: visible(mainItems.filter(item => ['/app/logs', '/app/downloads', '/app/billing', '/app/contacts', '/app/mail', '/app/groups'].includes(item.to))) },
 ])
@@ -81,7 +83,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', outside))
         <RouterLink v-for="item in quickItems" :key="item.to" :to="item.to">{{ item.label }}</RouterLink>
         <RouterLink to="/docs">操作文档</RouterLink>
       </nav>
-      <div class="workspace-tools">
+      <div class="workspace-tools"><WorkspaceTools v-if="authStore.state.user" :key="authStore.state.user.id" />
         <button class="topbar-tool" :aria-label="themeStore.isDark() ? '切换到浅色' : '切换到暗色'" @click="themeStore.toggle()"><AppIcon :name="themeStore.isDark() ? 'sun' : 'moon'" :size="16" /></button>
         <details ref="menu" class="workspace-directory" @keydown.esc="closeMenu(); menu?.querySelector('summary')?.focus()">
           <summary>目录与账户</summary>

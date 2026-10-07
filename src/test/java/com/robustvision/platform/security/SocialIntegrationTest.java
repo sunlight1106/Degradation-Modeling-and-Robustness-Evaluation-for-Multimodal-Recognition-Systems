@@ -45,6 +45,17 @@ class SocialIntegrationTest {
     ResultActions action(long id, String token, String action) throws Exception { return mvc.perform(json(patch("/api/v1/social/contacts/{id}",id),token,Map.of("action",action))); }
     ResultActions send(long id, String token, String key, String body) throws Exception { return mvc.perform(json(post("/api/v1/social/contacts/{id}/messages",id),token,Map.of("clientId",key,"body",body))); }
 
+    @Test void chatSearchCannotBypassMembershipBlocksOrClearedHistory() throws Exception {
+        long id=request();action(id,b,"accept").andExpect(status().isOk());
+        send(id,a,UUID.randomUUID().toString(),"private 100%_ result").andExpect(status().isOk());
+        for(String token:List.of(o,ad)) mvc.perform(auth(get("/api/v1/social/contacts/{id}/search",id).param("q","private"),token)).andExpect(status().isNotFound());
+        mvc.perform(auth(get("/api/v1/social/contacts/{id}/search",id).param("q","%_"),a)).andExpect(status().isOk()).andExpect(jsonPath("$.data.length()").value(1));
+        mvc.perform(auth(post("/api/v1/social/contacts/{id}/clear-history",id),a)).andExpect(status().isOk());
+        mvc.perform(auth(get("/api/v1/social/contacts/{id}/search",id).param("q","private"),a)).andExpect(status().isOk()).andExpect(jsonPath("$.data").isEmpty());
+        mvc.perform(auth(get("/api/v1/social/contacts/{id}/search",id).param("q","private"),b)).andExpect(status().isOk()).andExpect(jsonPath("$.data.length()").value(1));
+        action(id,b,"block").andExpect(status().isOk());
+        mvc.perform(auth(get("/api/v1/social/contacts/{id}/search",id).param("q","private"),a)).andExpect(status().isNotFound());
+    }
     @Test void discoveryIsAuthenticatedLimitedPrivateAndCanBeDisabled() throws Exception {
         mvc.perform(get("/api/v1/social/people").param("q","bob")).andExpect(status().isUnauthorized());
         JsonNode result = data(mvc.perform(auth(get("/api/v1/social/people").param("q",bob.getUsername()),a)).andExpect(status().isOk()).andReturn());

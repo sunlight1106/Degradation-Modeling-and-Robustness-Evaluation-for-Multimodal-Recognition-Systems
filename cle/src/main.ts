@@ -4,6 +4,7 @@ import router from './router'
 import { themeStore } from './stores/theme'
 import './styles/main.css'
 import './styles/portal.css'
+import './styles/research.css'
 
 themeStore.init()
 

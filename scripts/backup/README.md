@@ -1,3 +1,5 @@
+> 默认 Docker Compose 用户请使用 [完整加密备份与恢复](../../docs/COMPOSE_BACKUP.md)。以下为旧的 MySQL + 本地文件系统演练工具。
+
 # Local MySQL + filesystem recovery rehearsal
 
 This is a **bounded local/development recovery tool**, not a production backup system. It supports Linux/POSIX, Python 3.10+, the official MySQL **8.4** `mysql`/`mysqldump` clients and an isolated MySQL 8.4 server. It never starts services, creates users/grants, changes server security settings, contacts remote storage, or drops a database.

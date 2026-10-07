@@ -14,6 +14,8 @@ import java.util.*;
 
 @Service
 public class MessageService {
+    @org.springframework.beans.factory.annotation.Autowired private LiveUpdateService live;
+    @org.springframework.beans.factory.annotation.Autowired private org.springframework.jdbc.core.JdbcTemplate jdbc;
     private static final int LIST_BATCH_SIZE = 500;
     private final MessageRepository messageRepository;
     private final MessageRecipientRepository recipientRepository;
@@ -81,6 +83,7 @@ public class MessageService {
         }
         MessageEntity message = saveMessage(sender, subject, body, files, null, replyToId);
         ids.forEach(id -> recipientRepository.save(new MessageRecipientEntity(message, userRepository.getReferenceById(id))));
+        if(live!=null) live.changed(ids);
         return toView(message, sender);
     }
 
@@ -96,6 +99,7 @@ public class MessageService {
         workspaceService.requireContentPermission(workspaceId, true);
         UserEntity sender = currentUserService.requireCurrent();
         MessageEntity message = saveMessage(sender, "群组交流", body, files, workspaceId, replyToId);
+        if(live!=null) live.changed(jdbc.queryForList("SELECT user_id FROM workspace_member WHERE workspace_id=?",Long.class,workspaceId));
         return toView(message, sender);
     }
 

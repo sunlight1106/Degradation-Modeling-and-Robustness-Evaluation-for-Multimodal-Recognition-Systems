@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRoute } from 'vue-router'
+import { request } from '@/api/client'
 import { socialApi, type Person, type Contact, type ChatMessage, type ContactAction } from '@/api/social'
 import { ApiClientError } from '@/api/client'
 import { authStore } from '@/stores/auth'
@@ -8,6 +9,18 @@ import IdentityCode from '@/components/IdentityCode.vue'
 import AppIcon from '@/components/AppIcon.vue'
 import ActionConfirmDialog from '@/components/ActionConfirmDialog.vue'
 
+const historyQuery=ref(''), historyResults=ref<ChatMessage[]>([]),historyPage=ref(0)
+const route = useRoute()
+let historyVersion = 0
+async function searchHistory() {
+  const id = selected.value, version = ++historyVersion, choice = selection
+  if (!id) return
+  historyResults.value = []
+  try {
+    const rows = await request<ChatMessage[]>(`/social/contacts/${id}/search?${new URLSearchParams({q:historyQuery.value,page:String(historyPage.value)})}`)
+    if (version === historyVersion && choice === selection && id === selected.value) historyResults.value = rows
+  } catch (e) { if (version === historyVersion && choice === selection) error.value = messageOf(e) }
+}
 const contacts = ref<Contact[]>([]), results = ref<Person[]>([]), query = ref(''), searched = ref(false)
 const selected = ref<number | null>(null), messages = ref<ChatMessage[]>([]), body = ref('')
 const error = ref(''), loading = ref(true), searching = ref(false), busy = ref(false), sending = ref(false)
@@ -31,6 +44,17 @@ function reset() {
   contacts.value = []; results.value = []; messages.value = []; selected.value = null; body.value = ''; query.value = ''
   retry = null; confirmation.value = null; managerOpen.value = false; remarkDraft.value = ''; listTab.value = 'contacts'; acknowledged.clear(); acknowledging.clear(); error.value = ''; loading.value = false; refreshing.value = false; searching.value = false; busy.value = false; sending.value = false; historyBusy.value = false
 }
+function liveRefresh(){void refresh()}
+onMounted(()=>window.addEventListener('pkb:live-update',liveRefresh))
+onBeforeUnmount(()=>window.removeEventListener('pkb:live-update',liveRefresh))
+watch(selected,()=>{historyVersion++;historyQuery.value='';historyResults.value=[];historyPage.value=0})
+watch(historyQuery,()=>{historyVersion++;historyResults.value=[]})
+function openNotification() {
+  if (route.query.tab === 'requests') listTab.value = 'requests'
+  const contact = friends.value.find(c => String(c.id) === route.query.contact)
+  if (contact) void open(contact)
+}
+watch(() => route.query, openNotification)
 function schedule() { clearTimeout(timer); if (authStore.state.user) timer = setTimeout(() => void refresh(), 5000) }
 function reconcile(items: Contact[]) {
   const oldCleared = current.value?.clearedThrough || 0
@@ -38,7 +62,7 @@ function reconcile(items: Contact[]) {
   if (selected.value && !friends.value.some(c => c.id === selected.value)) {
     selection++; selected.value = null; messages.value = []; body.value = ''; retry = null; managerOpen.value = false
   } else if (selected.value && (!current.value?.available || (current.value?.clearedThrough || 0) > oldCleared)) {
-    selection++; messages.value = []; more.value = false; retry = null
+    selection++; historyVersion++; historyResults.value = []; messages.value = []; more.value = false; retry = null
   }
 }
 function selectList(tab: typeof listTab.value) { listTab.value = tab; query.value = ''; searched.value = false; results.value = [] }
@@ -63,7 +87,7 @@ async function load() {
   try {
     const [items, settings] = await Promise.all([socialApi.contacts(), socialApi.settings()])
     if (token !== generation) return
-    reconcile(items); discoverable.value = settings.discoverable
+    reconcile(items); discoverable.value = settings.discoverable; openNotification()
   } catch (reason) { if (token === generation) error.value = messageOf(reason) }
   finally { if (token === generation) { loading.value = false; schedule() } }
 }
@@ -177,6 +201,7 @@ onBeforeUnmount(() => { reset(); document.removeEventListener('visibilitychange'
 </script>
 
 <template>
+  <details v-if="selected" class="research-card"><summary>搜索当前会话</summary><form class="research-actions" @submit.prevent="historyPage=0;searchHistory()"><input v-model="historyQuery" class="field-input" maxlength="160" placeholder="输入聊天关键词"/><button class="button button--ghost">搜索</button></form><article v-for="m in historyResults" :key="m.id"><small>{{ m.senderName }} · {{ new Date(m.createdAt).toLocaleString() }}</small><p>{{ m.body }}</p></article><button v-if="historyPage" class="button button--ghost" @click="historyPage--;searchHistory()">上一页</button><button v-if="historyResults.length===30" class="button button--ghost" @click="historyPage++;searchHistory()">下一页</button></details>
   <div class="page-stack people-page">
     <section class="page-intro page-intro--split"><div><p class="page-kicker">PEOPLE & CONVERSATIONS</p><h2>联系人与聊天</h2><p>把交流留在这里，把联系掌握在自己手中。</p></div><RouterLink class="text-link" to="/app/groups">群组讨论与资料 →</RouterLink></section>
     <p v-if="error && !confirmation" class="inline-alert inline-alert--error" role="alert">{{ error }}</p>

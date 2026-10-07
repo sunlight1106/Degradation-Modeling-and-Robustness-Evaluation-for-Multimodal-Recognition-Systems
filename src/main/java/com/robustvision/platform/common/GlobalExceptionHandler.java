@@ -57,6 +57,10 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.failure("ACCESS_DENIED", "没有执行此操作的权限"));
     }
 
+    @ExceptionHandler(org.springframework.orm.ObjectOptimisticLockingFailureException.class)
+    public org.springframework.http.ResponseEntity<ApiResponse<Void>> conflict(org.springframework.orm.ObjectOptimisticLockingFailureException error) {
+        return org.springframework.http.ResponseEntity.status(409).body(ApiResponse.failure("RECORD_CONFLICT","资料已在其他页面更新，请保留当前内容并重新加载"));
+    }
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleUnexpected(Exception exception, HttpServletRequest request) {
         log.error("Unhandled API exception traceId={} method={} route={} type={}",

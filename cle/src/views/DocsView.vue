@@ -19,6 +19,7 @@ let copyTimer = 0
 let mounted = true
 
 const docLinks = [
+  { id:'learning-workspace',label:'学习中心与资料恢复',keywords:'搜索 Ctrl K 回收站 历史版本 复习卡 资料表 看板 月历 备份 评测' },
   { id: 'quickstart', label: '快速开始', keywords: '登录 注册 first run' },
   { id: 'requirements', label: '启动与部署', keywords: 'Docker localhost 4173 环境' },
   { id: 'model-contract', label: '个人 AI 配置', keywords: 'BYOK key 密钥 供应商 模型 remote' },
@@ -42,7 +43,7 @@ const docLinks = [
 const docGroups = [
   { label: '入门与部署', ids: ['quickstart', 'requirements', 'acceptance'] },
   { label: '个人 AI', ids: ['model-contract', 'ai-memory', 'first-request', 'quality-route'] },
-  { label: '学习与笔记', ids: ['knowledge-notes', 'code-notes', 'vocabulary'] },
+  { label: '学习与笔记', ids: ['learning-workspace', 'knowledge-notes', 'code-notes', 'vocabulary'] },
   { label: '协作与账户', ids: ['online-platform', 'group-collaboration', 'account-switch', 'permissions'] },
   { label: '训练与记录', ids: ['local-training', 'training-data', 'analysis-output'] },
   { label: '帮助与说明', ids: ['architecture', 'errors'] },
@@ -160,7 +161,8 @@ async function copyCode() {
     </details>
   </header>
   <article aria-label="个人知识库与 AI 识别评测使用指南">
-    <DocRow id="quickstart" title="使用指南" intro><p>从你现在想做的事情开始。</p><p>第一次使用？先<RouterLink to="/register">注册</RouterLink>或<RouterLink to="/login">登录</RouterLink>。普通笔记、词汇学习和 DEMO 实验不需要模型密钥。</p><template #detail><nav class="guide-start" aria-label="选择操作"><a href="#knowledge-notes"><span>01</span><strong>记录与整理</strong><small>写笔记、导出文件</small></a><a href="#quality-route"><span>02</span><strong>识别与实验</strong><small>上传样本、查看结果</small></a><a href="#vocabulary"><span>03</span><strong>学习词汇</strong><small>选词书、练习与复习</small></a></nav></template></DocRow>
+    <DocRow id="learning-workspace" title="学习中心与资料恢复"><p>从「目录与账户 → 学习中心」进入，也可以按 Ctrl K 搜索资料。</p><template #detail><ol><li>搜索笔记或图片识别文字，点击标题查看原文；勾选资料后，在右侧提问并预览发送内容。</li><li>笔记编辑器可查看历史版本、对照恢复；删除的笔记先移入回收站，恢复后旧分享链接不会重新启用。</li><li>断网修改会按账号暂存在当前浏览器。重新联网打开笔记时选择「恢复草稿到编辑区」，再核对并保存。</li><li>笔记或搜索结果可制作复习卡，按回忆程度安排复习。资料表支持字段管理、表格、看板和月历，修改后点击保存。</li><li>模型评测导入同一批样本的标准答案和模型预测，计算并保存报告；它不会自动调用收费模型。</li><li>管理员可在回收站与备份页查看完整加密备份命令和最近成功记录。</li></ol><RouterLink to="/app/research">打开学习中心 →</RouterLink></template></DocRow>
+        <DocRow id="quickstart" title="使用指南" intro><p>从你现在想做的事情开始。</p><p>第一次使用？先<RouterLink to="/register">注册</RouterLink>或<RouterLink to="/login">登录</RouterLink>。普通笔记、词汇学习和 DEMO 实验不需要模型密钥。</p><template #detail><nav class="guide-start" aria-label="选择操作"><a href="#knowledge-notes"><span>01</span><strong>记录与整理</strong><small>写笔记、导出文件</small></a><a href="#quality-route"><span>02</span><strong>识别与实验</strong><small>上传样本、查看结果</small></a><a href="#vocabulary"><span>03</span><strong>学习词汇</strong><small>选词书、练习与复习</small></a></nav></template></DocRow>
 <DocRow id="knowledge-notes" title="学习库与在线笔记"><p>不用配置 AI，也能编辑、整理和导出笔记。</p><template #detail><div class="guide-instructions"><ol><li>打开「我的笔记」，从左侧选择英语、计算机或其他学习库，点击「新建笔记」。</li><li>填写标题，选择 Markdown 或 HTML。左侧编写，右侧实时预览；也可插入学习模板。</li><li>点击「保存更改」，再选择 Markdown、PDF、Word、HTML 或 TXT 导出。刷新页面可检查保存结果。</li></ol><RouterLink to="/app/notes/new">新建笔记 →</RouterLink></div><details class="guide-more"><summary>更多说明与注意事项</summary><div><p>在<RouterLink to="/app/notes">笔记</RouterLink>中新建或打开文档，使用 Markdown / HTML 双栏编辑与预览；在<RouterLink to="/app/knowledge">知识库</RouterLink>中查看主题和知识卡。学习库可自由命名；保存第一篇笔记后新库出现在列表。旧笔记归入综合学习。笔记可导出 Markdown / PDF / Word / HTML / TXT，主动创建的只读分享可设置有效期并撤销；分享笔记不会自动开放底层文件或实验权限。</p>
           <p>HTML 用于内容排版，不执行脚本、不加载远程媒体。代码块仅展示示例；格式切换不转换源码。PDF / Word 保留常见结构，复杂 CSS 不会完整还原。知识卡中的「写成笔记 / 导出」会带入个人编辑器，保存后即可导出。</p>
           <p>「选择实验结果」只列出本人已完成实验和本人个人图片识别结果，每次最多选 20 份。先点「预览选中结果」，再「插入编辑区」，最后手动保存。服务端按当前账户校验来源，即使管理员也不能在个人来源选择器中读取别人的结果。</p>

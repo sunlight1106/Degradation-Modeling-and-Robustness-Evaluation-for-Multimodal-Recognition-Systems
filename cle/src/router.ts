@@ -30,6 +30,7 @@ const router = createRouter({
       children: [
         { path: '', redirect: '/app/home' },
         { path: 'home', name: 'app-home', component: () => import('@/views/OverviewView.vue'), meta: { permission: 'dashboard:read' } },
+        { path: 'research', name: 'research', component: () => import('@/views/ResearchView.vue') },
         { path: 'vocabulary', name: 'vocabulary', component: () => import('@/views/VocabularyView.vue') },
         { path: 'knowledge', name: 'knowledge', component: () => import('@/views/KnowledgeView.vue'), meta: { permission: 'knowledge:read' } },
         { path: 'notes', name: 'notes', component: () => import('@/views/NotesView.vue'), meta: { permission: 'note:read' } },

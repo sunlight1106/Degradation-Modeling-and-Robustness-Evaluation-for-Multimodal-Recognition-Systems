@@ -28,6 +28,7 @@ import java.util.Locale;
 @Service
 public class NoteService {
 
+    @org.springframework.beans.factory.annotation.Autowired private NoteHistoryService history;
     private static final int EXCERPT_LENGTH = 160;
 
     private final com.robustvision.platform.repository.UserRepository users;
@@ -109,6 +110,7 @@ public class NoteService {
         NoteEntity note = noteRepository.lockOwned(id, user.getId()).orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "NOTE_NOT_FOUND", "笔记不存在或无权访问"));
         if (request.baseRevision() != null && request.baseRevision() != note.getRevision())
             throw new BusinessException(HttpStatus.CONFLICT, "NOTE_SYNC_CONFLICT", "这篇笔记已在其他页面或设备更新。当前内容未覆盖，请先复制或下载当前草稿，再重新加载服务器版本。");
+        history.capture(note);
         note.incrementRevision();
         if (request.parentId() != null) assignParent(note, request.parentId(), user);
         if (request.title() != null && !request.title().isBlank()) note.setTitle(request.title().trim());
@@ -124,11 +126,13 @@ public class NoteService {
     @Transactional
     public void delete(String id) {
         UserEntity user = currentUserService.requireCurrent();
-        NoteEntity note = requireOwn(id, user);
         users.lockNoteOwner(user.getId());
+        NoteEntity note = noteRepository.lockOwned(id,user.getId()).orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND,"NOTE_NOT_FOUND","笔记不存在或无权访问"));
         // 引用与分享随 note 级联删除（数据库 ON DELETE CASCADE）
         noteRepository.detachChildren(id, user.getId());
-        noteRepository.delete(note);
+        history.capture(note);
+        shareRepository.findByNoteIdOrderByCreatedAtDesc(id).forEach(share -> share.revoke(Instant.now()));
+        note.trash();
     }
 
     // ------------------------------------------------------------------

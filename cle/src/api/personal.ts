@@ -9,7 +9,7 @@ export const personalApi = {
   deleteMemory: (id: string, revision: number) => request<void>(`/personal-ai/memories/${encodeURIComponent(id)}?revision=${revision}`, json('DELETE')),
   trainingEnvironment: () => request<TrainingEnvironment>('/personal-ai/training/environment'),
   trainingJobs: () => request<TrainingJob[]>('/personal-ai/training/jobs'),
-  createTraining: (data: { name: string; epochs: number; learningRate: number; samples: TrainingSample[] }) => request<TrainingJob>('/personal-ai/training/jobs', json('POST', data)),
+  createTraining: (data: { name: string; epochs: number; learningRate: number; architecture?:string; seed?:number; validationFraction?:number; samples: TrainingSample[] }) => request<TrainingJob>('/personal-ai/training/jobs', json('POST', data)),
   cancelTraining: (id: string) => request<TrainingJob>(`/personal-ai/training/jobs/${encodeURIComponent(id)}/cancel`, json('POST')),
   deleteTraining: (id: string) => request<void>(`/personal-ai/training/jobs/${encodeURIComponent(id)}`, json('DELETE')),
   predictTraining: (id: string, text: string) => request<{ label: string; score: number }[]>(`/personal-ai/training/jobs/${encodeURIComponent(id)}/predict`, json('POST', { text })),

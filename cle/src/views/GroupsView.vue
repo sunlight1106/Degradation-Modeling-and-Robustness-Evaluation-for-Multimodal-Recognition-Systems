@@ -151,6 +151,13 @@ function startReply(message: MessageView) { reply.value = message; document.getE
 watch(() => authStore.state.user?.id, () => { reset(); if (authStore.state.user) void loadGroups() }, { flush: 'sync' })
 onMounted(loadGroups)
 onBeforeUnmount(reset)
+async function liveRefresh(){
+  const id=selected.value?.id,version=epoch;if(!id||busy.value||loading.value||page.value!==0)return
+  try{const result=await api.groupMessages(id);if(version===epoch&&selected.value?.id===id)messages.value=result}
+  catch{if(version===epoch){messages.value=[];error.value='群组访问状态已变化，请重新选择群组'}}
+}
+onMounted(()=>window.addEventListener('pkb:live-update',liveRefresh))
+onBeforeUnmount(()=>window.removeEventListener('pkb:live-update',liveRefresh))
 </script>
 
 <template>
