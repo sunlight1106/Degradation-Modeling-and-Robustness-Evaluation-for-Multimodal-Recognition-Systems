@@ -32,7 +32,11 @@ function Repair-DockerSockets {
     # A crashed Desktop can leave its error dialog/backend alive after stop.
     foreach ($process in (Get-Process -Name 'Docker Desktop','com.docker.backend','com.docker.build' -ErrorAction SilentlyContinue)) {
         if ($process.Path -and $process.Path.StartsWith("$env:ProgramFiles\Docker\Docker\", [StringComparison]::OrdinalIgnoreCase)) {
-            Stop-Process -Id $process.Id -Force -ErrorAction Stop
+            try { Stop-Process -Id $process.Id -Force -ErrorAction Stop }
+            catch {
+                # Desktop can exit on its own after the process list was captured.
+                if (Get-Process -Id $process.Id -ErrorAction SilentlyContinue) { throw }
+            }
         }
     }
     Start-Sleep -Seconds 2
