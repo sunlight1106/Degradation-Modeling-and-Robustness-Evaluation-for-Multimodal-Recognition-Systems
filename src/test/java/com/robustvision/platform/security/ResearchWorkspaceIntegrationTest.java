@@ -19,11 +19,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 class ResearchWorkspaceIntegrationTest {
     @Autowired MockMvc mvc;@Autowired ObjectMapper json;@Autowired UserRepository users;@Autowired RoleRepository roles;@Autowired PasswordEncoder passwords;
-    String token,other,admin;
+    @Autowired org.springframework.jdbc.core.JdbcTemplate jdbc;
+    String token,other,admin,ownerName;
     @BeforeEach void setup() throws Exception {
         String suffix=UUID.randomUUID().toString().substring(0,8);
         RoleEntity role=roles.save(new RoleEntity("RESEARCH_"+suffix,"Writer","Tests",Set.of("note:read","note:write","knowledge:read","experiment:read","research:use","personal-ai:use","message:read","group:use","contacts:use","vocabulary:use")));
-        token=login("writer"+suffix,role);other=login("other"+suffix,role);
+        token=login(ownerName="writer"+suffix,role);other=login("other"+suffix,role);
         RoleEntity ar=roles.findByCode("ADMIN").orElseGet(()->roles.save(new RoleEntity("ADMIN","Admin","Tests",role.getPermissions())));admin=login("admin"+suffix,ar);
     }
     String login(String name,RoleEntity role) throws Exception {
@@ -35,6 +36,81 @@ class ResearchWorkspaceIntegrationTest {
     }
     JsonNode ok(MockHttpServletRequestBuilder b,Object body) throws Exception {return json.readTree(call(b,token,body).andExpect(status().isOk()).andReturn().getResponse().getContentAsByteArray()).path("data");}
     String note() throws Exception{return ok(post("/api/v1/notes"),Map.of("title","Private lighthouse","body","original private content","library","计算机学习")).path("id").asText();}
+    UserEntity owner(){return users.findByUsername(ownerName).orElseThrow();}
+
+    @Test void searchMatchesAllTermsRanksTitlesAndReturnsOnlyBoundedExcerpts() throws Exception {
+        String first=ok(post("/api/v1/notes"),Map.of("title","Alpha beta","body","x".repeat(1000)+" alpha beta "+"z".repeat(1000))).path("id").asText();
+        String newer=ok(post("/api/v1/notes"),Map.of("title","Newest journal","body","beta and alpha are separate words")).path("id").asText();
+        ok(post("/api/v1/notes"),Map.of("title","Alpha only","body","no second term"));
+        jdbc.update("UPDATE note SET updated_at=? WHERE id=?",java.sql.Timestamp.from(java.time.Instant.parse("2020-01-01T00:00:00Z")),first);
+        JsonNode found=ok(get("/api/v1/research/search").param("q","alpha beta"),null).path("items");
+        assertThat(found.size()).isEqualTo(2);assertThat(found.get(0).path("id").asText()).isEqualTo(first);
+        assertThat(found.get(0).path("excerpt").asText()).contains("alpha beta").hasSizeLessThanOrEqualTo(240);
+        assertThat(ok(get("/api/v1/research/search").param("q","alpha beta").param("sort","recent"),null).path("items").get(0).path("id").asText()).isEqualTo(newer);
+        call(get("/api/v1/research/search").param("type","INVALID"),token,null).andExpect(status().isBadRequest());
+        call(get("/api/v1/research/search").param("sort","INVALID"),token,null).andExpect(status().isBadRequest());
+        call(get("/api/v1/research/search").param("q","a b c d e f g h i j k"),token,null).andExpect(status().isBadRequest());
+    }
+    @Test void bookmarksFollowCurrentContentAndDoNotRetainRevokedPrivateText() throws Exception {
+        String id=note();Map<String,String> ref=Map.of("kind","NOTE","id",id);
+        ok(put("/api/v1/research/bookmarks"),ref);ok(put("/api/v1/research/bookmarks"),ref);
+        assertThat(ok(get("/api/v1/research/bookmarks/keys"),null).size()).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT title FROM workspace_shortcut WHERE owner_id=? AND kind='BOOKMARK'",String.class,owner().getId())).isEmpty();
+        for(String actor:List.of(other,admin)){
+            call(put("/api/v1/research/bookmarks"),actor,ref).andExpect(status().isNotFound());
+            call(get("/api/v1/research/bookmarks"),actor,null).andExpect(status().isOk()).andExpect(jsonPath("$.data.items.length()").value(0));
+            call(delete("/api/v1/research/bookmarks/NOTE/"+id),actor,null).andExpect(status().isOk());
+        }
+        ok(patch("/api/v1/notes/"+id),Map.of("title","Updated lighthouse","body","Latest content","baseRevision",0));
+        JsonNode bookmark=ok(get("/api/v1/research/bookmarks"),null).path("items").get(0);
+        assertThat(bookmark.path("title").asText()).isEqualTo("Updated lighthouse");assertThat(bookmark.path("excerpt").asText()).isEqualTo("Latest content");
+        UserEntity user=owner();user.getPermissionOverrides().put("note:read",false);users.saveAndFlush(user);
+        assertThat(ok(get("/api/v1/research/bookmarks"),null).path("items").size()).isZero();
+        call(get("/api/v1/research/sources/NOTE/"+id),token,null).andExpect(status().isNotFound());
+        assertThat(ok(post("/api/v1/research/bookmarks/cleanup"),null).asInt()).isEqualTo(1);
+        assertThat(ok(get("/api/v1/research/bookmarks/keys"),null).size()).isZero();
+    }
+    @Test void savedSearchesDeduplicateFiltersAndRemainPrivate() throws Exception {
+        Map<String,Object> filters=Map.of("q"," alpha   beta ","type","note","tag","","sort","recent");
+        JsonNode saved=ok(post("/api/v1/research/saved-searches"),Map.of("name","My research","filters",filters));String id=saved.path("id").asText();
+        JsonNode second=ok(post("/api/v1/research/saved-searches"),Map.of("name","Renamed","filters",Map.of("q","alpha beta","type","NOTE","tag","","sort","recent")));
+        assertThat(second.path("id").asText()).isEqualTo(id);assertThat(second.path("filters").path("q").asText()).isEqualTo("alpha beta");
+        for(String actor:List.of(other,admin)){
+            call(get("/api/v1/research/saved-searches"),actor,null).andExpect(status().isOk()).andExpect(jsonPath("$.data.length()").value(0));
+            call(delete("/api/v1/research/saved-searches/"+id),actor,null).andExpect(status().isOk());
+        }
+        assertThat(ok(get("/api/v1/research/saved-searches"),null).size()).isEqualTo(1);
+        call(post("/api/v1/research/saved-searches"),token,Map.of("name","Bad","filters",Map.of("type","invalid"))).andExpect(status().isBadRequest());
+        ok(delete("/api/v1/research/saved-searches/"+id),null);assertThat(ok(get("/api/v1/research/saved-searches"),null).size()).isZero();
+    }
+    @Test void collectionCapsCannotBeBypassedByConcurrentDuplicateSaves() throws Exception {
+        String id=note();var executor=java.util.concurrent.Executors.newFixedThreadPool(3);
+        try{List<java.util.concurrent.Callable<Void>> tasks=new ArrayList<>();for(int i=0;i<3;i++)tasks.add(()->{call(put("/api/v1/research/bookmarks"),token,Map.of("kind","NOTE","id",id)).andExpect(status().isOk());return null;});for(var task:executor.invokeAll(tasks))task.get();}finally{executor.shutdownNow();}
+        assertThat(ok(get("/api/v1/research/bookmarks/keys"),null).size()).isEqualTo(1);
+        long owner=owner().getId();List<Object[]> rows=new ArrayList<>();for(int i=0;i<50;i++)rows.add(new Object[]{UUID.randomUUID().toString(),owner,"SEARCH","Saved "+i,"cap-"+i,"{}",java.sql.Timestamp.from(java.time.Instant.now())});
+        jdbc.batchUpdate("INSERT INTO workspace_shortcut(id,owner_id,kind,title,resource_key,filters_json,created_at) VALUES (?,?,?,?,?,?,?)",rows);
+        call(post("/api/v1/research/saved-searches"),token,Map.of("name","Over cap","filters",Map.of("q","unique"))).andExpect(status().isConflict());
+    }
+    @Test void deniedResearchPermissionAlsoClosesTheAiAnswerRoute() throws Exception {
+        UserEntity user=owner();user.getPermissionOverrides().put("research:use",false);users.saveAndFlush(user);
+        call(get("/api/v1/research/saved-searches"),token,null).andExpect(status().isForbidden());
+        call(post("/api/v1/research/answers/preview"),token,Map.of("provider","DEEPSEEK","question","Why?","sources",List.of(Map.of("kind","NOTE","id","one")))).andExpect(status().isForbidden());
+    }
+    @Test void moduleDenialsApplyToSearchSourceAndSavedBookmarks() throws Exception {
+        long owner=owner().getId();String file=UUID.randomUUID().toString(),result=UUID.randomUUID().toString(),message=UUID.randomUUID().toString();
+        jdbc.update("INSERT INTO file_asset(id,original_name,stored_name,content_type,size_bytes,sha256,storage_path,owner_id,source,scan_status,created_at) VALUES (?,'fixture.png','fixture','image/png',1,?,'fixture',?,'UPLOAD','CLEAN',CURRENT_TIMESTAMP)",file,"0".repeat(64),owner);
+        jdbc.update("INSERT INTO personal_recognition_result(id,owner_id,file_id,file_name,provider,model,task_type,result_text,created_at) VALUES (?,?,?,'fixture.png','DEEPSEEK','fixture','RECEIPT','module-secret',CURRENT_TIMESTAMP)",result,owner,file);
+        String slug="fixture-"+UUID.randomUUID();jdbc.update("INSERT INTO workspace(name,slug,color,owner_id,created_at,updated_at) VALUES ('Fixture',?,'#fff',?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",slug,owner);
+        Long group=jdbc.queryForObject("SELECT id FROM workspace WHERE slug=?",Long.class,slug);jdbc.update("INSERT INTO workspace_member(workspace_id,user_id,member_role,created_at) VALUES (?,?,'OWNER',CURRENT_TIMESTAMP)",group,owner);
+        Long member=jdbc.queryForObject("SELECT id FROM workspace_member WHERE workspace_id=? AND user_id=?",Long.class,group,owner);jdbc.update("INSERT INTO workspace_member_permission(workspace_member_id,permission_code) VALUES (?,'CONTENT_READ')",member);
+        jdbc.update("INSERT INTO internal_message(id,sender_id,subject,body,workspace_id,created_at) VALUES (?,?,'Group fixture','module-secret',?,CURRENT_TIMESTAMP)",message,owner,group);
+        for(var ref:List.of(Map.of("kind","GROUP","id",message),Map.of("kind","RESULT","id",result)))ok(put("/api/v1/research/bookmarks"),ref);
+        assertThat(ok(get("/api/v1/research/search").param("q","module-secret"),null).path("items").size()).isEqualTo(2);
+        UserEntity user=owner();user.getPermissionOverrides().put("personal-ai:use",false);user.getPermissionOverrides().put("group:use",false);users.saveAndFlush(user);
+        assertThat(ok(get("/api/v1/research/search").param("q","module-secret"),null).path("items").size()).isZero();
+        assertThat(ok(get("/api/v1/research/bookmarks"),null).path("items").size()).isZero();
+        call(get("/api/v1/research/sources/RESULT/"+result),token,null).andExpect(status().isNotFound());call(get("/api/v1/research/sources/GROUP/"+message),token,null).andExpect(status().isNotFound());
+    }
 
     @Test void versionsTrashRestoreAndPurgePreservePrivacyAndRevocation() throws Exception {
         String id=note();String share=ok(post("/api/v1/notes/"+id+"/shares"),Map.of()).path("token").asText();

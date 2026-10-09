@@ -24,12 +24,13 @@ public class AccountExportService {
     public Map<String, Object> export(UserEntity user, ApiDtos.UserView profile) {
         Long id = user.getId();
         Map<String, Object> data = new LinkedHashMap<>();
-        data.put("schemaVersion", 3);
+        data.put("schemaVersion", 4);
         data.put("exportedAt", Instant.now());
         data.put("profile", profile);
         data.put("notes", rows("SELECT id, title, body, tags, status, library, content_format, parent_id, revision, deleted_at, created_at, updated_at FROM note WHERE owner_id = ? ORDER BY created_at, id", id));
         data.put("noteVersions", rows("SELECT id,note_id,revision,title,body,tags,library,content_format,status,created_at FROM note_version WHERE owner_id=? ORDER BY created_at,id",id));
         data.put("learningRecords", rows("SELECT id,kind,title,payload,revision,created_at,updated_at FROM learning_record WHERE owner_id=? ORDER BY created_at,id",id));
+        data.put("workspaceShortcuts", rows("SELECT id,kind,title,source_kind,source_id,filters_json,created_at FROM workspace_shortcut WHERE owner_id=? ORDER BY created_at,id",id));
         data.put("noteReferences", rows("SELECT r.id, r.note_id, r.reference_type, r.reference_id, r.label, r.sort_order FROM note_reference r JOIN note n ON n.id = r.note_id WHERE n.owner_id = ? ORDER BY r.id", id));
         data.put("knowledgeTopics", rows("SELECT id, domain, name, description, sort_order, created_at, updated_at FROM knowledge_topic WHERE owner_id = ? ORDER BY id", id));
         data.put("knowledgeEntries", rows("SELECT e.id, e.topic_id, e.title, e.summary, e.body, e.tags, e.sort_order, e.created_at, e.updated_at FROM knowledge_entry e JOIN knowledge_topic t ON t.id = e.topic_id WHERE e.owner_id = ? AND (t.owner_id IS NULL OR t.owner_id = e.owner_id) ORDER BY e.created_at, e.id", id));

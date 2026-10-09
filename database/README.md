@@ -114,3 +114,6 @@ Runtime MySQL, Redis and object-storage data belongs in Docker named volumes, no
 V19 assigns every existing account a `PKB-` code without changing its internal ID, password, relationships or profile timestamp. New accounts receive a random UUID-based code automatically. The database requires non-null, unique codes; APIs expose them as `identityCode` but do not accept edits to them. Exact code lookup follows the same discovery, disabled-account and blocking rules as user search. Keep the database volume or restore its backup when moving deployments to retain existing codes.
 
 Contact preferences in V20 are independent for each side of a contact pair and updated under the existing pair lock. Clearing history advances only the acting user's cursor; all message pagination paths honor it and the peer's history is retained. Mute hides unread badges, not delivery. Blocking preserves accepted relationships but never accepts a pending request, and either side's block still denies discovery, direct mail and chat.
+## 收藏与常用搜索
+
+V26 新增 `workspace_shortcut`，保存每个账号的资料收藏标识和常用搜索条件；`owner_id` 外键随账号删除，`(owner_id,kind,resource_key)` 唯一约束防止重复保存。升级由 Flyway 自动执行，不需要手工导入。完整 Docker 数据备份包含该表。
