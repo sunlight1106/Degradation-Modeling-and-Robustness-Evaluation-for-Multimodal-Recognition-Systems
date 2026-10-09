@@ -29,6 +29,15 @@ public final class Permissions {
             new Definition("credential:manage", "管理模型供应商密钥", "模型"),
             new Definition("workspace:manage", "创建和管理工作空间", "协作"),
             new Definition("message:read", "收发站内信", "协作"),
+            new Definition("contacts:use", "查找联系人与私聊", "协作"),
+            new Definition("group:use", "进入群组与参与协作", "协作"),
+            new Definition("vocabulary:use", "背单词、导入词书与备份", "学习"),
+            new Definition("research:use", "使用学习中心与全库搜索", "学习"),
+            new Definition("personal-ai:manage", "设置自己的 AI 与共享记忆", "个人 AI"),
+            new Definition("personal-ai:use", "调用个人 AI", "个人 AI"),
+            new Definition("training:use", "运行自己的本地训练", "个人 AI"),
+            new Definition("admin:stats", "查看平台统计与趋势", "系统管理"),
+            new Definition("admin:audit", "查看管理操作记录", "系统管理"),
             new Definition("user:read", "查看用户", "系统管理"),
             new Definition("user:write", "管理用户", "系统管理"),
             new Definition("role:read", "查看角色权限", "系统管理"),
@@ -46,7 +55,8 @@ public final class Permissions {
                 "dashboard:read", "file:read", "file:write", "experiment:read",
                 "experiment:run", "report:download", "model:read", "billing:read", "billing:recharge",
                 "workspace:manage", "message:read",
-                "knowledge:read", "knowledge:write", "note:read", "note:write"
+                "knowledge:read", "knowledge:write", "note:read", "note:write",
+                "contacts:use", "group:use", "vocabulary:use", "research:use", "personal-ai:manage", "personal-ai:use", "training:use"
         ));
     }
 
@@ -54,9 +64,20 @@ public final class Permissions {
         return new LinkedHashSet<>(List.of(
                 "dashboard:read", "file:read", "experiment:read", "report:download", "model:read", "billing:read",
                 "workspace:manage", "message:read",
-                "knowledge:read", "note:read"
+                "knowledge:read", "note:read", "contacts:use", "group:use", "vocabulary:use", "research:use", "personal-ai:manage"
         ));
     }
 
     public record Definition(String code, String label, String group) {}
+
+    /** The same resolved permissions feed request security, service checks and the UI. */
+    public static Set<String> effective(com.robustvision.platform.domain.UserEntity user) {
+        if ("ADMIN".equals(user.getRole().getCode())) return allCodes();
+        Set<String> result = new LinkedHashSet<>(user.getRole().getPermissions());
+        user.getPermissionOverrides().forEach((code, allowed) -> {
+            if (Boolean.TRUE.equals(allowed)) result.add(code); else result.remove(code);
+        });
+        result.retainAll(allCodes());
+        return result;
+    }
 }

@@ -45,6 +45,21 @@ public class UserEntity {
     @JoinColumn(name = "role_id", nullable = false)
     private RoleEntity role;
 
+    @jakarta.persistence.ElementCollection(fetch = FetchType.EAGER)
+    @jakarta.persistence.CollectionTable(name = "user_permission_override", joinColumns = @JoinColumn(name = "user_id"))
+    @jakarta.persistence.MapKeyColumn(name = "permission_code", length = 80)
+    @Column(name = "allowed", nullable = false)
+    private java.util.Map<String, Boolean> permissionOverrides = new java.util.LinkedHashMap<>();
+
+    @Column(name = "access_expires_at")
+    private Instant accessExpiresAt;
+
+    public java.util.Map<String, Boolean> getPermissionOverrides() { return permissionOverrides; }
+    public void setPermissionOverrides(java.util.Map<String, Boolean> overrides) { this.permissionOverrides = new java.util.LinkedHashMap<>(overrides); }
+    public Instant getAccessExpiresAt() { return accessExpiresAt; }
+    public void setAccessExpiresAt(Instant expiry) { this.accessExpiresAt = expiry; }
+    public boolean hasActiveAccess(Instant now) { return status == UserStatus.ACTIVE && (accessExpiresAt == null || accessExpiresAt.isAfter(now)); }
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 

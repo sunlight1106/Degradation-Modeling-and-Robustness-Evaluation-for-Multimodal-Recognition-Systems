@@ -57,11 +57,11 @@ class VocabularyIntegrationTest {
         }
         clock.set("2026-10-02T12:00:00Z");
         String suffix=UUID.randomUUID().toString().substring(0,8);
-        var role=roles.save(new RoleEntity("VOCAB_"+suffix,"Vocabulary","Synthetic",Set.of()));
+        var role=roles.save(new RoleEntity("VOCAB_"+suffix,"Vocabulary","Synthetic",Set.of("vocabulary:use")));
         alice=users.save(new UserEntity("va"+suffix,"unused","Alice","va"+suffix+"@example.invalid",role));
         bob=users.save(new UserEntity("vb"+suffix,"unused","Bob","vb"+suffix+"@example.invalid",role));
     }
-    MockHttpServletRequestBuilder as(MockHttpServletRequestBuilder request,UserEntity person) {return request.with(user(person.getUsername()));}
+    MockHttpServletRequestBuilder as(MockHttpServletRequestBuilder request,UserEntity person) {return request.with(user(person.getUsername()).authorities(com.robustvision.platform.security.Permissions.effective(person).stream().map(org.springframework.security.core.authority.SimpleGrantedAuthority::new).toArray(org.springframework.security.core.GrantedAuthority[]::new)));}
     MockHttpServletRequestBuilder json(MockHttpServletRequestBuilder request,UserEntity person,Object value) throws Exception {return as(request,person).contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsBytes(value));}
     JsonNode data(byte[] bytes) throws Exception{return mapper.readTree(bytes).path("data");}
     JsonNode call(MockHttpServletRequestBuilder request) throws Exception{return data(mvc.perform(request).andExpect(status().isOk()).andReturn().getResponse().getContentAsByteArray());}

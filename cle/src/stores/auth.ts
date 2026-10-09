@@ -89,7 +89,7 @@ export const authStore = {
     state.initialized = true
   },
   has(permission: string) {
-    return state.user?.permissions.includes(permission) ?? false
+    return state.user?.roleCode === 'ADMIN' || (state.user?.permissions?.includes(permission) ?? false)
   },
   hasAny(...permissions: string[]) {
     return permissions.some(permission => authStore.has(permission))

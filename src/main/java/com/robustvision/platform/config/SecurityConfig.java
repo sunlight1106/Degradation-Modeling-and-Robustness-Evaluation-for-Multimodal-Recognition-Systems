@@ -39,7 +39,20 @@ public class SecurityConfig {
                 .cors(cors -> {})
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        // Authentication is checked on the initial request. A completed
+                        // SSE response redispatches asynchronously without another JWT
+                        // filter pass; denying that completion corrupts its HTTP stream.
+                        .dispatcherTypeMatchers(jakarta.servlet.DispatcherType.ASYNC).permitAll()
                         .requestMatchers("/api/v1/auth/login", "/api/v1/auth/register", "/api/v1/public/**", "/actuator/health", "/actuator/health/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        .requestMatchers("/api/v1/vocabulary/**").hasAuthority("vocabulary:use")
+                        .requestMatchers("/api/v1/social/**").hasAuthority("contacts:use")
+                        .requestMatchers("/api/v1/messages/**").hasAuthority("message:read")
+                        .requestMatchers("/api/v1/workspaces/**").hasAuthority("group:use")
+                        .requestMatchers("/api/v1/personal-ai/training/**").hasAuthority("training:use")
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/personal-ai/settings", "/api/v1/personal-ai/providers").hasAnyAuthority("personal-ai:manage", "personal-ai:use")
+                        .requestMatchers("/api/v1/personal-ai/preview", "/api/v1/personal-ai/execute", "/api/v1/personal-ai/recognition/**", "/api/v1/research/answers/**").hasAuthority("personal-ai:use")
+                        .requestMatchers("/api/v1/personal-ai/settings/**", "/api/v1/personal-ai/providers", "/api/v1/personal-ai/memories/**").hasAuthority("personal-ai:manage")
+                        .requestMatchers("/api/v1/research/**").hasAuthority("research:use")
                         .anyRequest().authenticated())
                 .exceptionHandling(errors -> errors
                         .authenticationEntryPoint((request, response, exception) -> {

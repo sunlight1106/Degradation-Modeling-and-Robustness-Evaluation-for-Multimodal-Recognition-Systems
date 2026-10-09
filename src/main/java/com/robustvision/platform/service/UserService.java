@@ -28,15 +28,18 @@ public class UserService {
     private final CurrentUserService currentUserService;
     private final UserSessionService sessions;
     private final EntityManager entityManager;
+    private final com.robustvision.platform.repository.AdminAuditRepository audit;
 
     public UserService(UserRepository userRepository, RoleRepository roleRepository,
-                       PasswordEncoder passwordEncoder, CurrentUserService currentUserService, UserSessionService sessions, EntityManager entityManager) {
+                       PasswordEncoder passwordEncoder, CurrentUserService currentUserService, UserSessionService sessions, EntityManager entityManager,
+                       com.robustvision.platform.repository.AdminAuditRepository audit) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
         this.currentUserService = currentUserService;
         this.sessions = sessions;
         this.entityManager = entityManager;
+        this.audit = audit;
     }
 
     @Transactional(readOnly = true)
@@ -51,7 +54,7 @@ public class UserService {
 
     @Transactional
     public ApiDtos.UserView create(ApiDtos.CreateUserRequest request) {
-        requireAdminForMutation();
+        UserEntity operator = requireAdminForMutation();
         AccountService.validateNewPassword(request.password());
         String username = request.username().trim();
         String email = request.email().trim().toLowerCase(java.util.Locale.ROOT);
@@ -64,7 +67,9 @@ public class UserService {
         RoleEntity role = requireRole(request.roleId());
         UserEntity user = new UserEntity(username, passwordEncoder.encode(request.password()),
                 request.displayName().trim(), email, role);
-        return toView(userRepository.save(user));
+        userRepository.save(user);
+        record(operator, "USER_CREATE", "USER", user.getId(), "分配角色：" + role.getCode());
+        return toView(user);
     }
 
     @Transactional
@@ -102,14 +107,17 @@ public class UserService {
             throw new BusinessException(HttpStatus.FORBIDDEN, "ADMIN_REQUIRED", "只有最高管理员可以修改账户安全设置");
         }
         boolean securityChanged = false;
+        List<String> changes = new java.util.ArrayList<>();
         if (operator.getId().equals(id) && request.status() != null && request.status() != user.getStatus()) {
             throw new BusinessException(HttpStatus.BAD_REQUEST, "SELF_STATUS_CHANGE", "不能修改自己的启用状态");
         }
         if (request.displayName() != null) {
+            changes.add("显示名称已更新");
             if (request.displayName().isBlank()) throw new BusinessException(HttpStatus.BAD_REQUEST, "DISPLAY_NAME_REQUIRED", "显示名称不能为空");
             user.setDisplayName(request.displayName().trim());
         }
         if (request.email() != null) {
+            changes.add("邮箱已更新");
             String email = request.email().trim().toLowerCase(java.util.Locale.ROOT);
             if (userRepository.existsByEmailAndIdNot(email, id)) {
                 throw new BusinessException(HttpStatus.CONFLICT, "EMAIL_EXISTS", "邮箱已存在");
@@ -118,25 +126,33 @@ public class UserService {
             user.setEmail(email);
         }
         if (request.password() != null && !request.password().isBlank()) {
+            changes.add("密码已重置（不记录密码内容）");
             AccountService.validateNewPassword(request.password());
             user.setPasswordHash(passwordEncoder.encode(request.password()));
             securityChanged = true;
         }
         if (request.status() != null) {
+            changes.add("状态：" + user.getStatus() + " → " + request.status());
             protectLastAdmin(user, request.status(), request.roleId());
             securityChanged |= request.status() != user.getStatus();
             user.setStatus(request.status());
         }
         if (request.roleId() != null) {
             RoleEntity nextRole = requireRole(request.roleId());
+            changes.add("角色：" + user.getRole().getCode() + " → " + nextRole.getCode());
             if (operator.getId().equals(id) && !nextRole.getCode().equals(user.getRole().getCode())) {
                 throw new BusinessException(HttpStatus.BAD_REQUEST, "SELF_ROLE_CHANGE", "不能修改自己的角色");
             }
             protectLastAdmin(user, request.status(), nextRole.getId());
             securityChanged |= !nextRole.getId().equals(user.getRole().getId());
             user.setRole(nextRole);
+            if ("ADMIN".equals(nextRole.getCode())) {
+                user.setPermissionOverrides(java.util.Map.of());
+                user.setAccessExpiresAt(null);
+            }
         }
         if (securityChanged) sessions.revokeAll(user.getId());
+        if (!changes.isEmpty()) record(operator, "USER_UPDATE", "USER", id, String.join("；", changes));
         return toView(userRepository.save(user));
     }
 
@@ -153,7 +169,7 @@ public class UserService {
 
     @Transactional
     public ApiDtos.RoleView updatePermissions(Long roleId, Set<String> requestedPermissions) {
-        requireAdminForMutation();
+        UserEntity operator = requireAdminForMutation();
         RoleEntity role = requireRole(roleId);
         if ("ADMIN".equals(role.getCode())) {
             throw new BusinessException(HttpStatus.BAD_REQUEST, "ADMIN_ROLE_LOCKED", "管理员角色固定拥有全部权限");
@@ -164,13 +180,14 @@ public class UserService {
             throw new BusinessException(HttpStatus.BAD_REQUEST, "UNKNOWN_PERMISSION", "包含未知权限: " + unknown);
         }
         sessions.revokeByRole(role.getId());
+        record(operator, "ROLE_PERMISSIONS", "ROLE", roleId, "修改前：" + sorted(role.getPermissions()) + "；修改后：" + sorted(requestedPermissions));
         role.setPermissions(requestedPermissions);
         return toRoleView(roleRepository.save(role));
     }
 
     @Transactional
     public ApiDtos.RoleView createRole(ApiDtos.CreateRoleRequest request) {
-        requireAdminForMutation();
+        UserEntity operator = requireAdminForMutation();
         String code = request.code().trim().toUpperCase(java.util.Locale.ROOT);
         if (roleRepository.existsByCode(code)) {
             throw new BusinessException(HttpStatus.CONFLICT, "ROLE_CODE_EXISTS", "角色编码已存在");
@@ -179,20 +196,67 @@ public class UserService {
         validatePermissions(requested);
         RoleEntity role = new RoleEntity(code, request.name().trim(),
                 request.description() == null ? "" : request.description().trim(), requested);
-        return toRoleView(roleRepository.save(role));
+        roleRepository.save(role);
+        record(operator, "ROLE_CREATE", "ROLE", role.getId(), "角色：" + code + "；权限：" + sorted(requested));
+        return toRoleView(role);
     }
 
     public ApiDtos.UserView toView(UserEntity user) {
         return new ApiDtos.UserView(
                 user.getId(), user.getIdentityCode(), user.getUsername(), user.getDisplayName(), user.getEmail(), user.getStatus(),
                 user.getRole().getId(), user.getRole().getCode(), user.getRole().getName(),
-                new LinkedHashSet<>(user.getRole().getPermissions()), user.getCreatedAt()
+                Permissions.effective(user), user.getCreatedAt(), user.getAccessExpiresAt()
         );
     }
 
     private ApiDtos.RoleView toRoleView(RoleEntity role) {
         return new ApiDtos.RoleView(role.getId(), role.getCode(), role.getName(), role.getDescription(),
-                new LinkedHashSet<>(role.getPermissions()), role.getCreatedAt());
+                "ADMIN".equals(role.getCode()) ? Permissions.allCodes() : new LinkedHashSet<>(role.getPermissions()), role.getCreatedAt());
+    }
+
+    @Transactional
+    public com.robustvision.platform.dto.AdminDtos.Access updateAccess(Long id, com.robustvision.platform.dto.AdminDtos.AccessRequest request) {
+        UserEntity operator = requireAdminForMutation();
+        UserEntity target = userRepository.findLockedById(id).orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "用户不存在"));
+        entityManager.refresh(target, LockModeType.PESSIMISTIC_WRITE);
+        if (currentUserService.isSuperAdmin(target)) throw new BusinessException(HttpStatus.BAD_REQUEST, "ADMIN_ACCESS_LOCKED", "管理员始终拥有全部权限，不能设置单独权限或到期时间");
+        validatePermissions(request.grants()); validatePermissions(request.denies());
+        if (request.expiresAt() != null && (request.expiresAt().isBefore(java.time.Instant.parse("1970-01-01T00:00:01Z"))
+                || request.expiresAt().isAfter(java.time.Instant.parse("2038-01-19T03:14:07Z")))) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "INVALID_ACCESS_EXPIRY", "有效期超出可保存范围；长期使用可不设到期时间");
+        }
+        Set<String> overlap = new LinkedHashSet<>(request.grants()); overlap.retainAll(request.denies());
+        if (!overlap.isEmpty()) throw new BusinessException(HttpStatus.BAD_REQUEST, "CONFLICTING_PERMISSIONS", "同一权限不能同时允许和禁止");
+        var before = access(target);
+        java.util.Map<String, Boolean> overrides = new java.util.LinkedHashMap<>();
+        request.grants().forEach(code -> overrides.put(code, true)); request.denies().forEach(code -> overrides.put(code, false));
+        target.setPermissionOverrides(overrides); target.setAccessExpiresAt(request.expiresAt());
+        sessions.revokeAll(id);
+        record(operator, "USER_ACCESS", "USER", id, "原授权：" + sorted(before.grants()) + "；原禁用：" + sorted(before.denies())
+                + "；新授权：" + sorted(request.grants()) + "；新禁用：" + sorted(request.denies())
+                + "；到期：" + before.expiresAt() + " → " + request.expiresAt());
+        return access(userRepository.save(target));
+    }
+
+    @Transactional
+    public void revokeUserSessions(Long id) {
+        UserEntity operator = requireAdminForMutation();
+        UserEntity target = userRepository.findLockedById(id).orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "用户不存在"));
+        if (operator.getId().equals(id)) throw new BusinessException(HttpStatus.BAD_REQUEST, "SELF_SESSION_REVOKE", "请在个人设置中管理自己的登录设备");
+        sessions.revokeAll(target.getId());
+        record(operator, "USER_SESSIONS", "USER", id, "已撤销全部登录会话");
+    }
+
+    public com.robustvision.platform.dto.AdminDtos.Access access(UserEntity user) {
+        Set<String> grants = new LinkedHashSet<>(), denies = new LinkedHashSet<>();
+        user.getPermissionOverrides().forEach((code, allowed) -> { if (Boolean.TRUE.equals(allowed)) grants.add(code); else denies.add(code); });
+        return new com.robustvision.platform.dto.AdminDtos.Access("ADMIN".equals(user.getRole().getCode()) ? Permissions.allCodes() : new LinkedHashSet<>(user.getRole().getPermissions()),
+                grants, denies, Permissions.effective(user), user.getAccessExpiresAt());
+    }
+
+    private String sorted(Set<String> codes) { return codes.stream().sorted().collect(java.util.stream.Collectors.joining(", ")); }
+    private void record(UserEntity operator, String action, String type, Long id, String detail) {
+        audit.save(new com.robustvision.platform.domain.AdminAuditEntity(operator, action, type, id, detail));
     }
 
     private RoleEntity requireRole(Long roleId) {
@@ -232,7 +296,7 @@ public class UserService {
                 .orElseThrow(() -> new BusinessException(HttpStatus.UNAUTHORIZED, "USER_NOT_FOUND", "登录用户已不存在"));
         entityManager.refresh(operator, LockModeType.PESSIMISTIC_WRITE);
         entityManager.refresh(operator.getRole());
-        if (operator.getStatus() != UserStatus.ACTIVE) {
+        if (!operator.hasActiveAccess(java.time.Instant.now())) {
             throw new BusinessException(HttpStatus.FORBIDDEN, "ACCOUNT_DISABLED", "账户已停用，请重新登录");
         }
         return operator;

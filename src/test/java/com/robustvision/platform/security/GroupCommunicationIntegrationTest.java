@@ -46,8 +46,8 @@ class GroupCommunicationIntegrationTest {
 
     @BeforeEach void setup() throws Exception {
         String suffix = UUID.randomUUID().toString().substring(0, 8);
-        RoleEntity research = roles.save(new RoleEntity("R_" + suffix, "Researcher", "Synthetic", Set.of("workspace:manage")));
-        RoleEntity basic = roles.save(new RoleEntity("B_" + suffix, "Basic", "Synthetic", Set.of("file:read")));
+        RoleEntity research = roles.save(new RoleEntity("R_" + suffix, "Researcher", "Synthetic", Set.of("workspace:manage", "group:use", "message:read")));
+        RoleEntity basic = roles.save(new RoleEntity("B_" + suffix, "Basic", "Synthetic", Set.of("file:read", "group:use", "message:read")));
         RoleEntity administrator = roles.findByCode("ADMIN").orElseGet(() -> roles.save(new RoleEntity("ADMIN", "Admin", "Synthetic", Permissions.allCodes())));
         owner = user("owner" + suffix, research); member = user("member" + suffix, basic);
         outsider = user("outsider" + suffix, basic); admin = user("admin" + suffix, administrator);

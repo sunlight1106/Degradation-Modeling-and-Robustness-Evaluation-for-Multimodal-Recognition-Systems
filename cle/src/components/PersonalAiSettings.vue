@@ -1,16 +1,18 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed, watch } from 'vue'
+import { authStore } from '@/stores/auth'
 import PersonalAiProviders from './PersonalAiProviders.vue'
 import PersonalAiMemory from './PersonalAiMemory.vue'
 import PersonalAiTraining from './PersonalAiTraining.vue'
 const tab = ref('providers')
-const tabs = [{id:'providers', label:'模型服务'}, {id:'memories', label:'共享记忆'}, {id:'training', label:'本地训练'}]
+const tabs = computed(() => [{id:'providers', label:'模型服务', permission:'personal-ai:manage'}, {id:'memories', label:'共享记忆', permission:'personal-ai:manage'}, {id:'training', label:'本地训练', permission:'training:use'}].filter(item => authStore.has(item.permission)))
+watch(tabs, items => { if (!items.some(item => item.id === tab.value)) tab.value = items[0]?.id || '' }, { immediate: true })
 </script>
 <template>
   <div class="personal-ai-workspace">
     <nav class="ai-setting-tabs" aria-label="个人 AI 设置"><button v-for="item in tabs" :key="item.id" :aria-pressed="tab === item.id" :class="{active: tab === item.id}" @click="tab = item.id">{{ item.label }}</button></nav>
     <PersonalAiProviders v-if="tab === 'providers'" />
-    <div v-else class="panel settings-card"><PersonalAiMemory v-if="tab === 'memories'" /><PersonalAiTraining v-else /></div>
+    <div v-else-if="tab" class="panel settings-card"><PersonalAiMemory v-if="tab === 'memories'" /><PersonalAiTraining v-else /></div>
   </div>
 </template>
 <style>

@@ -53,7 +53,8 @@ public final class ApiDtos {
             String roleCode,
             String roleName,
             Set<String> permissions,
-            Instant createdAt
+            Instant createdAt,
+            Instant accessExpiresAt
     ) {}
 
     public record CreateUserRequest(

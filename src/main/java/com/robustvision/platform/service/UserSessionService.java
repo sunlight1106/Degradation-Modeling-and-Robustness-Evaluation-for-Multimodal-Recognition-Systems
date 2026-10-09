@@ -31,7 +31,7 @@ public class UserSessionService {
     public boolean isActive(String sessionId, String username) {
         Instant now = Instant.now();
         var session = sessions.findActive(sessionId, username, now);
-        if (session.isEmpty() || session.get().getUser().getStatus() != UserStatus.ACTIVE) return false;
+        if (session.isEmpty() || !session.get().getUser().hasActiveAccess(now)) return false;
         sessions.touch(sessionId, now, now.minus(5, ChronoUnit.MINUTES));
         return true;
     }

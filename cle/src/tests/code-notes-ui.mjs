@@ -41,7 +41,7 @@ try {
   assert((colored.match(/data-symbol="total"/g) || []).length === 2, 'Same-name identifier tokens exclude comments')
   assert(!highlightCode('<script>alert(1)</script>', 'html').includes('<script>'), 'Code markup is escaped before highlighting')
   assert(!highlightCode('x'.repeat(31000), 'java').includes('<span'), 'Long code uses bounded plain-text fallback')
-  authStore.state.user = { id: 1, roleCode: 'RESEARCHER', permissions: ['note:read', 'note:write'] }; tokenStorage.set('synthetic-code-test')
+  authStore.state.user = { id: 1, roleCode: 'RESEARCHER', permissions: ['note:read', 'note:write', 'personal-ai:use'] }; tokenStorage.set('synthetic-code-test')
   const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/notes/:id', name: 'note-edit', component: NoteEditorView }, { path: '/notes', name: 'notes', component: { template: '<div />' } }, { path: '/app/:pathMatch(.*)*', component: { template: '<div />' } }] })
   await router.push('/notes/one'); await router.isReady(); app = createApp({ render: () => h(RouterView) }); app.use(router); app.mount(fixture)
   await wait(() => fixture.querySelector('.code-symbol') && !fixture.querySelector('textarea').disabled)

@@ -24,10 +24,10 @@ const menu = ref<HTMLDetailsElement | null>(null)
 function closeMenu() { menu.value?.removeAttribute('open') }
 watch(() => route.fullPath, closeMenu)
 const mainItems: NavItem[] = [
-  { label: '学习中心', to: '/app/research', icon: 'book' },
+  { label: '学习中心', to: '/app/research', icon: 'book', permission: 'research:use' },
   { label: '工作台', to: '/app/home', icon: 'home', permission: 'dashboard:read' },
   { label: '知识库', to: '/app/knowledge', icon: 'book', permission: 'knowledge:read' },
-  { label: '背单词', to: '/app/vocabulary', icon: 'book' },
+  { label: '背单词', to: '/app/vocabulary', icon: 'book', permission: 'vocabulary:use' },
   { label: '我的笔记', to: '/app/notes', icon: 'note', permission: 'note:read' },
   { label: '实验台', to: '/app/upload', icon: 'spark', permission: 'experiment:run' },
   { label: '模型中心', to: '/app/models', icon: 'model', permission: 'model:read' },
@@ -36,12 +36,13 @@ const mainItems: NavItem[] = [
   { label: '优化对比', to: '/app/comparisons', icon: 'compare', any: ['experiment:read', 'experiment:read:any'] },
   { label: '下载中心', to: '/app/downloads', icon: 'download', any: ['file:read', 'file:read:any', 'experiment:read', 'experiment:read:any'] },
   { label: '余额与充值', to: '/app/billing', icon: 'wallet', permission: 'billing:read' },
-  { label: '联系人与聊天', to: '/app/contacts', icon: 'users' },
-  { label: '站内信箱', to: '/app/mail', icon: 'mail' },
-  { label: '群组协作', to: '/app/groups', icon: 'users' },
+  { label: '联系人与聊天', to: '/app/contacts', icon: 'users', permission: 'contacts:use' },
+  { label: '站内信箱', to: '/app/mail', icon: 'mail', permission: 'message:read' },
+  { label: '群组协作', to: '/app/groups', icon: 'users', permission: 'group:use' },
 ]
 
 const adminItems: NavItem[] = [
+  { label: '平台总览', to: '/app/admin', icon: 'logs', any: ['admin:stats', 'admin:audit'] },
   { label: '用户管理', to: '/app/users', icon: 'users', permission: 'user:read' },
   { label: '权限管理', to: '/app/roles', icon: 'shield', permission: 'role:read' },
 ]

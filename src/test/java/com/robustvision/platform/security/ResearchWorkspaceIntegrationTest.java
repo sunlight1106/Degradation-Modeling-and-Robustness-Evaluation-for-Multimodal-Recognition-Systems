@@ -22,7 +22,7 @@ class ResearchWorkspaceIntegrationTest {
     String token,other,admin;
     @BeforeEach void setup() throws Exception {
         String suffix=UUID.randomUUID().toString().substring(0,8);
-        RoleEntity role=roles.save(new RoleEntity("RESEARCH_"+suffix,"Writer","Tests",Set.of("note:read","note:write","knowledge:read","experiment:read")));
+        RoleEntity role=roles.save(new RoleEntity("RESEARCH_"+suffix,"Writer","Tests",Set.of("note:read","note:write","knowledge:read","experiment:read","research:use","personal-ai:use","message:read","group:use","contacts:use","vocabulary:use")));
         token=login("writer"+suffix,role);other=login("other"+suffix,role);
         RoleEntity ar=roles.findByCode("ADMIN").orElseGet(()->roles.save(new RoleEntity("ADMIN","Admin","Tests",role.getPermissions())));admin=login("admin"+suffix,ar);
     }

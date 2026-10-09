@@ -28,6 +28,7 @@ export interface UserView {
   roleName: string
   permissions: string[]
   createdAt: string
+  accessExpiresAt?: string | null
 }
 
 export interface LoginResponse {

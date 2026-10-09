@@ -44,7 +44,7 @@ class MySqlSchemaMigrationTest {
 
     private static final Set<String> DOMAIN_TABLES = java.util.stream.Stream.concat(
             LEGACY_DOMAIN_TABLES.stream(), java.util.stream.Stream.of("personal_ai_setting", "personal_ai_usage", "user_session",
-                    "vocabulary_book", "vocabulary_word", "vocabulary_profile", "vocabulary_progress", "vocabulary_question", "personal_recognition_result", "contact_link", "chat_message", "personal_ai_memory", "note_version", "learning_record"))
+                    "vocabulary_book", "vocabulary_word", "vocabulary_profile", "vocabulary_progress", "vocabulary_question", "personal_recognition_result", "contact_link", "chat_message", "personal_ai_memory", "note_version", "learning_record", "user_permission_override", "admin_audit"))
             .collect(java.util.stream.Collectors.toUnmodifiableSet());
 
     @Test
@@ -125,7 +125,13 @@ class MySqlSchemaMigrationTest {
             latest.validate();
             assertThat(latest.migrate().migrationsExecuted).isZero();
             try (Connection connection = database.connect()) {
-                assertThat(snapshot(connection)).isEqualTo(before);
+                Map<String, List<String>> after = snapshot(connection);
+                // V25 intentionally grants eight previously universal authenticated
+                // modules. Preserve every original permission row and compare all
+                // original account/content data exactly.
+                assertThat(after.remove("role_permission")).containsAll(before.remove("role_permission"));
+                assertThat(scalar(connection, "SELECT COUNT(*) FROM role_permission WHERE role_id=91 AND permission_code IN ('contacts:use','group:use','vocabulary:use','research:use','personal-ai:manage','personal-ai:use','training:use','message:read')")).isEqualTo("8");
+                assertThat(after).isEqualTo(before);
                 seedAccountSettings(connection);
                 assertThat(rows(connection,
                         "SELECT version, checksum FROM flyway_schema_history WHERE CAST(version AS UNSIGNED) <= " + baseline + " ORDER BY installed_rank"))
@@ -213,7 +219,7 @@ class MySqlSchemaMigrationTest {
         assertThat(scalar(c, "SELECT balance_cny FROM user_wallet WHERE user_id = 101")).isEqualTo("12.3456");
         assertThat(scalar(c, "SELECT cost_cny FROM inference_task WHERE id = 'task-1'")).isEqualTo("0.123456");
         assertThat(scalar(c, "SELECT COUNT(*) FROM information_schema.referential_constraints WHERE constraint_schema = DATABASE()"))
-                .isEqualTo("51");
+                .isEqualTo("52");
         assertThatThrownBy(() -> execute(c,
                 "INSERT INTO learning_record (id,owner_id,kind,title,payload,created_at,updated_at) VALUES ('orphan-record',999999,'CARD','orphan','{}',CURRENT_TIMESTAMP(6),CURRENT_TIMESTAMP(6))"))
                 .isInstanceOf(SQLException.class).satisfies(error -> assertThat(((SQLException) error).getErrorCode()).isEqualTo(1452));
@@ -325,12 +331,12 @@ class MySqlSchemaMigrationTest {
                 .isInstanceOf(SQLException.class).satisfies(error -> assertThat(((SQLException) error).getErrorCode()).isEqualTo(1452));
         assertThat(scalar(c, "SELECT COUNT(*) FROM user_session WHERE user_id = 101")).isEqualTo("1");
         execute(c, "INSERT INTO vocabulary_book (id, owner_id, title, description, attribution, level, created_at) VALUES ('book-fixture', 101, 'Fixture book', '', '', 'A1', CURRENT_TIMESTAMP(6))");
-        execute(c, "INSERT INTO vocabulary_word (id, book_id, term, ipa, pos, meaning, example_text, example_translation, distractors, sort_order) VALUES ('word-fixture', 'book-fixture', 'example', '', 'noun', '示例', '', '', '[]', 0)");
-        execute(c, "INSERT INTO vocabulary_profile (owner_id, zone_id, daily_goal, selected_book_id, updated_at) VALUES (101, 'UTC', 10, 'book-fixture', CURRENT_TIMESTAMP(6))");
-        execute(c, "INSERT INTO vocabulary_progress (id, owner_id, word_id, learning_correct, starred) VALUES ('progress-fixture', 101, 'word-fixture', 1, true)");
+        execute(c, "INSERT INTO vocabulary_word (id, book_id, term, term_key, ipa, pos, meaning, example_text, example_translation, distractors, sort_order) VALUES ('word-fixture', 'book-fixture', 'example', 'example', '', 'noun', '示例', '', '', '[]', 0)");
+        execute(c, "INSERT INTO vocabulary_profile (owner_id, zone_id, daily_goal, selected_book_id, updated_at, history_json) VALUES (101, 'UTC', 10, 'book-fixture', CURRENT_TIMESTAMP(6), '{}')");
+        execute(c, "INSERT INTO vocabulary_progress (id, owner_id, word_id, term_key, learning_correct, starred) VALUES ('progress-fixture', 101, 'word-fixture', 'example', 1, true)");
         execute(c, "INSERT INTO vocabulary_question (id, owner_id, word_id, book_id, mode, options_json, correct_option_id, created_at, expires_at) VALUES ('question-fixture', 101, 'word-fixture', 'book-fixture', 'LEARN', '[]', 'synthetic-option', CURRENT_TIMESTAMP(6), '2030-01-01 00:00:00')");
         execute(c, "INSERT INTO personal_recognition_result (id, owner_id, file_id, file_name, provider, model, task_type, result_text, input_tokens, output_tokens, created_at) VALUES ('recognition-fixture', 101, 'file-1', 'fixture.png', 'OPENAI', 'synthetic', 'GENERAL', 'Synthetic result', 1, 1, CURRENT_TIMESTAMP(6))");
-        assertDuplicateRejected(c, "INSERT INTO vocabulary_progress (id, owner_id, word_id) VALUES ('duplicate-progress', 101, 'word-fixture')");
+        assertDuplicateRejected(c, "INSERT INTO vocabulary_progress (id, owner_id, word_id, term_key) VALUES ('duplicate-progress', 101, 'word-fixture', 'example')");
         assertThat(scalar(c, "SELECT COUNT(*) FROM vocabulary_progress WHERE owner_id = 101")).isEqualTo("1");
         assertThat(scalar(c, "SELECT COUNT(*) FROM personal_recognition_result WHERE owner_id = 101")).isEqualTo("1");
     }
@@ -413,7 +419,8 @@ class MySqlSchemaMigrationTest {
                 var scanner = new ClassPathScanningCandidateComponentProvider(false);
                 scanner.addIncludeFilter(new AnnotationTypeFilter(Entity.class));
                 var entities = scanner.findCandidateComponents("com.robustvision.platform.domain");
-                assertThat(entities).hasSize(DOMAIN_TABLES.size() - 2);
+                // Three tables map @ElementCollection values rather than entities.
+                assertThat(entities).hasSize(DOMAIN_TABLES.size() - 3);
                 for (var definition : entities) sources.addAnnotatedClass(Class.forName(definition.getBeanClassName()));
                 try (var factory = sources.buildMetadata().buildSessionFactory()) {
                     assertThat(factory.isOpen()).isTrue();

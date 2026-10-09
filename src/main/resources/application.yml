@@ -15,6 +15,9 @@ spring:
       connection-timeout: 10000
       validation-timeout: 3000
       data-source-properties:
+        # Date aggregates and TIMESTAMP reads share the UTC storage convention.
+        connectionTimeZone: UTC
+        forceConnectionTimeZoneToSession: true
         cachePrepStmts: true
         prepStmtCacheSize: 250
         prepStmtCacheSqlLimit: 2048

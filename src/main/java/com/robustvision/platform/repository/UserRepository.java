@@ -11,8 +11,8 @@ import jakarta.persistence.LockModeType;
 import java.util.Optional;
 import java.util.List;
 
-public interface UserRepository extends JpaRepository<UserEntity, Long> {
-    @EntityGraph(attributePaths = {"role", "role.permissions"})
+public interface UserRepository extends JpaRepository<UserEntity, Long>, org.springframework.data.jpa.repository.JpaSpecificationExecutor<UserEntity> {
+    @EntityGraph(attributePaths = {"role", "role.permissions", "permissionOverrides"})
     Optional<UserEntity> findByUsername(String username);
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select user from UserEntity user where user.id = :id")

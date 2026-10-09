@@ -37,7 +37,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 if (!sessions.isActive(claims.sessionId(), claims.subject())) return;
                 try {
                     UserDetails details = userDetailsService.loadUserByUsername(claims.subject());
-                    if (details.isEnabled()) {
+                    if (details.isEnabled() && details.isAccountNonExpired()) {
                         UsernamePasswordAuthenticationToken authentication =
                                 new UsernamePasswordAuthenticationToken(details, null, details.getAuthorities());
                         authentication.setDetails(new UserSessionService.SessionDetails(claims.sessionId()));

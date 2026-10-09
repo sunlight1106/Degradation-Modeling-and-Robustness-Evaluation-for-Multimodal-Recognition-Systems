@@ -6,6 +6,7 @@ import { personalApi } from '@/api/personal'
 import type { NoteAssistAction, NoteAssistResponse } from '@/types/api'
 import type { ExperimentPreview, ExperimentSource, PersonalAiAction, PersonalAiPreview, PersonalAiProvider, PersonalAiResult, PersonalAiSetting } from '@/types/personal'
 import { toastStore } from '@/stores/toast'
+import { authStore } from '@/stores/auth'
 import { createRequestGuard, isPreviewExpired } from '@/lib/requestGuard'
 import AppIcon from '@/components/AppIcon.vue'
 
@@ -28,7 +29,7 @@ const persistenceWarning = computed(() => {
 const sourceGuard = createRequestGuard(), listGuard = createRequestGuard(), aiGuard = createRequestGuard(), settingGuard = createRequestGuard()
 const now = ref(Date.now())
 const clock = window.setInterval(() => { now.value = Date.now() }, 1000)
-const usableSettings = computed(() => settings.value.filter(item => item.enabled && item.configured))
+const usableSettings = computed(() => authStore.has('personal-ai:use') ? settings.value.filter(item => item.enabled && item.configured) : [])
 const remoteEnabled = computed(() => providers.value.find(item => item.provider === mode.value)?.remoteEnabled === true)
 const selectedSetting = computed(() => usableSettings.value.find(item => item.provider === mode.value))
 const activeContext = computed(() => JSON.stringify([props.title, props.body, mode.value, includeSources.value, selectedIds.value, props.codeLanguage, props.commentStyle]))
@@ -44,6 +45,7 @@ function cancelSource() { sourceGuard.cancel(); sourceBusy.value = false; source
 watch(activeContext, () => { cancelAi(); aiError.value = '' }, { flush: 'sync' })
 watch(selectedIds, () => { cancelSource(); sourceError.value = '' }, { deep: true, flush: 'sync' })
 async function loadSettings() {
+  if (!authStore.has('personal-ai:use')) { settings.value = []; providers.value = []; mode.value = 'LOCAL_RULES'; return }
   const request = settingGuard.start(); settingsLoading.value = true; settingsError.value = ''
   try {
     const [rows, catalog] = await Promise.all([personalApi.settings(request.signal), personalApi.providers(request.signal)])

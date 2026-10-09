@@ -37,7 +37,7 @@ public class AccountSwitchService {
         // Use the same stable user-lock order as other account mutations.
         Stream.of(source.getId(), targetId).sorted().forEach(id -> users.findLockedById(id).orElseThrow(this::invalidTarget));
         entityManager.refresh(source, LockModeType.PESSIMISTIC_WRITE);
-        if (source.getStatus() != UserStatus.ACTIVE || sessionRows.revokeActive(sessionId, source.getId(), Instant.now()) != 1)
+        if (!source.hasActiveAccess(Instant.now()) || sessionRows.revokeActive(sessionId, source.getId(), Instant.now()) != 1)
             throw new BusinessException(HttpStatus.UNAUTHORIZED, "SESSION_REQUIRED", "当前会话已失效，请重新登录");
         try {
             // The new session and old-session revocation commit together. Invalid credentials roll both back.

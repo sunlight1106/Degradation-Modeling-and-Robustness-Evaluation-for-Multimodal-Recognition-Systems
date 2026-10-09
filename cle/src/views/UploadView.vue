@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api, ApiClientError } from '@/api/client'
+import { authStore } from '@/stores/auth'
 import type { FileView, ModelRuntimeView, ModelView, TaskType } from '@/types/api'
 import UploadDropzone from '@/components/UploadDropzone.vue'
 import AppIcon from '@/components/AppIcon.vue'
@@ -118,7 +119,7 @@ async function run() {
       <p class="experiment-caption">个人 AI 使用你自己的配置；下方双路实验提供 DEMO 合成结果。</p>
       <template #detail><nav class="experiment-index" aria-label="实验步骤"><a href="#personal-vision">个人图片识别</a><a href="#sample">DEMO 样本</a><a href="#configuration">02 选择模型</a><a href="#run">03 运行实验</a></nav></template>
     </DocRow>
-        <section id="personal-vision" class="reader-personal"><PersonalRecognitionPanel /></section>
+        <section v-if="authStore.has('personal-ai:use')" id="personal-vision" class="reader-personal"><PersonalRecognitionPanel /></section>
     <DocRow id="sample" title="DEMO · 输入样本">
       <p>选择一张图片，或一段视频。你也可以把文件直接拖入右侧。</p>
       <p class="experiment-caption">JPEG、PNG、WEBP / MP4、WEBM<br />单个文件最大 20 MB</p>

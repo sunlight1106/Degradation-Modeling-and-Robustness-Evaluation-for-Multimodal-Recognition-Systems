@@ -4,6 +4,10 @@ The platform has account ownership checks, not a separately modeled multi-tenant
 
 ## Notebook and shared knowledge
 
+- ADMIN permissions are resolved from the complete current catalog, rather than a stored snapshot. Other accounts resolve role defaults plus individual grants/denials. Both request security and business checks use the same result. New module permissions cover vocabulary, contacts, groups, messaging, personal AI and training.
+- Account expiry blocks password login and existing JWT sessions. Administrative security changes revoke target sessions; role changes revoke affected role sessions. Only ADMIN may edit individual access, assign roles, disable users, reset credentials or revoke other users' sessions. Delegated user writers may edit display names only.
+- Management statistics and audit logs have separate read permissions. Directory search is paginated; detail responses contain metadata and counts, never notebook bodies, private memories, passwords or model keys. Successful administrative changes record their operator, target and permission changes without secret values. Existing notebook ownership boundaries below remain in place.
+
 - Notebook reads, writes, experiment selections, insertion previews and AI source selection are authenticated and owner-scoped on the backend, including when a caller changes request IDs. A platform administrator does not receive an ownership bypass for personal notebook sources.
 - References resolve only files/tasks owned by the note owner or legitimately readable knowledge cards. Previously stored invalid cross-user references no longer resolve private metadata.
 - Sharing a note grants the displayed note and legitimate embedded reference metadata through its revocable, expiring token. It does not grant access to underlying file content or experiment reports. Text deliberately copied into the note is part of what is shared.

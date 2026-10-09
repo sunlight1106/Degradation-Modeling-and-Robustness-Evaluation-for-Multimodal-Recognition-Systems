@@ -16,7 +16,7 @@ import IdentityCode from '@/components/IdentityCode.vue'
 const router = useRouter(), route = useRoute()
 const tabs = computed(() => [
   { id: 'profile', label: '个人资料', icon: 'users' },
-  { id: 'ai', label: '个人 AI', icon: 'ai' },
+  ...(authStore.hasAny('personal-ai:manage', 'training:use') ? [{ id: 'ai', label: '个人 AI', icon: 'ai' }] : []),
   { id: 'usage', label: '使用情况', icon: 'logs' },
   { id: 'security', label: '安全与登录', icon: 'shield' },
   { id: 'privacy', label: '隐私与数据', icon: 'key' },

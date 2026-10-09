@@ -50,6 +50,7 @@ window.fetch = async (url, init = {}) => {
 }
 const router = createRouter({history:createMemoryHistory(),routes:[{path:'/:pathMatch(.*)*',component:{template:'<div />'}}]})
 try {
+  authStore.state.user={id:1001,permissions:['personal-ai:manage','personal-ai:use','training:use']}
   const malicious = '<script>alert(1)</script><img src="https://tracking.invalid/pixel" onerror="alert(1)"><iframe src="https://tracking.invalid"></iframe><div style="background:url(https://tracking.invalid)">safe</div>\n\n[x](javascript:alert(1))\n\n![tracker](https://tracking.invalid/pixel)'
   const safe = renderMarkdown(malicious)
   const holder = document.createElement('div'); holder.innerHTML = safe
@@ -125,7 +126,7 @@ try {
   assert(!Object.values(localStorage).some(value => String(value).includes('SYNTHETIC-NOT-A-REAL-KEY')), 'Key is never persisted in localStorage')
   app.unmount()
   tokenStorage.set('synthetic-usage-session')
-  authStore.state.user={id:1001,displayName:'Synthetic user',username:'synthetic',permissions:[],roleName:'Researcher',email:'synthetic@example.invalid',createdAt:'2026-10-02T11:00:00Z'}
+  authStore.state.user={id:1001,displayName:'Synthetic user',username:'synthetic',permissions:['personal-ai:manage','personal-ai:use','training:use'],roleName:'Researcher',email:'synthetic@example.invalid',createdAt:'2026-10-02T11:00:00Z'}
   await router.replace('/app/settings?section=usage')
   app=createApp(SettingsView).use(router); app.mount(fixture)
   await wait(()=>fixture.querySelector('.settings-metrics--overview'))
@@ -209,7 +210,7 @@ try {
   assert(localStorage.getItem('personal_platform_token')==='account-B-token', 'Invalidating stale tab A preserves B token in shared storage')
 
   window.fetch = priorFetch
-  tokenStorage.set('account-A-token'); authStore.state.user={id:1001}
+  tokenStorage.set('account-A-token'); authStore.state.user={id:1001,permissions:['personal-ai:manage']}
   app=createApp({render:()=>authStore.state.user ? h(PersonalAiSettings,{key:authStore.state.user.id}) : null}); app.mount(fixture)
   await wait(()=>fixture.querySelector('input[type=password]'))
   await setValue(fixture.querySelector('input[type=password]'),'SYNTHETIC-A-ONLY')

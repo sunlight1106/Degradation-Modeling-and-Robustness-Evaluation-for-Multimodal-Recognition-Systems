@@ -28,7 +28,7 @@ class SocialIntegrationTest {
     String a, b, o, ad;
     @BeforeEach void setup() throws Exception {
         String suffix = UUID.randomUUID().toString().substring(0,8);
-        var basic = roles.save(new RoleEntity("SOC_" + suffix, "Member", "Synthetic", Set.of("note:read", "note:write")));
+        var basic = roles.save(new RoleEntity("SOC_" + suffix, "Member", "Synthetic", Set.of("note:read", "note:write", "contacts:use", "message:read")));
         var administrator = roles.findByCode("ADMIN").orElseGet(() -> roles.save(new RoleEntity("ADMIN", "Admin", "Synthetic", Permissions.allCodes())));
         alice = user("alice" + suffix, basic); bob = user("bob" + suffix, basic); outsider = user("other" + suffix, basic); admin = user("admin" + suffix, administrator);
         a = login(alice); b = login(bob); o = login(outsider); ad = login(admin);

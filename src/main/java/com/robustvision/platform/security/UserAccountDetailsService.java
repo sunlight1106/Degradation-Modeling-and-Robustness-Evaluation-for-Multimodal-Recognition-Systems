@@ -22,15 +22,17 @@ public class UserAccountDetailsService implements UserDetailsService {
     }
 
     @Override
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         UserEntity account = userRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("用户不存在"));
         List<SimpleGrantedAuthority> authorities = new ArrayList<>();
         authorities.add(new SimpleGrantedAuthority("ROLE_" + account.getRole().getCode()));
-        account.getRole().getPermissions().forEach(permission -> authorities.add(new SimpleGrantedAuthority(permission)));
+        Permissions.effective(account).forEach(permission -> authorities.add(new SimpleGrantedAuthority(permission)));
         return User.withUsername(account.getUsername())
                 .password(account.getPasswordHash())
                 .disabled(account.getStatus() != UserStatus.ACTIVE)
+                .accountExpired(account.getAccessExpiresAt() != null && !account.getAccessExpiresAt().isAfter(java.time.Instant.now()))
                 .authorities(authorities)
                 .build();
     }

@@ -1,95 +1,52 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, onBeforeUnmount, reactive, ref } from 'vue'
 import { api, ApiClientError } from '@/api/client'
-import type { RoleView, UserView } from '@/types/api'
+import { adminApi, type Page } from '@/api/admin'
+import type { PermissionView, RoleView, UserView } from '@/types/api'
 import StatusBadge from '@/components/StatusBadge.vue'
-import AppIcon from '@/components/AppIcon.vue'
-import EmptyState from '@/components/EmptyState.vue'
 import IdentityCode from '@/components/IdentityCode.vue'
+import AdminUserDetail from '@/components/AdminUserDetail.vue'
 import { authStore } from '@/stores/auth'
 import { toastStore } from '@/stores/toast'
-
-const users = ref<UserView[]>([])
-const roles = ref<RoleView[]>([])
-const loading = ref(true)
-const showCreate = ref(false)
-const saving = ref(false)
-const error = ref('')
+const users = ref<Page<UserView> | null>(null), roles = ref<RoleView[]>([]), permissions = ref<PermissionView[]>([])
+const loading = ref(false), saving = ref(false), error = ref(''), showCreate = ref(false), selected = ref<number | null>(null)
+const query = ref(''), status = ref(''), role = ref(''), page = ref(0)
 const form = reactive({ username: '', password: '', displayName: '', email: '', roleId: 0 })
-
-const activeCount = computed(() => users.value.filter(user => user.status === 'ACTIVE').length)
-const canWrite = computed(() => authStore.has('user:write'))
-const canReadRoles = computed(() => authStore.has('role:read'))
-
-onMounted(load)
+const admin = computed(() => authStore.state.user?.roleCode === 'ADMIN')
+let generation = 0, active = true
 async function load() {
-  try {
-    const [userList, roleList] = await Promise.all([
-      api.users(),
-      canReadRoles.value ? api.roles() : Promise.resolve([] as RoleView[]),
-    ])
-    users.value = userList
-    roles.value = roleList
-    if (!form.roleId) form.roleId = roles.value.find(role => role.code === 'RESEARCHER')?.id || roles.value[0]?.id || 0
-  } catch (reason) { error.value = reason instanceof ApiClientError ? reason.message : '用户数据加载失败' }
-  finally { loading.value = false }
+  const version = ++generation; loading.value = true; error.value = ''
+  try { const result = await adminApi.users(query.value, status.value, role.value, page.value); if (active && version === generation) users.value = result }
+  catch (reason) { if (active && version === generation) error.value = reason instanceof ApiClientError ? reason.message : '用户加载失败' }
+  finally { if (active && version === generation) loading.value = false }
 }
-
+function search() { page.value = 0; void load() }
+function move(delta: number) { page.value += delta; void load() }
+function replace(user: UserView) { const i = users.value?.items.findIndex(u => u.id === user.id) ?? -1; if (users.value && i >= 0) users.value.items[i] = user }
 async function createUser() {
-  saving.value = true
-  error.value = ''
-  try {
-    const created = await api.createUser({ ...form })
-    users.value.unshift(created)
-    Object.assign(form, { username: '', password: '', displayName: '', email: '', roleId: form.roleId })
-    showCreate.value = false
-    toastStore.success('用户已创建')
-  } catch (reason) { error.value = reason instanceof ApiClientError ? reason.message : '创建用户失败' }
-  finally { saving.value = false }
+  if (saving.value) return; saving.value = true; error.value = ''
+  try { await api.createUser(form); if (!active) return; showCreate.value = false; form.username = ''; form.password = ''; form.displayName = ''; form.email = ''; toastStore.success('用户已创建'); page.value = 0; await load() }
+  catch (reason) { if (active) error.value = reason instanceof ApiClientError ? reason.message : '创建失败' }
+  finally { form.password = ''; if (active) saving.value = false }
 }
-
-async function toggleStatus(user: UserView) {
-  try {
-    const updated = await api.updateUser(user.id, { status: user.status === 'ACTIVE' ? 'DISABLED' : 'ACTIVE' })
-    replace(updated)
-    toastStore.success(updated.status === 'ACTIVE' ? '用户已启用' : '用户已停用')
-  } catch (reason) { toastStore.error(reason instanceof ApiClientError ? reason.message : '更新失败') }
-}
-
-async function changeRole(user: UserView, event: Event) {
-  const roleId = Number((event.target as HTMLSelectElement).value)
-  try { replace(await api.updateUser(user.id, { roleId })); toastStore.success('角色已更新') }
-  catch (reason) { toastStore.error(reason instanceof ApiClientError ? reason.message : '角色更新失败'); await load() }
-}
-
-function replace(updated: UserView) {
-  const index = users.value.findIndex(user => user.id === updated.id)
-  if (index >= 0) users.value[index] = updated
-}
-
-const formatDate = (value: string) => new Intl.DateTimeFormat('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(value))
+onMounted(async () => {
+  await load(); if (!authStore.has('role:read')) return
+  try { const [list, catalog] = await Promise.all([api.roles(), api.permissions()]); if (!active) return; roles.value = list; permissions.value = catalog; form.roleId = list.find(r => r.code === 'RESEARCHER')?.id || list[0]?.id || 0 }
+  catch (reason) { if (active) error.value = reason instanceof ApiClientError ? reason.message : '角色加载失败' }
+})
+onBeforeUnmount(() => { active = false; generation++; form.password = '' })
+const date = (value: string) => new Date(value).toLocaleDateString('zh-CN')
 </script>
-
 <template>
-  <div class="page-stack">
-    <section class="page-intro page-intro--split"><div><p class="page-kicker">账号与访问</p><h2>用户管理</h2><p>创建平台账号、分配角色并控制启用状态。</p></div><button v-if="canWrite && roles.length" class="button button--dark" @click="showCreate = !showCreate"><AppIcon :name="showCreate ? 'close' : 'users'" :size="17" /> {{ showCreate ? '取消创建' : '新建用户' }}</button></section>
-
-    <form v-if="showCreate" class="panel create-user-form" @submit.prevent="createUser">
-      <div class="panel-header"><div><h3>创建用户</h3><p>密码至少 8 位；用户登录后应自行修改</p></div></div>
-      <div class="form-grid"><label class="field-label">用户名<input v-model="form.username" class="field-input" required pattern="[A-Za-z0-9._-]{3,60}" placeholder="例如 researcher01" /></label><label class="field-label">显示名称<input v-model="form.displayName" class="field-input" required maxlength="80" placeholder="例如 数据研究员" /></label><label class="field-label">邮箱<input v-model="form.email" class="field-input" type="email" required placeholder="name@example.com" /></label><label class="field-label">初始密码<input v-model="form.password" class="field-input" type="password" required minlength="8" maxlength="72" placeholder="至少 8 位" /></label><label class="field-label">角色<select v-model.number="form.roleId" class="field-input" required><option v-for="role in roles" :key="role.id" :value="role.id">{{ role.name }}</option></select></label></div>
-      <div v-if="error" class="inline-alert inline-alert--error">{{ error }}</div>
-      <div class="form-actions"><button type="button" class="button button--ghost" @click="showCreate = false">取消</button><button class="button button--dark" :disabled="saving">{{ saving ? '正在创建…' : '创建用户' }}</button></div>
-    </form>
-
-    <section class="user-stat-row"><div><strong>{{ users.length }}</strong><span>全部用户</span></div><div><strong>{{ activeCount }}</strong><span>启用账号</span></div><div><strong>{{ users.length - activeCount }}</strong><span>停用账号</span></div><div><strong>{{ roles.length }}</strong><span>角色类型</span></div></section>
-
-    <section class="panel">
-      <div class="panel-header"><div><h3>平台用户</h3><p>权限以角色为单位统一管理</p></div></div>
-      <div v-if="loading" class="table-skeleton" />
-      <EmptyState v-else-if="!users.length" title="暂无用户" icon="users" />
-      <div v-else class="data-table-wrap"><table class="data-table"><thead><tr><th>用户</th><th>角色</th><th>状态</th><th>创建时间</th><th>操作</th></tr></thead><tbody>
-        <tr v-for="user in users" :key="user.id"><td><div class="table-primary"><span class="avatar avatar--small">{{ user.displayName.slice(0, 1) }}</span><span><strong>{{ user.displayName }} <i v-if="user.id === authStore.state.user?.id" class="self-label">当前账号</i></strong><small>@{{ user.username }} · {{ user.email }}</small><IdentityCode :value="user.identityCode" /></span></div></td><td><select v-if="canWrite && roles.length" class="compact-select" :value="user.roleId" :disabled="user.id === authStore.state.user?.id" @change="changeRole(user, $event)"><option v-for="role in roles" :key="role.id" :value="role.id">{{ role.name }}</option></select><span v-else>{{ user.roleName }}</span></td><td><StatusBadge :status="user.status" /></td><td>{{ formatDate(user.createdAt) }}</td><td><button v-if="canWrite" class="table-action" :disabled="user.id === authStore.state.user?.id" @click="toggleStatus(user)">{{ user.status === 'ACTIVE' ? '停用' : '启用' }}</button><span v-else class="table-muted">只读</span></td></tr>
-      </tbody></table></div>
-    </section>
+  <div class="page-stack user-management">
+    <section class="page-intro page-intro--split"><div><p class="page-kicker">系统管理</p><h2>用户与使用权限</h2><p>按姓名、用户名、邮箱或身份码查找账号，在用户详情中调整权限。</p></div><button v-if="admin && roles.length" class="button button--dark" @click="showCreate = !showCreate">{{ showCreate ? '取消创建' : '新建用户' }}</button></section>
+    <p v-if="error" class="inline-alert inline-alert--error" role="alert">{{ error }} <button class="table-action" @click="load">重试</button></p>
+    <form v-if="showCreate" class="panel create-user-form" @submit.prevent="createUser"><h3>新建用户</h3><div class="form-grid"><label class="field-label">用户名<input v-model="form.username" class="field-input" required pattern="[A-Za-z0-9._-]{3,60}" autocomplete="off" /></label><label class="field-label">显示名称<input v-model="form.displayName" class="field-input" required maxlength="80" /></label><label class="field-label">邮箱<input v-model="form.email" class="field-input" type="email" required maxlength="160" /></label><label class="field-label">初始密码<input v-model="form.password" class="field-input" type="password" required minlength="8" maxlength="72" autocomplete="new-password" /></label><label class="field-label">角色<select v-model.number="form.roleId" class="field-input"><option v-for="r in roles" :key="r.id" :value="r.id">{{ r.name }}</option></select></label></div><p class="table-muted">身份码由系统分配。首次登录后可在设置中更改密码。</p><button class="button button--dark" :disabled="saving">{{ saving ? '正在创建…' : '创建账号' }}</button></form>
+    <form class="user-search" @submit.prevent="search"><label class="user-search-query"><span class="sr-only">查找用户</span><input v-model="query" class="field-input" placeholder="搜索名称、用户名、邮箱或 Identity code" maxlength="120" /></label><label><span class="sr-only">账号状态</span><select v-model="status" class="field-input" @change="search"><option value="">全部状态</option><option value="ACTIVE">启用</option><option value="DISABLED">停用</option></select></label><label v-if="roles.length"><span class="sr-only">用户角色</span><select v-model="role" class="field-input" @change="search"><option value="">全部角色</option><option v-for="r in roles" :key="r.id" :value="String(r.id)">{{ r.name }}</option></select></label><button class="button button--dark" :disabled="loading">搜索</button></form>
+    <section class="panel user-table" :aria-busy="loading"><header><h3>账号列表 <small>{{ users?.total ?? '—' }} 人</small></h3><span>每页 25 人</span></header><p v-if="loading && !users" role="status" class="user-empty">正在读取用户…</p><p v-else-if="users && !users.items.length" class="user-empty">没有符合条件的账号，试试其他名称或身份码。</p><div v-else-if="users" class="data-table-wrap"><table class="data-table"><thead><tr><th>用户</th><th>角色</th><th>状态</th><th>注册日期</th><th>管理</th></tr></thead><tbody><tr v-for="user in users.items" :key="user.id"><td><div class="table-primary"><span class="avatar avatar--small">{{ user.displayName.slice(0, 1) }}</span><span><strong>{{ user.displayName }} <i v-if="user.id === authStore.state.user?.id" class="self-label">当前账号</i></strong><small>@{{ user.username }} · {{ user.email }}</small><IdentityCode :value="user.identityCode" /></span></div></td><td>{{ user.roleName }}</td><td><span v-if="user.status === 'ACTIVE' && user.accessExpiresAt && new Date(user.accessExpiresAt).getTime() <= Date.now()" class="expired-user">已到期</span><StatusBadge v-else :status="user.status" /></td><td>{{ date(user.createdAt) }}</td><td><button class="table-action" @click="selected = user.id">查看详情{{ admin ? '与权限' : '' }} →</button></td></tr></tbody></table></div><footer v-if="users" class="user-pagination"><span>第 {{ page + 1 }} / {{ Math.max(1, Math.ceil(users.total / users.size)) }} 页</span><button class="button button--ghost" :disabled="page === 0 || loading" @click="move(-1)">上一页</button><button class="button button--ghost" :disabled="(page + 1) * users.size >= users.total || loading" @click="move(1)">下一页</button></footer></section>
+    <AdminUserDetail v-if="selected !== null" :key="selected" :id="selected" :roles="roles" :permissions="permissions" @close="selected = null" @updated="replace" />
   </div>
 </template>
+<style scoped>
+.expired-user{font-size:12px;color:var(--amber);background:var(--amber-soft);padding:4px 9px;border-radius:4px}.user-search{display:flex;gap:12px;align-items:center}.user-search-query{flex:1}.user-search>label:not(.user-search-query){max-width:190px}.user-search .field-input{height:44px}.user-table{padding:24px 28px}.user-table>header{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px}.user-table h3{font-size:18px;margin:0}.user-table h3 small{font-size:13px;font-weight:400;color:var(--muted);margin-left:14px}.user-table>header>span{font-size:12px;color:var(--muted)}.user-pagination{display:flex;justify-content:flex-end;gap:15px;align-items:center;border-top:1px solid var(--line);padding-top:20px;font-size:13px;color:var(--muted)}.user-empty{padding:50px 0;color:var(--muted);text-align:center}.create-user-form{padding:24px 28px}.create-user-form h3{margin:0 0 22px}.create-user-form .table-muted{font-size:13px;margin:22px 0}.table-primary small{display:block}
+</style>
