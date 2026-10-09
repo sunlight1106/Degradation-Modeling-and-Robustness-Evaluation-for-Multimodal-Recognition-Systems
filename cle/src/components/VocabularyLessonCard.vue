@@ -1,20 +1,15 @@
 <script setup lang="ts">
 import type { VocabularyLesson } from '@/api/vocabulary'
+import WordPronunciation from './WordPronunciation.vue'
 defineProps<{ lesson: VocabularyLesson; hideIdentity?: boolean }>()
-const canSpeak = typeof window !== 'undefined' && 'speechSynthesis' in window
-function speak(term: string) {
-  if (!canSpeak) return
-  window.speechSynthesis.cancel()
-  const speech = new SpeechSynthesisUtterance(term); speech.lang = 'en-US'; speech.rate = .85
-  window.speechSynthesis.speak(speech)
-}
 </script>
 
 <template>
   <div class="lesson-card">
-    <header v-if="!hideIdentity"><div><h3>{{ lesson.term }}</h3><p class="phonetic">{{ lesson.ipa }} <span>{{ lesson.pos }}</span></p></div><button v-if="canSpeak" type="button" class="button button--light" :aria-label="`朗读 ${lesson.term}`" @click="speak(lesson.term)">听读</button></header>
+    <header v-if="!hideIdentity"><div><h3>{{ lesson.term }}</h3><p class="phonetic">{{ lesson.ipa }} <span>{{ lesson.pos }}</span></p></div></header>
+    <WordPronunciation v-if="!hideIdentity" :text="lesson.term" />
     <p v-if="!hideIdentity" class="meaning">{{ lesson.meaning }}</p>
-    <div class="lesson-columns"><div><section class="scene"><span class="label">先记一个画面</span><p>{{ lesson.memoryCue }}</p></section><blockquote v-if="lesson.example"><p>{{ lesson.example }}</p><small>{{ lesson.exampleTranslation }}</small></blockquote></div>
+    <div class="lesson-columns"><div><section class="scene"><span class="label">先记一个画面</span><p>{{ lesson.memoryCue }}</p></section><blockquote v-if="lesson.example"><p>{{ lesson.example }}</p><small>{{ lesson.exampleTranslation }}</small><WordPronunciation v-if="!hideIdentity" :text="lesson.example" /></blockquote></div>
     <section class="combinations"><span class="label">连着记 · 搭配与用法</span><div v-for="item in lesson.collocations" :key="item.pattern" class="pattern"><strong>{{ item.pattern }}</strong><span>{{ item.meaning }}</span><small v-if="item.note">{{ item.note }}</small></div><p v-if="!lesson.collocations.length" class="subtle">这条词库尚未收录固定搭配。先按当前释义使用；私有词书可补充搭配和用法。</p><p class="usage">{{ lesson.usageNote }}</p></section></div>
   </div>
 </template>

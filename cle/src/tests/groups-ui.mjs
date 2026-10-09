@@ -20,9 +20,18 @@ const message = (id, workspaceId = 1) => ({ id, workspaceId, senderId: 10, sende
 let app, deferredSend, deferredList, delayAlpha = false
 const sends = [], requests = []
 const contacts = [{ id: 10, identityCode: 'PKB-00000000000000000000000000000010', displayName: 'Admin', username: 'admin', relationship: 'ADMIN' }, { id: 12, identityCode: 'PKB-0123456789ABCDEF0123456789ABCDEF', displayName: 'Colleague', username: 'colleague', relationship: 'GROUP_MEMBER' }]
+const metadataRows = new Map()
+const metadata = id => metadataRows.get(id) || { groupId: id, announcement: '', revision: 0, pinned: false, muted: false, unread: 0, pinnedMessage: null }
 window.fetch = async (url, init = {}) => {
   const path = String(url); requests.push({ path, method: init.method || 'GET' })
   if (path === '/api/v1/workspaces') return envelope(groups)
+  if (path === '/api/v1/workspaces/overview') return envelope({ groups, features: groups.map(g => metadata(g.id)) })
+  if (/\/workspaces\/\d+$/.test(path)) return envelope(groups.find(g => g.id === Number(path.split('/').at(-1))))
+  if (path.endsWith('/features') || path.endsWith('/read')) return envelope(metadata(Number(path.split('/').at(-2))))
+  if (path.endsWith('/preferences')) { const id = Number(path.split('/').at(-2)), value = { ...metadata(id), ...JSON.parse(init.body) }; metadataRows.set(id, value); return envelope(value) }
+  if (path.endsWith('/announcement') || path.endsWith('/pin')) { const id = Number(path.split('/').at(-2)), input = JSON.parse(init.body); if (input.revision !== metadata(id).revision) return new Response(JSON.stringify({ success: false, error: { code: 'GROUP_NOTICE_CONFLICT', message: '公告已在别处更新，请刷新' } }),{status:409,headers:{'Content-Type':'application/json'}}); const value = { ...metadata(id), revision: input.revision + 1 }; if ('text' in input) value.announcement = input.text; else value.pinnedMessage = input.messageId ? { ...message(input.messageId), body: 'Pinned discussion' } : null; metadataRows.set(id, value); return envelope(value) }
+  if (path.includes('/people?')) { const page = Number(new URL(path,'http://synthetic.test').searchParams.get('page')); return envelope({ items: page ? [{ ...contacts[1], id: 13, identityCode: 'PKB-unique-thirteen' }] : contacts, page, hasMore: !page }) }
+  if (path.includes('/search?')) return envelope([message('found')])
   if (path.includes('/messages/directory')) { const params = new URL(path, 'http://synthetic.test').searchParams; return envelope(contacts.filter(user => (!params.get('userId') || user.id === Number(params.get('userId'))) && (!params.get('q') || `${user.displayName} ${user.identityCode}`.toLowerCase().includes(params.get('q').toLowerCase())))) }
   if (path.endsWith('/directory')) return envelope(contacts)
   if (path.includes('/messages/groups/')) {
@@ -45,13 +54,35 @@ async function mount(component) {
 }
 try {
   tokenStorage.set('synthetic-group-session')
-  authStore.state.user = { id: 2, roleCode: 'RESEARCHER', permissions: ['workspace:manage'] }
+  authStore.state.user = { id: 2, roleCode: 'RESEARCHER', permissions: ['workspace:manage', 'group:use', 'message:read'] }
   await mount(GroupsView); await wait(() => fixture.querySelector('.group-message'))
   assert(!!button('新建群组'), 'Researchers can create a group')
   assert(!!button('发送到群组'), 'Group admin can discuss in its group')
   assert(!fixture.querySelector('.group-message img') && fixture.textContent.includes('<img src=x'), 'Message HTML renders as text')
   assert(![...fixture.querySelectorAll('.group-add option')].some(node => node.value === 'ADMIN'), 'Group admin cannot grant an admin role')
   assert(!fixture.querySelector('.group-member select'), 'Group admin cannot change owner or admin roles')
+  button('置顶会话').click(); await wait(() => button('取消置顶会话'))
+  assert(fixture.querySelector('.group-sidebar').textContent.includes('置顶 · '), 'Pinning a conversation updates only the personal group list')
+  button('免打扰').click(); await wait(() => button('关闭免打扰'))
+  assert(fixture.querySelector('.group-sidebar').textContent.includes('免打扰 · '), 'Mute status remains visible in the group list')
+  fixture.querySelector('.group-announcement button').click(); await nextTick()
+  const announcement = fixture.querySelector('[aria-label="群公告内容"]'); announcement.value = 'Weekly reading'; announcement.dispatchEvent(new Event('input', { bubbles: true })); await nextTick(); fixture.querySelector('.group-announcement form').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})); await wait(() => fixture.querySelector('.group-announcement').textContent.includes('Weekly reading') && !fixture.querySelector('.group-announcement textarea'))
+  assert(metadata(1).announcement === 'Weekly reading' && metadata(1).revision === 1, 'Announcement updates use the current revision')
+  fixture.querySelector('.group-announcement button').click();await nextTick()
+  metadataRows.set(1,{...metadata(1),announcement:'Changed elsewhere',revision:2});window.dispatchEvent(new Event('pkb:live-update'));await new Promise(resolve=>setTimeout(resolve,20));await nextTick()
+  fixture.querySelector('.group-announcement form').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));await wait(()=>fixture.querySelector('[role=alert]')?.textContent.includes('请刷新'))
+  assert(metadata(1).announcement==='Changed elsewhere','A live update cannot let an old announcement draft overwrite newer content')
+  fixture.querySelector('.group-announcement button').click();await nextTick()
+  const memberSearch=fixture.querySelector('#group-person-search'); memberSearch.dispatchEvent(new Event('focus')); await wait(()=>fixture.querySelectorAll('.group-people-menu [role=option]').length===2)
+  assert(fixture.querySelector('.group-people-menu').textContent.includes(contacts[1].identityCode),'Invitation dropdown identifies users by unique identity code')
+  button('更多用户').click(); await wait(()=>fixture.querySelectorAll('.group-people-menu [role=option]').length===3)
+  assert(fixture.querySelector('.group-people-menu').textContent.includes('PKB-unique-thirteen'),'Invitation results can load another page without discarding earlier results')
+  button('收起').click(); await nextTick()
+  fixture.querySelector('.group-message header button:last-child').click(); await wait(()=>fixture.querySelector('.group-pin'))
+  assert(metadata(1).revision === 3 && fixture.querySelector('.group-pin').textContent.includes('Pinned discussion'),'Pinned discussion appears above the thread')
+  button('查找消息').click(); await nextTick(); const query=fixture.querySelector('[aria-label="搜索群内消息"]');query.value='content';query.dispatchEvent(new Event('input',{bubbles:true}));await nextTick();fixture.querySelector('.group-search form').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));await wait(()=>fixture.querySelector('.search-result'))
+  assert(!fixture.querySelector('.search-result img')&&fixture.querySelector('.search-result').textContent.includes('<img'),'Message search renders untrusted bodies as text')
+  button('关闭搜索').click(); await nextTick()
   button('回复').click(); await nextTick()
   assert(fixture.querySelector('.group-reply').textContent.includes('Owner'), 'Reply indicates the original sender')
   const draft = fixture.querySelector('#group-draft'); draft.value = 'Synthetic reply'; draft.dispatchEvent(new Event('input', { bubbles: true })); await nextTick()

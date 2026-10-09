@@ -58,7 +58,7 @@ public class WorkspaceService {
             ApiDtos.WorkspaceMemberView own = members.stream().filter(member -> current.getId().equals(member.userId()))
                     .findFirst().orElse(null);
             WorkspaceMemberRole currentRole = own == null ? (admin ? WorkspaceMemberRole.ADMIN : null) : own.role();
-            Set<String> currentPermissions = admin ? ALL : own == null ? Set.of() : own.permissions();
+            Set<String> currentPermissions = admin ? ALL : own == null ? Set.of() : effectivePermissions(own.role(),own.permissions());
             return new ApiDtos.WorkspaceView(workspace.getId(), workspace.getName(), workspace.getSlug(), workspace.getColor(),
                     workspace.getOwnerId(), workspace.getOwnerName(), currentRole, currentPermissions,
                     currentPermissions.contains("MEMBERS_READ") ? members : members.stream()
@@ -146,6 +146,7 @@ public class WorkspaceService {
         requirePermission(workspace, current, "CONTENT_READ");
         if (write) requirePermission(workspace, current, "CONTENT_WRITE");
     }
+    public void requireSettingsPermission(Long id) {UserEntity current=currentUserService.requireCurrent();WorkspaceEntity workspace=requireLocked(id,current);requirePermission(workspace,current,"CONTENT_READ");requirePermission(workspace,current,"SETTINGS_WRITE");}
 
     private WorkspaceEntity requireLocked(Long id, UserEntity current) {
         workspaceRepository.findLockedById(id).orElseThrow(() -> new BusinessException(

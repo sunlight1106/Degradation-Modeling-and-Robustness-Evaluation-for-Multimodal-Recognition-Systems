@@ -9,6 +9,18 @@
 5. 熟词点 **Skip**，会在所有词书中跳过，不冒充掌握。到「单词本 → 已跳过」点「恢复学习」，原进度仍在。
 6. 「单词本」可以搜索单词、查看释义、收藏或筛选错词；「学习记录」显示近期进度。
 
+## 听读和 AI 辅助
+
+在单词讲解卡点「听读」，可切换英音、美音或慢速；例句也可听读。声音来自浏览器和系统的英文语音，未安装英文语音时请先补装，口音和音质由可用语音决定。
+
+答题后的「AI 学习助手」或单词本中的「AI 讲解与练习」提供：
+
+1. **讲解与搭配**：常见义项、介词、固定搭配、场景和易混词。
+2. **生成练习**：出题，答案解析放在末尾。
+3. **我的造句纠错**：先写自己的英文句子，再查看改法及原因。
+
+需要在「设置 → 个人 AI」保存并启用自己的模型。先查看完整发送内容，再确认调用；使用个人供应商额度。没有模型也能正常背单词。AI 练习不会自动算作答对、掌握或复习，结果可复制、下载 Markdown，或由有笔记权限的用户手动保存到英语笔记。切换单词或更改要求后须重新预览。
+
 ## 内置词书
 
 现在共 **18 本**：14 本考试与主题词书、3 本原创入门词书，以及 **每日 · 场景与搭配（86 词）**。
@@ -84,36 +96,19 @@ The frontend uses Vue text interpolation for imported text, not raw HTML. Progre
 
 V22–V23 保留旧答题历史并合并同账号的重复单词进度；V24 添加场景带练课。V17 数据库迁移自动导入该离线包，原有 V11 入门词库不变。**已经发布的 V17 数据包和迁移不可原地改写**；后续词库修订须新增迁移，以保留升级校验与已有学习记录。迁移校验包含压缩包内容，缺失或损坏时启动失败而非静默提供空词库。
 
-## Exporting and reimporting private books
+## 从账户导出中取回私有词书
 
-Settings → Privacy and data → Export my data requires the current account password. The account JSON has `schemaVersion: 3`; it is a personal data copy, **not a complete system backup or an account-restore format**. It excludes uploaded file bytes, passwords, API credentials, sessions, question/answer snapshots and other accounts' data. It cannot recover media or keys. System recovery requires separately verified database, object-storage and encryption-key backups.
+「设置 → 隐私与数据 → 导出我的数据」需要输入当前账号密码。账户文件的版本为 `schemaVersion: 5`，它包含自己的笔记、词书、学习进度和群会话偏好。上传的文件内容、密码、密钥及其他用户数据不包含在内；整站恢复请使用系统备份。
 
-The existing `vocabularyBooks`, `vocabularyWords`, `vocabularyProfile` and `vocabularyProgress` sections remain available for inspection. `vocabularyWords.distractors` now contains the stored JSON-encoded list of incorrect meanings. Older account exports (version 1) omitted this list and cannot reconstruct a private book completely without the original import or manually supplied distractors.
+只想备份和恢复背单词，直接用背单词页面的「备份与恢复」，无需处理账户 JSON。
 
-For content round trips, use **`vocabularyBookImports`**. Each object is one self-contained private-book import with its own `schemaVersion: 1`, title, description, original attribution and ordered words. Every word preserves the stored term, IPA, part of speech, focused meaning, example, translation and ordered distractors. The schema has one focused meaning per word, not a separate multi-sense dictionary model. The portable section excludes shared starter books, owner/account identifiers, database IDs and study progress.
+若要单独重新导入一本私有词书：
 
-1. Download the account JSON from Settings. Keep it private; it contains personal data.
-2. Copy just the desired object from `vocabularyBookImports` into a separate UTF-8 `.json` file. Do not import the whole account export or the raw SQL-shaped vocabulary rows. This local extraction example creates a new file and will not overwrite an existing one (change the input filename and `index` as needed):
+1. 打开账户导出的 JSON，找到 `vocabularyBookImports`。
+2. 将其中目标词书的一个完整对象保存为 UTF-8 `.json` 文件。
+3. 到「背单词 → 我的词书 → 导入词书」读取文件，检查内容并确认使用权。
 
-   ```python
-   import json
-   from pathlib import Path
-   account = json.loads(Path("pkb-ai-evaluation-data.json").read_text(encoding="utf-8"))
-   if account.get("schemaVersion") not in (2, 3):
-       raise ValueError("Expected account export version 2 or 3")
-   index = 0
-   book = dict(account["vocabularyBookImports"][index])
-   if book.pop("schemaVersion", None) != 1:
-       raise ValueError("Expected portable book version 1")
-   book.pop("rightsConfirmed", None)  # No carried-over consent; the import UI requires confirmation.
-   with Path("private-wordbook.json").open("x", encoding="utf-8") as output:
-       json.dump(book, output, ensure_ascii=False, separators=(",", ":"))
-   ```
-
-3. In Vocabulary → Import private book, read that file, review the content and explicitly confirm you have the right to use it. Exports deliberately set `rightsConfirmed: false`; exporting is not renewed permission to use or share someone else's content. API callers must likewise set it to true only after confirmation.
-4. Import creates a **new** private book owned by the currently authenticated account, with new book/word IDs and no restored progress, stars, questions or review dates. It never updates an existing book or transfers ownership of the original. The original attribution is retained verbatim after the import's normal surrounding-whitespace normalization. Attribution is user-provided provenance, not a verified license or authenticity certificate.
-
-Legacy unversioned book imports remain supported. Explicit versions other than 1 are rejected. All existing validation still applies: 4–500 words/book, 20 private books/account, a 2 MiB request limit and bounded fields/distractors. A historical unversioned import within a few bytes of the 2 MiB cap may produce a versioned portable object over that cap because of metadata; it is not guaranteed to reimport unchanged. The extraction example checks the portable version, then emits the supported unversioned format without a consent flag; this avoids adding format metadata or whitespace to a historical import already near 2 MiB. The import UI still requires its explicit rights checkbox, and the API requires `rightsConfirmed: true`. Importing a copy uses another book slot; it does not deduplicate or reset the original.
+不要把整个账户 JSON 或 `vocabularyWords` 数据行当作一本词书导入。`vocabularyBookImports` 每个对象保留释义、音标、例句、搭配和错误选项，内容版本仍是 1；不包含账号标识或学习进度。若需要进度，使用专门的学习备份文件。
 
 ## API
 
@@ -163,6 +158,6 @@ Run `./mvnw -Dtest=VocabularyIntegrationTest test` and `npm run build --prefix c
 
 桌面检查包括答案遮挡、输入、提示、反馈、Skip、备份入口和键盘焦点；界面测试使用合成账号数据。接口与权限测试另在 H2 和独立 MySQL 8.4 数据库执行，不混入真实学习记录。
 
-## Deliberate first-version limits
+## 发音与使用范围
 
-No copied full commercial catalog, real-person recordings, speech scoring, offline/PWA sync, reminder notifications, or native-app parity is claimed. There is no automatic external dictionary call and no API key is needed for this module. The spaced schedule above is explicit and testable, rather than a claim to reproduce another product's private algorithm.
+听读采用系统语音，没有真人录音和口语评分。词库、进度和答题功能无需外部模型；AI 辅助需要个人模型配置和部署管理员开启外部调用。离线断网时不能提交答题，恢复学习使用已保存的账号进度。

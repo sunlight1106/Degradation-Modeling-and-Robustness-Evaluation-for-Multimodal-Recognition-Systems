@@ -9,12 +9,16 @@ import java.util.*;
 
 @RestController @RequestMapping("/api/v1/notifications") @PreAuthorize("isAuthenticated()")
 public class NotificationController {
-    private final CurrentUserService current;private final LiveUpdateService live;private final SocialService social;private final JdbcTemplate jdbc;
-    public NotificationController(CurrentUserService current,LiveUpdateService live,SocialService social,JdbcTemplate jdbc){this.current=current;this.live=live;this.social=social;this.jdbc=jdbc;}
+    private final CurrentUserService current;private final LiveUpdateService live;private final SocialService social;private final JdbcTemplate jdbc;private final GroupConversationService groups;
+    public NotificationController(CurrentUserService current,LiveUpdateService live,SocialService social,JdbcTemplate jdbc,GroupConversationService groups){this.current=current;this.live=live;this.social=social;this.jdbc=jdbc;this.groups=groups;}
     @GetMapping(value="/events",produces="text/event-stream") public SseEmitter events(){return live.connect(current.requireCurrent().getId());}
     public record Item(String id,String title,String url,long count) {}
     @GetMapping public Object list(){
-        long owner=current.requireCurrent().getId();List<Item> items=new ArrayList<>();
+        var user=current.requireCurrent();long owner=user.getId();List<Item> items=new ArrayList<>();
+        if(current.hasPermission(user,"group:use")&&current.hasPermission(user,"message:read")) {
+            var overview=groups.overview();Map<Long,String> names=new HashMap<>();overview.groups().forEach(g->names.put(g.id(),g.name()));
+            overview.features().stream().filter(f->!f.muted()&&f.unread()>0).limit(30).forEach(f->items.add(new Item("group-"+f.groupId(),names.get(f.groupId()),"/app/groups?group="+f.groupId(),f.unread())));
+        }
         for(var c:social.list()){
             if(c.available()&&!c.muted()&&c.unreadCount()>0)items.add(new Item("contact-"+c.id(),c.remark()==null||c.remark().isBlank()?c.displayName():c.remark(),"/app/contacts?contact="+c.id(),c.unreadCount()));
             if(c.available()&&c.incoming()&&c.status().equals("PENDING"))items.add(new Item("request-"+c.id(),c.displayName()+" 请求添加联系人","/app/contacts?tab=requests",1));

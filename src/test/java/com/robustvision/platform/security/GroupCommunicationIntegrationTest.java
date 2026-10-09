@@ -111,6 +111,35 @@ class GroupCommunicationIntegrationTest {
         mvc.perform(auth(get("/api/v1/messages/directory").param("q", "a".repeat(81)), adminToken)).andExpect(status().isBadRequest());
     }
 
+    @Test void groupNoticesPreferencesReadAndSearchStayWithinMembershipAndRevision() throws Exception {
+        long id=group(ownerToken),other=group(ownerToken);
+        membership(id,ownerToken,member,"MEMBER",Set.of()).andExpect(status().isOk());
+        String first=data(postGroup(id,ownerToken,"needle first",null,false).andExpect(status().isOk()).andReturn()).path("id").asText();
+        String last=data(postGroup(id,ownerToken,"needle last",null,false).andExpect(status().isOk()).andReturn()).path("id").asText();
+        String foreign=data(postGroup(other,ownerToken,"foreign secret",null,false).andExpect(status().isOk()).andReturn()).path("id").asText();
+        mvc.perform(auth(get("/api/v1/workspaces/{id}/features",id),memberToken)).andExpect(status().isOk()).andExpect(jsonPath("$.data.unread").value(2));
+        mvc.perform(json(put("/api/v1/workspaces/{id}/preferences",id),memberToken,Map.of("pinned",true,"muted",true))).andExpect(status().isOk()).andExpect(jsonPath("$.data.pinned").value(true));
+        mvc.perform(auth(get("/api/v1/workspaces/{id}/features",id),ownerToken)).andExpect(status().isOk()).andExpect(jsonPath("$.data.pinned").value(false));
+        mvc.perform(json(post("/api/v1/workspaces/{id}/read",id),memberToken,Map.of("messageId",last))).andExpect(status().isOk()).andExpect(jsonPath("$.data.unread").value(0));
+        mvc.perform(json(post("/api/v1/workspaces/{id}/read",id),memberToken,Map.of("messageId",first))).andExpect(status().isOk()).andExpect(jsonPath("$.data.unread").value(0));
+        mvc.perform(json(post("/api/v1/workspaces/{id}/read",id),memberToken,Map.of("messageId",foreign))).andExpect(status().isNotFound());
+        mvc.perform(json(put("/api/v1/workspaces/{id}/announcement",id),memberToken,Map.of("text","forbidden","revision",0))).andExpect(status().isForbidden());
+        mvc.perform(json(put("/api/v1/workspaces/{id}/announcement",id),ownerToken,Map.of("text","Weekly reading","revision",0))).andExpect(status().isOk()).andExpect(jsonPath("$.data.revision").value(1));
+        mvc.perform(json(put("/api/v1/workspaces/{id}/announcement",id),ownerToken,Map.of("text","stale","revision",0))).andExpect(status().isConflict());
+        mvc.perform(json(put("/api/v1/workspaces/{id}/pin",id),ownerToken,Map.of("messageId",foreign,"revision",1))).andExpect(status().isNotFound());
+        mvc.perform(json(put("/api/v1/workspaces/{id}/pin",id),ownerToken,Map.of("messageId",last,"revision",1))).andExpect(status().isOk()).andExpect(jsonPath("$.data.pinnedMessage.id").value(last));
+        mvc.perform(auth(get("/api/v1/workspaces/{id}/search",id).param("q","needle"),memberToken)).andExpect(status().isOk()).andExpect(jsonPath("$.data.length()").value(2));
+        mvc.perform(auth(get("/api/v1/workspaces/{id}/search",id).param("q","needle%"),memberToken)).andExpect(status().isOk()).andExpect(jsonPath("$.data.length()").value(0));
+        mvc.perform(auth(get("/api/v1/workspaces/{id}/people",id).param("q",outsider.getIdentityCode()),ownerToken)).andExpect(status().isOk()).andExpect(jsonPath("$.data.items[0].identityCode").value(outsider.getIdentityCode())).andExpect(jsonPath("$.data.items[0].email").doesNotExist());
+        mvc.perform(auth(get("/api/v1/workspaces/{id}/people",id),memberToken)).andExpect(status().isForbidden());
+        membership(id,ownerToken,member,"VIEWER",Set.of()).andExpect(status().isOk());
+        mvc.perform(json(put("/api/v1/workspaces/{id}/pin",id),memberToken,Map.of("messageId",first,"revision",2))).andExpect(status().isForbidden());
+        mvc.perform(auth(get("/api/v1/workspaces/{id}/features",id),outsiderToken)).andExpect(status().isForbidden());
+        membership(id,ownerToken,member,"MEMBER",Set.of()).andExpect(status().isOk());
+        mvc.perform(auth(delete("/api/v1/workspaces/{id}/members/{user}",id,member.getId()),ownerToken)).andExpect(status().isOk());
+        mvc.perform(auth(get("/api/v1/workspaces/{id}/features",id),memberToken)).andExpect(status().isForbidden());
+    }
+
     @Test void basicAccountsCanContactAdminsAndReplyButCannotContactUnrelatedUsers() throws Exception {
         mvc.perform(get("/api/v1/messages/directory")).andExpect(status().isUnauthorized());
         assertThat(contacts(memberToken)).contains(admin.getId()).doesNotContain(owner.getId(), outsider.getId(), member.getId());

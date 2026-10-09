@@ -13,6 +13,7 @@ import static org.mockito.Mockito.*;
 class PersonalAiAdversarialTest {
  @Test void simultaneousReplayAdmitsOneOutboundCall() throws Exception {
   var current=mock(CurrentUserService.class);var user=mock(UserEntity.class);when(user.getId()).thenReturn(11L);when(current.requireCurrent()).thenReturn(user);
+  when(current.hasPermission(eq(user),anyString())).thenReturn(true);
   var settings=mock(PersonalAiSettingRepository.class);var usage=mock(PersonalAiUsageRepository.class);var sources=mock(NoteExperimentSourceService.class);when(sources.buildContext(anyList())).thenReturn("");
   var crypto=new SecretEncryptionService("synthetic-review-only-master-key-32-bytes");
   var setting=new PersonalAiSettingEntity(11L,AiProvider.OPENAI);setting.update("model","https://api.openai.com/v1",crypto.encrypt("synthetic-review-api-key"),true);when(settings.findByOwnerIdAndProvider(11L,AiProvider.OPENAI)).thenReturn(Optional.of(setting));

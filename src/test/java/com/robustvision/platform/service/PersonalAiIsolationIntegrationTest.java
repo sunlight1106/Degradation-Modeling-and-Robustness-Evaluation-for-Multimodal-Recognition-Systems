@@ -32,7 +32,7 @@ class PersonalAiIsolationIntegrationTest {
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(name, "", List.of()));
     }
     @Test void twoRealDatabaseUsersIncludingAdminCannotReadExecuteOrDeleteEachOthersProfile() throws Exception {
-        var roleA = entities.persist(new RoleEntity("BYOK_A", "researcher", "test", Set.of("note:write")));
+        var roleA = entities.persist(new RoleEntity("BYOK_A", "researcher", "test", Set.of("note:write", "personal-ai:use")));
         var roleB = entities.persist(new RoleEntity("ADMIN", "admin", "test", Set.of("note:write")));
         var a = entities.persist(new UserEntity("byok_a", "test", "A", "a@byok.test", roleA));
         var b = entities.persist(new UserEntity("byok_b", "test", "B", "b@byok.test", roleB));

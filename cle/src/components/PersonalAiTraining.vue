@@ -40,7 +40,7 @@ async function upload(event: Event) {
     if (!active || generation !== fileGeneration) return
     if (!Array.isArray(data) || data.length < 8 || data.length > 500 || data.some(row => !row || typeof row.text !== 'string' || !row.text.trim() || row.text.length > 1000 || typeof row.label !== 'string' || !row.label.trim() || row.label.length > 40)) throw new Error('需要 8–500 条样本，每条包含 text 和 label；每条文字不超过 1000 字，类别名不超过 40 字')
     samples.value = data.map(row => ({ text: row.text.trim(), label: row.label.trim() })); filename.value = file.name
-  } catch (e) { if (active && generation === fileGeneration) error.value = e instanceof SyntaxError ? 'JSON 格式不正确，请参考示例文件' : e instanceof Error ? e.message : '文件无法读取' }
+  } catch (e) { if (active && generation === fileGeneration) error.value = e instanceof SyntaxError ? 'JSON 格式不正确，请检查示例文件的格式' : e instanceof Error ? e.message : '文件无法读取' }
 }
 function saveBlob(blob: Blob, filename: string) { const url = URL.createObjectURL(blob), link = document.createElement('a'); link.href = url; link.download = filename; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000) }
 function example() {

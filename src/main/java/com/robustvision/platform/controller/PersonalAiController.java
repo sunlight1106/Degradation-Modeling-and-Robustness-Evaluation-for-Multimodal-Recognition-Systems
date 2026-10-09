@@ -31,8 +31,8 @@ public class PersonalAiController {
     }
     @DeleteMapping("/settings/{provider}") public ApiResponse<Void> delete(@PathVariable AiProvider provider) { settings.delete(provider); return ApiResponse.ok(null); }
     @GetMapping("/usage") public ApiResponse<List<UsageView>> usage() { return ApiResponse.ok(settings.usage()); }
-    @PostMapping("/preview") @PreAuthorize("hasAuthority('note:write')")
+    @PostMapping("/preview") @PreAuthorize("hasAuthority('personal-ai:use')")
     public ApiResponse<PreviewView> preview(@Valid @RequestBody PreviewRequest request) { return ApiResponse.ok(ai.preview(request)); }
-    @PostMapping("/execute") @PreAuthorize("hasAuthority('note:write')")
+    @PostMapping("/execute") @PreAuthorize("hasAuthority('personal-ai:use')")
     public ApiResponse<ResultView> execute(@Valid @RequestBody ExecuteRequest request) { return ApiResponse.ok(ai.execute(request)); }
 }

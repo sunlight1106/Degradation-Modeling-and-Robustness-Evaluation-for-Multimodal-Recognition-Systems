@@ -106,6 +106,7 @@ class PersonalAiPersistenceIntegrationTest {
         setting = new PersonalAiSettingEntity(owner.getId(), AiProvider.OPENAI);
         setting.update("synthetic-model", "https://api.openai.com/v1", "synthetic-ciphertext", true);
         when(current.requireCurrent()).thenReturn(owner);
+        when(current.hasPermission(eq(owner),anyString())).thenReturn(true);
         when(settings.findByOwnerIdAndProvider(owner.getId(), AiProvider.OPENAI)).thenReturn(Optional.of(setting));
         when(encryption.decrypt("synthetic-ciphertext")).thenReturn("synthetic-test-only-key");
         when(fileService.readBytes(any())).thenReturn(new byte[]{1, 2, 3});

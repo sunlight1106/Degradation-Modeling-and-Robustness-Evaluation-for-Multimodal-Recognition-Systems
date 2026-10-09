@@ -31,6 +31,7 @@ class PersonalAiServiceTest {
     private static final String KEY = "synthetic-user-a-api-key";
     @BeforeEach void init() {
         when(a.getId()).thenReturn(11L); when(b.getId()).thenReturn(22L); when(users.requireCurrent()).thenReturn(a);
+        when(users.hasPermission(eq(a),anyString())).thenReturn(true);
         setting = new PersonalAiSettingEntity(11L, AiProvider.OPENAI);
         setting.update("model", "https://api.openai.com/v1", encryption.encrypt(KEY), true);
         when(settings.findByOwnerIdAndProvider(11L, AiProvider.OPENAI)).thenReturn(Optional.of(setting));
@@ -40,6 +41,28 @@ class PersonalAiServiceTest {
         service = new PersonalAiService(users, settings, persistence, encryption, policy, transport, new PersonalAiRateLimiter(), sources, memories, true);
     }
     private PreviewRequest request() { return new PreviewRequest(AiProvider.OPENAI, "draft", "title", "approved body", List.of()); }
+    @Test void vocabularyAssistanceNeedsOwnModuleAndRechecksPermissionBeforeSending() {
+        when(users.hasPermission(a,"note:write")).thenReturn(false);
+        var request=new PreviewRequest(AiProvider.OPENAI,"word-explain","work","term: work",List.of());
+        var preview=service.preview(request);
+        assertThat(preview.context()).contains("固定搭配","term: work");
+        verify(transport,never()).execute(any(),any(),any());
+        assertThatThrownBy(()->service.preview(request())).isInstanceOf(BusinessException.class).hasMessageContaining("权限");
+        assertThatThrownBy(()->service.preview(new PreviewRequest(AiProvider.OPENAI,"word-practice","work","term: work",List.of("task")))).isInstanceOf(BusinessException.class);
+        when(users.hasPermission(a,"vocabulary:use")).thenReturn(false);
+        assertThatThrownBy(()->service.execute(new ExecuteRequest(preview.previewToken(),true))).isInstanceOf(BusinessException.class).hasMessageContaining("权限");
+        verify(transport,never()).execute(any(),any(),any());
+        when(users.hasPermission(a,"vocabulary:use")).thenReturn(true);
+        assertThat(service.execute(new ExecuteRequest(preview.previewToken(),true)).result()).isEqualTo("mock result");
+    }
+    @Test void noteExplanationPolishingAndQuizRetainExplicitPreviewContract() {
+        for(String action:List.of("explain","polish","quiz","word-practice","word-correct")) {
+            var preview=service.preview(new PreviewRequest(AiProvider.OPENAI,action,"title","provided material",List.of()));
+            assertThat(preview.context()).contains("provided material");
+            assertThat(service.execute(new ExecuteRequest(preview.previewToken(),true)).action()).isEqualTo(action);
+        }
+        verify(transport,times(5)).execute(any(),any(),any());
+    }
     @Test void previewIsExactImmutableSingleUseAndOwnerBoundEvenForAdmin() throws Exception {
         var preview = service.preview(request());
         assertThat(preview.context()).contains("approved body"); assertThat(preview.systemPrompt()).isEqualTo(PersonalAiService.SYSTEM);
