@@ -51,6 +51,8 @@ class VocabularyIntegrationTest {
                 var context=org.mockito.Mockito.mock(org.flywaydb.core.api.migration.Context.class);
                 org.mockito.Mockito.when(context.getConnection()).thenReturn(connection);
                 new db.migration.V17__expanded_vocabulary_catalog().migrate(context);
+                db.migration.V23__merge_vocabulary_progress.backfill(connection);
+                new db.migration.V24__daily_context_vocabulary().migrate(context);
             }
         }
         clock.set("2026-10-02T12:00:00Z");
@@ -85,8 +87,8 @@ class VocabularyIntegrationTest {
     }
     @Test void requiresAuthenticationAndExplicitValidTimezone() throws Exception {
         mvc.perform(get("/api/v1/vocabulary/dashboard")).andExpect(status().isUnauthorized());
-        var dashboard=dash(alice);assertThat(dashboard.path("settings").path("zoneId").isNull()).isTrue();assertThat(dashboard.path("books").size()).isEqualTo(17);
-        assertThat(jdbc.queryForObject("select count(*) from vocabulary_word where book_id like 'vocab-%'",Integer.class)).isEqualTo(43692);
+        var dashboard=dash(alice);assertThat(dashboard.path("settings").path("zoneId").isNull()).isTrue();assertThat(dashboard.path("books").size()).isEqualTo(18);
+        assertThat(jdbc.queryForObject("select count(*) from vocabulary_word where book_id like 'vocab-%'",Integer.class)).isEqualTo(43778);
         mvc.perform(json(post("/api/v1/vocabulary/next"),alice,Map.of("bookId","vocab-daily","mode","LEARN"))).andExpect(status().isBadRequest()).andExpect(jsonPath("$.error.code").value("VOCAB_TIMEZONE_REQUIRED"));
         mvc.perform(json(put("/api/v1/vocabulary/settings"),alice,Map.of("zoneId","Mars/Nowhere","dailyGoal",10))).andExpect(status().isBadRequest());
         mvc.perform(json(put("/api/v1/vocabulary/settings"),alice,Map.of("zoneId","Asia/Shanghai","dailyGoal",0))).andExpect(status().isBadRequest());
@@ -327,6 +329,70 @@ class VocabularyIntegrationTest {
         assertThat(mapper.writeValueAsBytes(extracted).length).isLessThanOrEqualTo(limit);
         call(json(post("/api/v1/vocabulary/books/import"),bob,extracted));
         assertThat(export(bob).path("vocabularyBookImports").get(0)).isEqualTo(portable);
+    }
+    @Test void sameTermContinuesAcrossBooksDeduplicatesAndRemainsPrivate() throws Exception {
+        settings(alice,"Etc/UTC",1,"vocab-daily");var q=next(alice,"vocab-daily","LEARN").path("question");var result=answer(alice,q,true);
+        ObjectNode payload=mapper.valueToTree(importPayload());ArrayNode words=(ArrayNode)payload.path("words");
+        ((ObjectNode)words.get(0)).put("term","  "+q.path("term").asText().toUpperCase(Locale.ROOT)+"  ");words.add(words.get(0).deepCopy());
+        var imported=call(json(post("/api/v1/vocabulary/books/import"),alice,payload));assertThat(imported.path("duplicatesRemoved").asInt()).isEqualTo(1);assertThat(imported.path("totalWords").asInt()).isEqualTo(4);
+        var entries=call(as(get("/api/v1/vocabulary/books/{id}/words",imported.path("id").asText()),alice)).path("items");
+        var inherited=entries.get(0);assertThat(inherited.path("learningCorrect").asInt()).isEqualTo(1);
+        call(json(put("/api/v1/vocabulary/words/{id}/skip",inherited.path("id").asText()),alice,Map.of("skipped",true)));
+        var original=call(as(get("/api/v1/vocabulary/books/vocab-daily/words").param("filter","SKIPPED"),alice));assertThat(original.path("total").asInt()).isEqualTo(1);
+        assertThat(original.path("items").get(0).path("learningCorrect").asInt()).isEqualTo(result.path("learningCorrect").asInt());
+        mvc.perform(json(put("/api/v1/vocabulary/words/{id}/skip",inherited.path("id").asText()),bob,Map.of("skipped",false))).andExpect(status().isNotFound());
+        assertThat(call(as(get("/api/v1/vocabulary/books/vocab-daily/words").param("filter","SKIPPED"),bob)).path("total").asInt()).isZero();
+        call(json(put("/api/v1/vocabulary/words/{id}/skip",inherited.path("id").asText()),alice,Map.of("skipped",false)));
+        assertThat(jdbc.queryForObject("select count(*) from vocabulary_progress where owner_id=?",Integer.class,alice.getId())).isEqualTo(1);
+    }
+    JsonNode recallQuestion() throws Exception {
+        return call(json(post("/api/v1/vocabulary/next"),alice,Map.of("bookId","vocab-context","mode","LEARN","style","RECALL"))).path("question");
+    }
+    JsonNode recallAnswer(JsonNode q,String text) throws Exception {return call(json(post("/api/v1/vocabulary/questions/{id}/answer",q.path("id").asText()),alice,Map.of("text",text)));}
+    @Test void sceneSpellingCollocationsAndHintsRecordDistinctEvidence() throws Exception {
+        settings(alice,"Etc/UTC",1,"vocab-context");var q=recallQuestion();assertThat(q.path("practiceKind").asText()).isEqualTo("SPELLING");assertThat(q.path("options").isEmpty()).isTrue();
+        var lesson=call(as(get("/api/v1/vocabulary/questions/{id}/lesson",q.path("id").asText()),alice));assertThat(lesson.path("ipa").asText()).isNotBlank();assertThat(lesson.path("collocations").size()).isEqualTo(4);
+        var immediate=recallAnswer(q,"work");assertThat(immediate.path("evidence").asText()).isEqualTo("IMMEDIATE");assertThat(immediate.path("learningCorrect").asInt()).isZero();
+        q=recallQuestion();assertThat(q.path("practiceKind").asText()).isEqualTo("COLLOCATION");clock.set("2026-10-02T12:02:00Z");
+        var delayed=recallAnswer(q,"work on something");assertThat(delayed.path("correct").asBoolean()).isTrue();assertThat(delayed.path("evidence").asText()).isEqualTo("DELAYED");assertThat(delayed.path("independentCorrect").asInt()).isEqualTo(1);
+        q=recallQuestion();call(json(post("/api/v1/vocabulary/questions/{id}/hint",q.path("id").asText()),alice,Map.of("level",3)));clock.set("2026-10-02T12:04:00Z");
+        String expected=jdbc.queryForObject("select expected_text from vocabulary_question where id=?",String.class,q.path("id").asText());
+        var prompted=recallAnswer(q,expected);assertThat(prompted.path("evidence").asText()).isEqualTo("PROMPTED");assertThat(prompted.path("learningCorrect").asInt()).isEqualTo(1);
+        assertThat(recallAnswer(q,expected)).isEqualTo(prompted);
+    }
+    @Test void skipIsIdempotentAndDoesNotPretendToBeAnAnswer() throws Exception {
+        settings(alice,"Etc/UTC",1,"vocab-context");var q=recallQuestion();String id=q.path("id").asText();
+        var first=call(as(post("/api/v1/vocabulary/questions/{id}/skip",id),alice));assertThat(call(as(post("/api/v1/vocabulary/questions/{id}/skip",id),alice))).isEqualTo(first);
+        assertThat(dash(alice).path("today").path("answers").asInt()).isZero();assertThat(first.path("learningCorrect").asInt()).isZero();
+        mvc.perform(json(post("/api/v1/vocabulary/questions/{id}/answer",id),alice,Map.of("text","work"))).andExpect(status().isConflict());
+        mvc.perform(as(post("/api/v1/vocabulary/questions/{id}/skip",id),bob)).andExpect(status().isNotFound());
+        assertThat(recallQuestion().path("term").asText()).isNotEqualTo("work");
+    }
+    byte[] backup(UserEntity person) throws Exception {return mvc.perform(as(get("/api/v1/vocabulary/backup"),person)).andExpect(status().isOk()).andReturn().getResponse().getContentAsByteArray();}
+    JsonNode restore(UserEntity person,byte[] bytes) throws Exception {
+        return call(as(multipart("/api/v1/vocabulary/backup/restore").file(new org.springframework.mock.web.MockMultipartFile("file","backup.json.gz","application/gzip",bytes)).param("confirmed","true"),person));
+    }
+    @Test void backupRestoreIsPortableOwnerScopedAndIdempotent() throws Exception {
+        settings(alice,"Etc/UTC",1,"vocab-daily");var privateBook=call(json(post("/api/v1/vocabulary/books/import"),alice,importPayload()));var q=next(alice,"vocab-daily","LEARN").path("question");var answer=answer(alice,q,true);
+        call(json(put("/api/v1/vocabulary/words/{id}/skip",answer.path("wordId").asText()),alice,Map.of("skipped",true)));
+        byte[] file=backup(alice);assertThat(restore(bob,file).path("booksImported").asInt()).isEqualTo(1);assertThat(restore(bob,file).path("booksImported").asInt()).isZero();
+        assertThat(jdbc.queryForObject("select count(*) from vocabulary_book where owner_id=?",Integer.class,bob.getId())).isEqualTo(1);
+        assertThat(jdbc.queryForObject("select count(*) from vocabulary_progress where owner_id=?",Integer.class,bob.getId())).isEqualTo(1);
+        assertThat(dash(bob).path("today").path("answers").asInt()).isEqualTo(1);
+        assertThat(call(as(get("/api/v1/vocabulary/books/vocab-daily/words").param("filter","SKIPPED"),bob)).path("items").get(0).path("learningCorrect").asInt()).isEqualTo(1);
+        mvc.perform(as(get("/api/v1/vocabulary/books/{id}/words",privateBook.path("id").asText()),bob)).andExpect(status().isNotFound());
+        mvc.perform(multipart("/api/v1/vocabulary/backup/restore").file("file",file).param("confirmed","true")).andExpect(status().isUnauthorized());
+        mvc.perform(as(multipart("/api/v1/vocabulary/backup/restore").file("file",file),alice)).andExpect(status().isBadRequest());
+        mvc.perform(as(multipart("/api/v1/vocabulary/backup/restore").file("file",new byte[]{31,-117,0}).param("confirmed","true"),alice)).andExpect(status().isBadRequest());
+    }
+    @Test void invalidRestoreRollsBackNewBooksAndProtectsLaterLocalSkipChanges() throws Exception {
+        settings(alice,"Etc/UTC",1,"vocab-daily");call(json(post("/api/v1/vocabulary/books/import"),alice,importPayload()));var q=next(alice,"vocab-daily","LEARN").path("question");var result=answer(alice,q,true);
+        byte[] valid=backup(alice);
+        ObjectNode invalid=(ObjectNode)mapper.readTree(new java.util.zip.GZIPInputStream(new java.io.ByteArrayInputStream(valid)));((ObjectNode)invalid.path("progress").get(0)).put("term","nonexistentsyntheticheadword");
+        mvc.perform(as(multipart("/api/v1/vocabulary/backup/restore").file("file",mapper.writeValueAsBytes(invalid)).param("confirmed","true"),bob)).andExpect(status().isBadRequest());
+        assertThat(jdbc.queryForObject("select count(*) from vocabulary_book where owner_id=?",Integer.class,bob.getId())).isZero();
+        clock.set("2026-10-02T12:03:00Z");call(json(put("/api/v1/vocabulary/words/{id}/skip",result.path("wordId").asText()),alice,Map.of("skipped",true)));
+        restore(alice,valid);assertThat(call(as(get("/api/v1/vocabulary/books/vocab-daily/words").param("filter","SKIPPED"),alice)).path("total").asInt()).isEqualTo(1);
     }
     static class MutableClock extends Clock {
         final AtomicReference<Instant> value=new AtomicReference<>(Instant.parse("2026-10-02T12:00:00Z"));

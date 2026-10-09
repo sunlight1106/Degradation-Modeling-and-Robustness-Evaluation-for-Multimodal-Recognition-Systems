@@ -1,0 +1,21 @@
+-- Headword identity is independent of book membership and scoped to its learner.
+ALTER TABLE vocabulary_word ADD COLUMN term_key VARCHAR(80) NOT NULL DEFAULT '';
+ALTER TABLE vocabulary_word ADD COLUMN lesson_json TEXT;
+ALTER TABLE vocabulary_progress ADD COLUMN term_key VARCHAR(80);
+ALTER TABLE vocabulary_progress ADD COLUMN skipped BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE vocabulary_progress ADD COLUMN independent_correct INT NOT NULL DEFAULT 0;
+ALTER TABLE vocabulary_progress ADD COLUMN prompted_correct INT NOT NULL DEFAULT 0;
+ALTER TABLE vocabulary_progress ADD COLUMN immediate_correct INT NOT NULL DEFAULT 0;
+ALTER TABLE vocabulary_progress ADD COLUMN spelling_correct INT NOT NULL DEFAULT 0;
+ALTER TABLE vocabulary_progress ADD COLUMN collocation_correct INT NOT NULL DEFAULT 0;
+ALTER TABLE vocabulary_progress ADD COLUMN introduced_at TIMESTAMP(6);
+ALTER TABLE vocabulary_progress ADD COLUMN last_viewed_at TIMESTAMP(6);
+ALTER TABLE vocabulary_progress ADD COLUMN updated_at TIMESTAMP(6);
+ALTER TABLE vocabulary_profile ADD COLUMN history_json TEXT;
+UPDATE vocabulary_profile SET history_json='{}';
+ALTER TABLE vocabulary_profile MODIFY COLUMN history_json TEXT NOT NULL;
+ALTER TABLE vocabulary_question ADD COLUMN practice_kind VARCHAR(16) NOT NULL DEFAULT 'CHOICE';
+ALTER TABLE vocabulary_question ADD COLUMN hint_level INT NOT NULL DEFAULT 0;
+ALTER TABLE vocabulary_question ADD COLUMN prompt_text VARCHAR(400);
+ALTER TABLE vocabulary_question ADD COLUMN expected_text VARCHAR(160);
+ALTER TABLE vocabulary_question MODIFY COLUMN result_json TEXT;

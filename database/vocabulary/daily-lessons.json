@@ -1,0 +1,1820 @@
+[
+  {
+    "term": "work",
+    "ipa": "/wɜːk/",
+    "pos": "v.",
+    "meaning": "工作；做事；起作用",
+    "memoryCue": "想象你坐在电脑前改项目：正在做一件事用 on；为谁工作用 for；和谁一起用 with；把问题解决出来用 out。",
+    "usageNote": "work on sth./doing：处理或努力做某事；work for sb.：为某人工作；work with sb.：与某人共事。work out 可表示解决、算出，代词宾语放中间：work it out。",
+    "collocations": [
+      {
+        "pattern": "work on sth.",
+        "meaning": "着手处理或努力做某事",
+        "note": "on 后接名词、代词或 -ing。"
+      },
+      {
+        "pattern": "work for sb.",
+        "meaning": "为某人或某单位工作",
+        "note": "for 指服务的对象。"
+      },
+      {
+        "pattern": "work with sb.",
+        "meaning": "与某人一起工作",
+        "note": "with 指共事的人。"
+      },
+      {
+        "pattern": "work out sth.",
+        "meaning": "解决或算出某事",
+        "note": "代词放中间：work it out。"
+      }
+    ],
+    "example": "I work with my team and work on a new project.",
+    "exampleTranslation": "我和团队一起工作，正在做一个新项目。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "adjust",
+    "ipa": "/əˈdʒʌst/",
+    "pos": "v.",
+    "meaning": "调整；调节；适应",
+    "memoryCue": " 想象座椅太低，松开旋钮，把它向上提到合适的高度。手上的“调一调”对应adjust；把自己的习惯调到适合新环境，就是“适应”。",
+    "usageNote": "作为动词使用。注意时态和主语变化；及物性与固定介词要结合具体义项，不能把不同义项混用。",
+    "collocations": [
+      {
+        "pattern": "adjust to a new environment",
+        "meaning": "适应新环境",
+        "note": ""
+      }
+    ],
+    "example": "I adjusted the seat and now maintain the bike regularly.",
+    "exampleTranslation": "我调整了座椅，现在定期保养这辆自行车。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "maintain",
+    "ipa": "/meɪnˈteɪn/",
+    "pos": "v.",
+    "meaning": "维持；保持；维护保养",
+    "memoryCue": " 调好车后，定期上油、检查刹车，让它持续好用，对应maintain。补充：maintain that…可表示“坚持认为……”。",
+    "usageNote": "作为动词使用。注意时态和主语变化；及物性与固定介词要结合具体义项，不能把不同义项混用。",
+    "collocations": [
+      {
+        "pattern": "maintain a balance between study and rest",
+        "meaning": "保持学习与休息的平衡",
+        "note": "adjust to中的to是介词，可以接名词或-ing"
+      }
+    ],
+    "example": "I adjusted the seat and now maintain the bike regularly.",
+    "exampleTranslation": "我调整了座椅，现在定期保养这辆自行车。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "generate",
+    "ipa": "/ˈdʒenəreɪt/",
+    "pos": "v.",
+    "meaning": "产生；生成；引起",
+    "memoryCue": " 想象你转动手摇发电机，灯泡亮起来：“转动机器，产生电”就是generate。",
+    "usageNote": "作为动词使用。注意时态和主语变化；及物性与固定介词要结合具体义项，不能把不同义项混用。",
+    "collocations": [
+      {
+        "pattern": "generate electricity",
+        "meaning": "发电",
+        "note": ""
+      }
+    ],
+    "example": "This technology can generate electricity for future generations.",
+    "exampleTranslation": "这项技术能够为后代发电。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "generation",
+    "ipa": "/ˌdʒenəˈreɪʃən/",
+    "pos": "n.",
+    "meaning": "产生；一代人；一代",
+    "memoryCue": " 先把发电机产生电的过程连到power generation；再想一张家庭合照，祖辈、父辈、自己，每一排是一代。",
+    "usageNote": "作为名词使用。先分清在本释义中指人、事物还是抽象概念；介词和动词应按下面完整搭配记。",
+    "collocations": [
+      {
+        "pattern": "power generation",
+        "meaning": "发电",
+        "note": ""
+      },
+      {
+        "pattern": "the younger generation",
+        "meaning": "年轻一代",
+        "note": "词形连记：generate去掉词尾e，再接-ion，得到generation"
+      }
+    ],
+    "example": "This technology can generate electricity for future generations.",
+    "exampleTranslation": "这项技术能够为后代发电。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "imagine",
+    "ipa": "/ɪˈmædʒɪn/",
+    "pos": "v.",
+    "meaning": "想象；设想",
+    "memoryCue": " 闭上眼睛，想象房间里飞进一条蓝色的龙。正在脑中构造画面的动作是imagine。",
+    "usageNote": "作为动词使用。注意时态和主语变化；及物性与固定介词要结合具体义项，不能把不同义项混用。",
+    "collocations": [
+      {
+        "pattern": "imagine doing sth.",
+        "meaning": "想象做某事",
+        "note": ""
+      }
+    ],
+    "example": "Use your imagination and imagine living on the moon.",
+    "exampleTranslation": "发挥想象力，想象自己住在月球上。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "imagination",
+    "ipa": "/ɪˌmædʒɪˈneɪʃən/",
+    "pos": "n.",
+    "meaning": "想象；想象力",
+    "memoryCue": " 脑中能不断生成这些画面的能力，是imagination。连记：imagine是“去想象”，imagination是“想象力”。",
+    "usageNote": "作为名词使用。先分清在本释义中指人、事物还是抽象概念；介词和动词应按下面完整搭配记。",
+    "collocations": [
+      {
+        "pattern": "use your imagination",
+        "meaning": "发挥想象力",
+        "note": "通常说imagine doing，不说imagine to do"
+      }
+    ],
+    "example": "Use your imagination and imagine living on the moon.",
+    "exampleTranslation": "发挥想象力，想象自己住在月球上。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "imitate",
+    "ipa": "/ˈɪmɪteɪt/",
+    "pos": "v.",
+    "meaning": "模仿；仿效",
+    "memoryCue": " 想象对方抬左手，你也抬左手；对方用一个特别的声音说话，你照着学。这个“照着做”的动作是imitate。",
+    "usageNote": "作为动词使用。注意时态和主语变化；及物性与固定介词要结合具体义项，不能把不同义项混用。",
+    "collocations": [
+      {
+        "pattern": "imitate sb.'s behaviour",
+        "meaning": "模仿某人的行为",
+        "note": ""
+      },
+      {
+        "pattern": "imitate a sound",
+        "meaning": "模仿声音",
+        "note": ""
+      }
+    ],
+    "example": "Children often imitate the way adults speak.",
+    "exampleTranslation": "孩子常常模仿大人说话的方式。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "identify",
+    "ipa": "/aɪˈdentɪfaɪ/",
+    "pos": "v.",
+    "meaning": "认出；识别；确定",
+    "memoryCue": " 想象你在照片上用手指圈出：“就是这个人！”圈出并认出的动作是identify。也可identify a problem，找出问题。",
+    "usageNote": "作为动词使用。注意时态和主语变化；及物性与固定介词要结合具体义项，不能把不同义项混用。",
+    "collocations": [
+      {
+        "pattern": "identify the cause of a problem",
+        "meaning": "确定问题的原因",
+        "note": ""
+      }
+    ],
+    "example": "The witness identified the man, and the police checked his identity.",
+    "exampleTranslation": "目击者认出了那名男子，警方核查了他的身份。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "identity",
+    "ipa": "/aɪˈdentəti/",
+    "pos": "n.",
+    "meaning": "身份；特征；认同",
+    "memoryCue": " 把被圈出的人的身份证放在旁边，上面的信息说明“他是谁”，对应identity。",
+    "usageNote": "作为名词使用。先分清在本释义中指人、事物还是抽象概念；介词和动词应按下面完整搭配记。",
+    "collocations": [
+      {
+        "pattern": "verify sb.'s identity",
+        "meaning": "核实某人的身份",
+        "note": ""
+      }
+    ],
+    "example": "The witness identified the man, and the police checked his identity.",
+    "exampleTranslation": "目击者认出了那名男子，警方核查了他的身份。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "locate",
+    "ipa": "/ləʊˈkeɪt/",
+    "pos": "v.",
+    "meaning": "找到；确定位置；把……设置在某处",
+    "memoryCue": " 想象你移动地图，终于用手指点中目的地，“找到那个点”的动作是locate。",
+    "usageNote": "作为动词使用。注意时态和主语变化；及物性与固定介词要结合具体义项，不能把不同义项混用。",
+    "collocations": [
+      {
+        "pattern": "locate a missing object",
+        "meaning": "找到丢失的物品",
+        "note": ""
+      }
+    ],
+    "example": "The museum is located in the city centre, a convenient location for visitors.",
+    "exampleTranslation": "博物馆位于市中心，对游客来说位置便利。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "location",
+    "ipa": "/ləʊˈkeɪʃən/",
+    "pos": "n.",
+    "meaning": "地点；位置",
+    "memoryCue": " 地图上已经标出的红点所代表的地点，就是location。",
+    "usageNote": "作为名词使用。先分清在本释义中指人、事物还是抽象概念；介词和动词应按下面完整搭配记。",
+    "collocations": [
+      {
+        "pattern": "a convenient location",
+        "meaning": "便利的位置",
+        "note": "表示“位于”通常用be located，不把“它位于北京”写成It locates in Beijing"
+      }
+    ],
+    "example": "The museum is located in the city centre, a convenient location for visitors.",
+    "exampleTranslation": "博物馆位于市中心，对游客来说位置便利。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "select",
+    "ipa": "/sɪˈlekt/",
+    "pos": "v.",
+    "meaning": "选择；挑选",
+    "memoryCue": "形容词：精选的。 想象面前五个苹果，你伸手挑出最好的那个。这个认真“挑出来”的动作是select。",
+    "usageNote": "作为形容词使用，说明人或事物的性质；搭配中的介词要整体记忆。",
+    "collocations": [
+      {
+        "pattern": "select A from B",
+        "meaning": "从B中选出A",
+        "note": ""
+      }
+    ],
+    "example": "You can select a book from our wide selection.",
+    "exampleTranslation": "你可以从我们丰富的藏书中挑选一本。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "selection",
+    "ipa": "/sɪˈlekʃən/",
+    "pos": "n.",
+    "meaning": "选择；挑选；可供选择的一批东西",
+    "memoryCue": " 可以想成挑选的过程，也可以想成整盘供你选择的苹果。",
+    "usageNote": "作为名词使用。先分清在本释义中指人、事物还是抽象概念；介词和动词应按下面完整搭配记。",
+    "collocations": [
+      {
+        "pattern": "a wide selection of books",
+        "meaning": "种类丰富、可供选择的书籍",
+        "note": ""
+      }
+    ],
+    "example": "You can select a book from our wide selection.",
+    "exampleTranslation": "你可以从我们丰富的藏书中挑选一本。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "collection",
+    "ipa": "/kəˈlekʃən/",
+    "pos": "n.",
+    "meaning": "收集；收藏品；一批物品",
+    "memoryCue": " 想象把散落的邮票一张张放进同一本册子，整本收藏就是a collection。",
+    "usageNote": "作为名词使用。先分清在本释义中指人、事物还是抽象概念；介词和动词应按下面完整搭配记。",
+    "collocations": [
+      {
+        "pattern": "a collection of stamps",
+        "meaning": "一批收藏的邮票",
+        "note": ""
+      }
+    ],
+    "example": "Building this collection was a collective effort.",
+    "exampleTranslation": "建立这批收藏是大家共同努力的结果。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "collective",
+    "ipa": "/kəˈlektɪv/",
+    "pos": "adj.",
+    "meaning": "集体的；共同的",
+    "memoryCue": " 再想象几个人把手叠在一起，共同出力，记住“大家一起”的collective。",
+    "usageNote": "作为形容词使用，说明人或事物的性质；搭配中的介词要整体记忆。",
+    "collocations": [
+      {
+        "pattern": "collective effort",
+        "meaning": "集体努力",
+        "note": ""
+      },
+      {
+        "pattern": "collective responsibility",
+        "meaning": "共同责任",
+        "note": ""
+      }
+    ],
+    "example": "Building this collection was a collective effort.",
+    "exampleTranslation": "建立这批收藏是大家共同努力的结果。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "exhibit",
+    "ipa": "/ɪɡˈzɪbɪt/",
+    "pos": "v.",
+    "meaning": "展览；展示；表现出",
+    "memoryCue": "名词：展品；证物。 想象你把画挂到墙上，转身对观众说“请看”，这个展示的动作是exhibit；被展示的画也可以是一件exhibit。",
+    "usageNote": "作为名词使用。先分清在本释义中指人、事物还是抽象概念；介词和动词应按下面完整搭配记。",
+    "collocations": [
+      {
+        "pattern": "exhibit signs of stress",
+        "meaning": "表现出压力迹象",
+        "note": ""
+      }
+    ],
+    "example": "Young artists exhibited their work at the exhibition.",
+    "exampleTranslation": "年轻艺术家在展览上展出了作品。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "exhibition",
+    "ipa": "/ˌeksɪˈbɪʃən/",
+    "pos": "n.",
+    "meaning": "展览；展览会",
+    "memoryCue": " 想象走进整座展厅，墙上一排排画，整个展览是exhibition。",
+    "usageNote": "作为名词使用。先分清在本释义中指人、事物还是抽象概念；介词和动词应按下面完整搭配记。",
+    "collocations": [
+      {
+        "pattern": "hold an exhibition",
+        "meaning": "举办展览",
+        "note": ""
+      },
+      {
+        "pattern": "an art exhibition",
+        "meaning": "艺术展",
+        "note": ""
+      }
+    ],
+    "example": "Young artists exhibited their work at the exhibition.",
+    "exampleTranslation": "年轻艺术家在展览上展出了作品。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "intelligent",
+    "ipa": "/ɪnˈtelɪdʒənt/",
+    "pos": "adj.",
+    "meaning": "聪明的；有理解力的；智能的",
+    "memoryCue": " 想象一个人迅速看懂拼图，找到缺失的一块。你指着这个人说“很聪明”，用intelligent。",
+    "usageNote": "作为形容词使用，说明人或事物的性质；搭配中的介词要整体记忆。",
+    "collocations": [
+      {
+        "pattern": "an intelligent student",
+        "meaning": "聪明的学生",
+        "note": ""
+      }
+    ],
+    "example": "The intelligent student is interested in artificial intelligence.",
+    "exampleTranslation": "那名聪明的学生对人工智能感兴趣。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "intelligence",
+    "ipa": "/ɪnˈtelɪdʒəns/",
+    "pos": "n.",
+    "meaning": "智力；智能；情报",
+    "memoryCue": " 把目光从“这个人聪明”转向“他运用的能力”，就是intelligence。补充“情报”义时，另想一份供分析的秘密资料。",
+    "usageNote": "作为名词使用。先分清在本释义中指人、事物还是抽象概念；介词和动词应按下面完整搭配记。",
+    "collocations": [
+      {
+        "pattern": "artificial intelligence",
+        "meaning": "人工智能",
+        "note": ""
+      },
+      {
+        "pattern": "gather intelligence",
+        "meaning": "收集情报",
+        "note": ""
+      }
+    ],
+    "example": "The intelligent student is interested in artificial intelligence.",
+    "exampleTranslation": "那名聪明的学生对人工智能感兴趣。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "intellectual",
+    "ipa": "/ˌɪntəˈlektʃuəl/",
+    "pos": "adj.",
+    "meaning": "智力的；脑力的；思想方面的",
+    "memoryCue": "名词：知识分子。 想象有人拿着书，认真讨论一个复杂观点。抓住“深入思考、研究思想”的画面。它不只是intelligent的更长写法。",
+    "usageNote": "作为名词使用。先分清在本释义中指人、事物还是抽象概念；介词和动词应按下面完整搭配记。",
+    "collocations": [
+      {
+        "pattern": "intellectual development",
+        "meaning": "智力发展",
+        "note": ""
+      },
+      {
+        "pattern": "intellectual property",
+        "meaning": "知识产权",
+        "note": ""
+      }
+    ],
+    "example": "Intellectual development and mental health both matter in education.",
+    "exampleTranslation": "智力发展和心理健康在教育中都很重要。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "mental",
+    "ipa": "/ˈmentəl/",
+    "pos": "adj.",
+    "meaning": "精神的；心理的；脑力的",
+    "memoryCue": " 想象用手指轻点太阳穴，把注意力放到“头脑和心理”。范围比“学术思考”宽，也能说心理健康。",
+    "usageNote": "作为形容词使用，说明人或事物的性质；搭配中的介词要整体记忆。",
+    "collocations": [
+      {
+        "pattern": "mental health",
+        "meaning": "心理健康",
+        "note": ""
+      },
+      {
+        "pattern": "mental arithmetic",
+        "meaning": "心算",
+        "note": ""
+      }
+    ],
+    "example": "Intellectual development and mental health both matter in education.",
+    "exampleTranslation": "智力发展和心理健康在教育中都很重要。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "medicine",
+    "ipa": "/ˈmedɪsn/",
+    "pos": "n.",
+    "meaning": "药；医学",
+    "memoryCue": " 想象一只药瓶，标签写着按时服药；再把镜头拉远到研究治病的学科，就能记住“药”和“医学”两个意思。",
+    "usageNote": "作为名词使用。先分清在本释义中指人、事物还是抽象概念；介词和动词应按下面完整搭配记。",
+    "collocations": [
+      {
+        "pattern": "take medicine",
+        "meaning": "服药",
+        "note": ""
+      },
+      {
+        "pattern": "study medicine",
+        "meaning": "学医",
+        "note": ""
+      }
+    ],
+    "example": "She studies medicine and hopes to improve medical care.",
+    "exampleTranslation": "她学习医学，希望改善医疗服务。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "medical",
+    "ipa": "/ˈmedɪkəl/",
+    "pos": "adj.",
+    "meaning": "医学的；医疗的",
+    "memoryCue": " 想象医院门上的标签，用来说明服务、设备、建议与医疗有关。",
+    "usageNote": "作为名词使用。先分清在本释义中指人、事物还是抽象概念；介词和动词应按下面完整搭配记。",
+    "collocations": [
+      {
+        "pattern": "medical treatment",
+        "meaning": "医疗治疗",
+        "note": ""
+      },
+      {
+        "pattern": "medical care",
+        "meaning": "医疗护理",
+        "note": ""
+      }
+    ],
+    "example": "She studies medicine and hopes to improve medical care.",
+    "exampleTranslation": "她学习医学，希望改善医疗服务。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "historian",
+    "ipa": "/hɪˈstɔːriən/",
+    "pos": "n.",
+    "meaning": "历史学家",
+    "memoryCue": " 想象一位研究者戴着眼镜，拿放大镜看旧档案。记住“研究历史的人”。",
+    "usageNote": "作为名词使用。先分清在本释义中指人、事物还是抽象概念；介词和动词应按下面完整搭配记。",
+    "collocations": [
+      {
+        "pattern": "a respected historian",
+        "meaning": "受尊敬的历史学家",
+        "note": ""
+      }
+    ],
+    "example": "The historian examined the historical evidence carefully.",
+    "exampleTranslation": "历史学家仔细研究了历史证据。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "historical",
+    "ipa": "/hɪˈstɒrɪkəl/",
+    "pos": "adj.",
+    "meaning": "历史的；历史上的；与历史有关的",
+    "memoryCue": " 这位研究者桌上的旧地图和资料属于historical records，历史记录。",
+    "usageNote": "作为形容词使用，说明人或事物的性质；搭配中的介词要整体记忆。",
+    "collocations": [
+      {
+        "pattern": "historical evidence",
+        "meaning": "历史证据",
+        "note": ""
+      },
+      {
+        "pattern": "historical background",
+        "meaning": "历史背景",
+        "note": ""
+      }
+    ],
+    "example": "The historian examined the historical evidence carefully.",
+    "exampleTranslation": "历史学家仔细研究了历史证据。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "literature",
+    "ipa": "/ˈlɪtrətʃə/",
+    "pos": "n.",
+    "meaning": "文学；文学作品；文献资料",
+    "memoryCue": " 想象怀里一摞小说诗集，先记“文学”；再换成一摞研究论文，带出“文献”。",
+    "usageNote": "作为名词使用。先分清在本释义中指人、事物还是抽象概念；介词和动词应按下面完整搭配记。",
+    "collocations": [
+      {
+        "pattern": "English literature",
+        "meaning": "英国文学或英语文学，依语境而定",
+        "note": ""
+      },
+      {
+        "pattern": "a literature review",
+        "meaning": "文献综述",
+        "note": ""
+      }
+    ],
+    "example": "She studies English literature and writes reviews of literary works.",
+    "exampleTranslation": "她研究英语文学，并撰写文学作品评论。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "literary",
+    "ipa": "/ˈlɪtərəri/",
+    "pos": "adj.",
+    "meaning": "文学的；与文学有关的",
+    "memoryCue": " 在诗集封面贴上“文学作品”标签：literary works。原输入literaty暂按此词处理。",
+    "usageNote": "作为形容词使用，说明人或事物的性质；搭配中的介词要整体记忆。",
+    "collocations": [
+      {
+        "pattern": "literary works",
+        "meaning": "文学作品",
+        "note": ""
+      }
+    ],
+    "example": "She studies English literature and writes reviews of literary works.",
+    "exampleTranslation": "她研究英语文学，并撰写文学作品评论。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "religion",
+    "ipa": "/rɪˈlɪdʒən/",
+    "pos": "n.",
+    "meaning": "宗教；宗教信仰",
+    "memoryCue": " 想象一个人指着一本信仰相关的书，介绍“这是我的宗教”，记religion。",
+    "usageNote": "作为名词使用。先分清在本释义中指人、事物还是抽象概念；介词和动词应按下面完整搭配记。",
+    "collocations": [
+      {
+        "pattern": "freedom of religion",
+        "meaning": "宗教信仰自由",
+        "note": ""
+      }
+    ],
+    "example": "The course explores religion and religious practices.",
+    "exampleTranslation": "这门课程探讨宗教及宗教习俗。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "religious",
+    "ipa": "/rɪˈlɪdʒəs/",
+    "pos": "adj.",
+    "meaning": "宗教的；虔诚的",
+    "memoryCue": " 再描述仪式、节日或者虔诚信教的人，用religious。",
+    "usageNote": "作为形容词使用，说明人或事物的性质；搭配中的介词要整体记忆。",
+    "collocations": [
+      {
+        "pattern": "religious beliefs",
+        "meaning": "宗教信仰",
+        "note": ""
+      },
+      {
+        "pattern": "religious practices",
+        "meaning": "宗教活动或习俗",
+        "note": ""
+      }
+    ],
+    "example": "The course explores religion and religious practices.",
+    "exampleTranslation": "这门课程探讨宗教及宗教习俗。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "remark",
+    "ipa": "/rɪˈmɑːk/",
+    "pos": "n.",
+    "meaning": "评论；话语",
+    "memoryCue": "动词：评论；谈到。 想象看完一段表演，你转身对朋友说了一句感想，这句话就是a remark。",
+    "usageNote": "作为名词使用。先分清在本释义中指人、事物还是抽象概念；介词和动词应按下面完整搭配记。",
+    "collocations": [
+      {
+        "pattern": "make a remark about",
+        "meaning": "对……发表评论",
+        "note": ""
+      }
+    ],
+    "example": "Her teacher made a remark about her remarkable progress.",
+    "exampleTranslation": "老师谈到了她显著的进步。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "remarkable",
+    "ipa": "/rɪˈmɑːkəbəl/",
+    "pos": "adj.",
+    "meaning": "非凡的；显著的；引人注目的",
+    "memoryCue": " 想象表演精彩到观众都忍不住谈论。用“值得大家说上一句”作为联想，记住remarkable；这是助记说法，不是机械翻译。",
+    "usageNote": "作为形容词使用，说明人或事物的性质；搭配中的介词要整体记忆。",
+    "collocations": [
+      {
+        "pattern": "remarkable progress",
+        "meaning": "显著的进步",
+        "note": ""
+      },
+      {
+        "pattern": "a remarkable achievement",
+        "meaning": "非凡的成就",
+        "note": ""
+      }
+    ],
+    "example": "Her teacher made a remark about her remarkable progress.",
+    "exampleTranslation": "老师谈到了她显著的进步。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "govern",
+    "ipa": "/ˈɡʌvən/",
+    "pos": "v.",
+    "meaning": "统治；治理；管理；支配",
+    "memoryCue": " 想象有人制定并执行规则，让一座城市有秩序地运转，记住“治理”的动作。",
+    "usageNote": "作为动词使用。注意时态和主语变化；及物性与固定介词要结合具体义项，不能把不同义项混用。",
+    "collocations": [
+      {
+        "pattern": "govern a country",
+        "meaning": "治理国家",
+        "note": ""
+      }
+    ],
+    "example": "The government needs clear rules to govern effectively.",
+    "exampleTranslation": "政府需要明确的规则才能有效治理。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "government",
+    "ipa": "/ˈɡʌvənmənt/",
+    "pos": "n.",
+    "meaning": "政府；治理；政体",
+    "memoryCue": " 把镜头移向执行治理工作的机构，记government。词形直接连记govern加-ment。",
+    "usageNote": "作为名词使用。先分清在本释义中指人、事物还是抽象概念；介词和动词应按下面完整搭配记。",
+    "collocations": [
+      {
+        "pattern": "local government",
+        "meaning": "地方政府",
+        "note": ""
+      },
+      {
+        "pattern": "government policy",
+        "meaning": "政府政策",
+        "note": ""
+      }
+    ],
+    "example": "The government needs clear rules to govern effectively.",
+    "exampleTranslation": "政府需要明确的规则才能有效治理。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "limit",
+    "ipa": "/ˈlɪmɪt/",
+    "pos": "n.",
+    "meaning": "限制；限度；界限",
+    "memoryCue": "动词：限制。 想象在地上画一条线：“最多到这里。”这条界线是a limit，划定限制的动作是limit。",
+    "usageNote": "作为名词使用。先分清在本释义中指人、事物还是抽象概念；介词和动词应按下面完整搭配记。",
+    "collocations": [
+      {
+        "pattern": "limit A to B",
+        "meaning": "把A限制在B之内",
+        "note": ""
+      },
+      {
+        "pattern": "limited resources",
+        "meaning": "有限的资源",
+        "note": ""
+      },
+      {
+        "pattern": "a speed limit",
+        "meaning": "速度限制",
+        "note": ""
+      }
+    ],
+    "example": "We must limit spending because our resources are limited.",
+    "exampleTranslation": "资源有限，我们必须限制开支。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "limited",
+    "ipa": "/ˈlɪmɪtɪd/",
+    "pos": "adj.",
+    "meaning": "有限的；受限制的",
+    "memoryCue": " 想象杯子只有半杯水，标签写“水有限”。limited描述已经受限制的状态。",
+    "usageNote": "作为形容词使用，说明人或事物的性质；搭配中的介词要整体记忆。 原形是 limit，搭配需同时留意词形变化。",
+    "collocations": [
+      {
+        "pattern": "limited resources",
+        "meaning": "有限的资源",
+        "note": ""
+      }
+    ],
+    "example": "We must limit spending because our resources are limited.",
+    "exampleTranslation": "资源有限，我们必须限制开支。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "machinery",
+    "ipa": "/məˈʃiːnəri/",
+    "pos": "n.",
+    "meaning": "机器；机械设备的总称",
+    "memoryCue": " 想象走进车间，看到一整排机器，把整套设备一起记作machinery。通常不可数；一件设备可说a piece of machinery。",
+    "usageNote": "作为名词使用。先分清在本释义中指人、事物还是抽象概念；介词和动词应按下面完整搭配记。",
+    "collocations": [
+      {
+        "pattern": "industrial machinery",
+        "meaning": "工业机械",
+        "note": ""
+      }
+    ],
+    "example": "The machinery stopped because of a mechanical failure.",
+    "exampleTranslation": "机械设备因机械故障停了下来。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "mechanical",
+    "ipa": "/məˈkænɪkəl/",
+    "pos": "adj.",
+    "meaning": "机械的；机械般的",
+    "memoryCue": " 想象齿轮重复转动，人的手也像机器人一样重复动作，记mechanical。既能描述机器相关，也能描述动作刻板。",
+    "usageNote": "作为形容词使用，说明人或事物的性质；搭配中的介词要整体记忆。",
+    "collocations": [
+      {
+        "pattern": "mechanical failure",
+        "meaning": "机械故障",
+        "note": ""
+      },
+      {
+        "pattern": "mechanical engineering",
+        "meaning": "机械工程",
+        "note": ""
+      }
+    ],
+    "example": "The machinery stopped because of a mechanical failure.",
+    "exampleTranslation": "机械设备因机械故障停了下来。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "laboratory",
+    "ipa": "/ləˈbɒrətri/",
+    "pos": "n.",
+    "meaning": "实验室",
+    "memoryCue": " 想象穿上实验服，推门看见试管、仪器、实验台；这个房间叫laboratory，常简称lab。",
+    "usageNote": "作为名词使用。先分清在本释义中指人、事物还是抽象概念；介词和动词应按下面完整搭配记。",
+    "collocations": [
+      {
+        "pattern": "laboratory experiments",
+        "meaning": "实验室实验",
+        "note": ""
+      }
+    ],
+    "example": "Researchers in the laboratory studied the mechanism of the device.",
+    "exampleTranslation": "实验室里的研究人员研究了该装置的运作机制。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "mechanism",
+    "ipa": "/ˈmekənɪzəm/",
+    "pos": "n.",
+    "meaning": "机械装置；机制；运作方式",
+    "memoryCue": " 在实验室打开钟表后盖，看齿轮如何相互带动。抓住“它靠什么步骤起作用”，再延伸到制度或生物过程的机制。",
+    "usageNote": "作为名词使用。先分清在本释义中指人、事物还是抽象概念；介词和动词应按下面完整搭配记。",
+    "collocations": [
+      {
+        "pattern": "a mechanism for resolving disputes",
+        "meaning": "解决争端的机制",
+        "note": ""
+      },
+      {
+        "pattern": "a defence mechanism",
+        "meaning": "防御机制",
+        "note": ""
+      }
+    ],
+    "example": "Researchers in the laboratory studied the mechanism of the device.",
+    "exampleTranslation": "实验室里的研究人员研究了该装置的运作机制。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "gradual",
+    "ipa": "/ˈɡrædʒuəl/",
+    "pos": "adj.",
+    "meaning": "逐渐的；逐步的",
+    "memoryCue": " 想象进度条一小格一小格移动，记住变化的方式“逐步的”。",
+    "usageNote": "作为形容词使用，说明人或事物的性质；搭配中的介词要整体记忆。",
+    "collocations": [
+      {
+        "pattern": "make gradual progress",
+        "meaning": "取得逐步进展",
+        "note": ""
+      }
+    ],
+    "example": "She is making gradual progress in English.",
+    "exampleTranslation": "她的英语正在逐步进步。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "progress",
+    "ipa": "/ˈprəʊɡres/",
+    "pos": "n.",
+    "meaning": "进步；进展；前进",
+    "memoryCue": " 想象刚才的进度条整体比昨天更靠前，“取得的进展”是progress。注意名词重音靠前，动词重音靠后。",
+    "usageNote": "作为名词使用。先分清在本释义中指人、事物还是抽象概念；介词和动词应按下面完整搭配记。",
+    "collocations": [
+      {
+        "pattern": "make gradual progress",
+        "meaning": "取得逐步进展",
+        "note": ""
+      },
+      {
+        "pattern": "make progress in English",
+        "meaning": "在英语方面取得进步",
+        "note": ""
+      },
+      {
+        "pattern": "in progress",
+        "meaning": "正在进行",
+        "note": "progress表示“进步、进展”的名词时不可数，通常不说a progress"
+      }
+    ],
+    "example": "She is making gradual progress in English.",
+    "exampleTranslation": "她的英语正在逐步进步。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "initial",
+    "ipa": "/ɪˈnɪʃəl/",
+    "pos": "adj.",
+    "meaning": "最初的；开始的",
+    "memoryCue": " 想象翻到计划的第一页，上面写着“第一阶段”，记initial。补充名词initial可指姓名等的首字母。",
+    "usageNote": "作为名词使用。先分清在本释义中指人、事物还是抽象概念；介词和动词应按下面完整搭配记。",
+    "collocations": [
+      {
+        "pattern": "the initial stage",
+        "meaning": "最初阶段",
+        "note": ""
+      },
+      {
+        "pattern": "an initial impression",
+        "meaning": "初步印象",
+        "note": ""
+      }
+    ],
+    "example": "At the initial stage, the team identified a problem that required immediate action.",
+    "exampleTranslation": "在最初阶段，团队发现了一个需要立即采取行动的问题。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "immediate",
+    "ipa": "/ɪˈmiːdiət/",
+    "pos": "adj.",
+    "meaning": "立即的；当前的；紧邻的；直接的",
+    "memoryCue": " 想象红灯突然亮起，你需要“现在就采取行动”，记immediate。",
+    "usageNote": "作为形容词使用，说明人或事物的性质；搭配中的介词要整体记忆。",
+    "collocations": [
+      {
+        "pattern": "take immediate action",
+        "meaning": "立即采取行动",
+        "note": ""
+      }
+    ],
+    "example": "At the initial stage, the team identified a problem that required immediate action.",
+    "exampleTranslation": "在最初阶段，团队发现了一个需要立即采取行动的问题。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "transition",
+    "ipa": "/trænˈzɪʃən/",
+    "pos": "n.",
+    "meaning": "过渡；转变",
+    "memoryCue": " 想象走过一座桥，从学生生活这一岸走向工作生活另一岸。桥上的变化过程，就是transition。",
+    "usageNote": "作为名词使用。先分清在本释义中指人、事物还是抽象概念；介词和动词应按下面完整搭配记。",
+    "collocations": [
+      {
+        "pattern": "the transition from A to B",
+        "meaning": "从A到B的转变",
+        "note": ""
+      }
+    ],
+    "example": "The transition from temporary work to a permanent job took a year.",
+    "exampleTranslation": "从临时工作转为长期固定工作花了一年。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "permanent",
+    "ipa": "/ˈpɜːmənənt/",
+    "pos": "adj.",
+    "meaning": "永久的；长期的",
+    "memoryCue": " 到对岸后，把帐篷换成长期居住的房屋，记permanent。真实语境里常表示长期稳定，不必理解成绝对永不改变。",
+    "usageNote": "作为形容词使用，说明人或事物的性质；搭配中的介词要整体记忆。",
+    "collocations": [
+      {
+        "pattern": "a permanent job",
+        "meaning": "长期固定的工作",
+        "note": ""
+      },
+      {
+        "pattern": "permanent damage",
+        "meaning": "永久性损害",
+        "note": ""
+      }
+    ],
+    "example": "The transition from temporary work to a permanent job took a year.",
+    "exampleTranslation": "从临时工作转为长期固定工作花了一年。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "diminish",
+    "ipa": "/dɪˈmɪnɪʃ/",
+    "pos": "v.",
+    "meaning": "减少；减弱；降低",
+    "memoryCue": " 想象音量格从十格降到三格：强度正在变小，这个变化是diminish。",
+    "usageNote": "作为动词使用。注意时态和主语变化；及物性与固定介词要结合具体义项，不能把不同义项混用。",
+    "collocations": [
+      {
+        "pattern": "diminish in importance",
+        "meaning": "重要性降低",
+        "note": ""
+      }
+    ],
+    "example": "As the noise diminished, we tried to keep conversation to a minimum.",
+    "exampleTranslation": "噪声减弱后，我们尽量少交谈。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "minimum",
+    "ipa": "/ˈmɪnɪməm/",
+    "pos": "n.",
+    "meaning": "最低限度；最小值",
+    "memoryCue": "形容词：最低的；最小的。 音量旋钮指向最小档，记minimum。注意它表示一个最低水平，不等于“正在减少”，也不一定是零。",
+    "usageNote": "作为形容词使用，说明人或事物的性质；搭配中的介词要整体记忆。",
+    "collocations": [
+      {
+        "pattern": "keep sth. to a minimum",
+        "meaning": "把某事物控制在最低限度",
+        "note": ""
+      },
+      {
+        "pattern": "a minimum of",
+        "meaning": "至少",
+        "note": ""
+      }
+    ],
+    "example": "As the noise diminished, we tried to keep conversation to a minimum.",
+    "exampleTranslation": "噪声减弱后，我们尽量少交谈。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "reject",
+    "ipa": "/rɪˈdʒekt/",
+    "pos": "v.",
+    "meaning": "拒绝接受；否决；拒收",
+    "memoryCue": " 想象别人递来申请表，你明确摆手，把它推回去。记住主动拒绝的reject。",
+    "usageNote": "作为名词使用。先分清在本释义中指人、事物还是抽象概念；介词和动词应按下面完整搭配记。",
+    "collocations": [
+      {
+        "pattern": "reject a proposal",
+        "meaning": "否决提议",
+        "note": ""
+      }
+    ],
+    "example": "They rejected the proposal because it neglected the needs of older people.",
+    "exampleTranslation": "他们否决了该提议，因为它忽视了老年人的需求。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "neglect",
+    "ipa": "/nɪˈɡlekt/",
+    "pos": "v.",
+    "meaning": "忽视；疏于照顾；漏做",
+    "memoryCue": "名词：忽视；疏于照顾。 想象窗边一盆花被忘了浇水，慢慢蔫了。记住该管却没管的neglect。",
+    "usageNote": "作为名词使用。先分清在本释义中指人、事物还是抽象概念；介词和动词应按下面完整搭配记。",
+    "collocations": [
+      {
+        "pattern": "neglect one's duties",
+        "meaning": "疏于履行职责",
+        "note": ""
+      },
+      {
+        "pattern": "neglect to do sth.",
+        "meaning": "疏忽而未做某事",
+        "note": ""
+      }
+    ],
+    "example": "They rejected the proposal because it neglected the needs of older people.",
+    "exampleTranslation": "他们否决了该提议，因为它忽视了老年人的需求。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "aggressive",
+    "ipa": "/əˈɡresɪv/",
+    "pos": "adj.",
+    "meaning": "好斗的；挑衅的；强势进取的",
+    "memoryCue": " 想象一个人向前逼近，声音强硬。先记“攻击性强”；在销售、策略等语境也可指“积极进取、力度很大”。",
+    "usageNote": "作为形容词使用，说明人或事物的性质；搭配中的介词要整体记忆。",
+    "collocations": [
+      {
+        "pattern": "aggressive behaviour",
+        "meaning": "挑衅性行为",
+        "note": ""
+      },
+      {
+        "pattern": "an aggressive marketing strategy",
+        "meaning": "积极进取的营销策略",
+        "note": ""
+      }
+    ],
+    "example": "She was reluctant to negotiate with such an aggressive salesperson.",
+    "exampleTranslation": "她不愿与这样强势的销售人员谈判。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "reluctant",
+    "ipa": "/rɪˈlʌktənt/",
+    "pos": "adj.",
+    "meaning": "不情愿的；勉强的",
+    "memoryCue": " 想象有人拉你上台，你脚往后缩，脸上写着“不太想去”，记reluctant。",
+    "usageNote": "作为形容词使用，说明人或事物的性质；搭配中的介词要整体记忆。",
+    "collocations": [
+      {
+        "pattern": "be reluctant to do sth.",
+        "meaning": "不愿做某事",
+        "note": ""
+      }
+    ],
+    "example": "She was reluctant to negotiate with such an aggressive salesperson.",
+    "exampleTranslation": "她不愿与这样强势的销售人员谈判。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "inherent",
+    "ipa": "/ɪnˈhɪərənt/",
+    "pos": "adj.",
+    "meaning": "固有的；内在的",
+    "memoryCue": " 想象拆开一个产品，发现某个局限本来就在设计里，不是后来贴上去的，记inherent。",
+    "usageNote": "作为形容词使用，说明人或事物的性质；搭配中的介词要整体记忆。",
+    "collocations": [
+      {
+        "pattern": "inherent in ……",
+        "meaning": "中固有的",
+        "note": ""
+      },
+      {
+        "pattern": "inherent risks",
+        "meaning": "固有风险",
+        "note": ""
+      }
+    ],
+    "example": "The researchers examined genetic factors and the limitations inherent in their method.",
+    "exampleTranslation": "研究人员考察了遗传因素以及研究方法本身的局限。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "genetic",
+    "ipa": "/dʒəˈnetɪk/",
+    "pos": "adj.",
+    "meaning": "基因的；遗传的",
+    "memoryCue": " 想象家人的照片旁画着一条DNA链，把注意力放到“基因”上。",
+    "usageNote": "作为形容词使用，说明人或事物的性质；搭配中的介词要整体记忆。",
+    "collocations": [
+      {
+        "pattern": "genetic factors",
+        "meaning": "遗传因素",
+        "note": ""
+      },
+      {
+        "pattern": "genetic differences",
+        "meaning": "基因差异",
+        "note": ""
+      }
+    ],
+    "example": "The researchers examined genetic factors and the limitations inherent in their method.",
+    "exampleTranslation": "研究人员考察了遗传因素以及研究方法本身的局限。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "interior",
+    "ipa": "/ɪnˈtɪəriə/",
+    "pos": "n.",
+    "meaning": "内部；内地",
+    "memoryCue": "形容词：内部的。 想象站在房门外，推开门，镜头进入房间，看到屋内的桌椅。记住“里面的空间”。",
+    "usageNote": "作为名词使用。先分清在本释义中指人、事物还是抽象概念；介词和动词应按下面完整搭配记。",
+    "collocations": [
+      {
+        "pattern": "the interior of a building",
+        "meaning": "建筑内部",
+        "note": ""
+      },
+      {
+        "pattern": "interior design",
+        "meaning": "室内设计",
+        "note": ""
+      },
+      {
+        "pattern": "the country's interior",
+        "meaning": "该国的内陆地区",
+        "note": ""
+      }
+    ],
+    "example": "The interior of the building is bright and spacious.",
+    "exampleTranslation": "这座建筑内部明亮宽敞。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "objective",
+    "ipa": "/əbˈdʒektɪv/",
+    "pos": "n.",
+    "meaning": "目标；目的",
+    "memoryCue": "形容词：客观的。 名词先想靶心，你指着它说“这就是目标”。形容词另想一架放平的天平，依证据判断而不偏向个人喜好。",
+    "usageNote": "作为名词使用。先分清在本释义中指人、事物还是抽象概念；介词和动词应按下面完整搭配记。",
+    "collocations": [
+      {
+        "pattern": "achieve an objective",
+        "meaning": "实现目标",
+        "note": ""
+      },
+      {
+        "pattern": "an objective assessment",
+        "meaning": "客观评估",
+        "note": ""
+      }
+    ],
+    "example": "Our objective is to meet the growing demand for clean water.",
+    "exampleTranslation": "我们的目标是满足不断增长的清洁用水需求。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "demand",
+    "ipa": "/dɪˈmɑːnd/",
+    "pos": "n.",
+    "meaning": "要求；需求",
+    "memoryCue": "动词：强烈要求；需要。 想象柜台前排起长队，大家都需要某样东西，记需求；再想一位顾客明确提出要求，记动词义。",
+    "usageNote": "作为名词使用。先分清在本释义中指人、事物还是抽象概念；介词和动词应按下面完整搭配记。",
+    "collocations": [
+      {
+        "pattern": "meet the demand for",
+        "meaning": "满足对……的需求",
+        "note": ""
+      },
+      {
+        "pattern": "demand that sb. do sth.",
+        "meaning": "要求某人做某事",
+        "note": ""
+      }
+    ],
+    "example": "Our objective is to meet the growing demand for clean water.",
+    "exampleTranslation": "我们的目标是满足不断增长的清洁用水需求。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "majority",
+    "ipa": "/məˈdʒɒrəti/",
+    "pos": "n.",
+    "meaning": "大多数；大部分",
+    "memoryCue": " 想象十个人里八个人举手，那八个人构成the majority。",
+    "usageNote": "作为名词使用。先分清在本释义中指人、事物还是抽象概念；介词和动词应按下面完整搭配记。",
+    "collocations": [
+      {
+        "pattern": "the majority of students",
+        "meaning": "大多数学生",
+        "note": ""
+      }
+    ],
+    "example": "In general, the majority of students prefer clear instructions.",
+    "exampleTranslation": "总的来说，大多数学生更喜欢清楚的说明。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "general",
+    "ipa": "/ˈdʒenərəl/",
+    "pos": "adj.",
+    "meaning": "一般的；普遍的；总体的",
+    "memoryCue": "名词：将军。 想象把镜头拉远，看总体情况，而不是一个人的细节；另用肩章画面记“将军”的名词义。",
+    "usageNote": "作为名词使用。先分清在本释义中指人、事物还是抽象概念；介词和动词应按下面完整搭配记。",
+    "collocations": [
+      {
+        "pattern": "in general",
+        "meaning": "总的来说",
+        "note": ""
+      },
+      {
+        "pattern": "a general rule",
+        "meaning": "一般规则",
+        "note": ""
+      }
+    ],
+    "example": "In general, the majority of students prefer clear instructions.",
+    "exampleTranslation": "总的来说，大多数学生更喜欢清楚的说明。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "master",
+    "ipa": "/ˈmɑːstə/",
+    "pos": "v.",
+    "meaning": "掌握；精通",
+    "memoryCue": "名词：大师；主人；硕士。 想象一个动作练了很多次，终于熟练掌握；再想一位技艺精湛的大师。",
+    "usageNote": "作为名词使用。先分清在本释义中指人、事物还是抽象概念；介词和动词应按下面完整搭配记。",
+    "collocations": [
+      {
+        "pattern": "master a skill",
+        "meaning": "掌握一项技能",
+        "note": ""
+      },
+      {
+        "pattern": "a master's degree",
+        "meaning": "硕士学位",
+        "note": ""
+      }
+    ],
+    "example": "During her master's degree, she mastered several research skills.",
+    "exampleTranslation": "在攻读硕士学位期间，她掌握了几项研究技能。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "degree",
+    "ipa": "/dɪˈɡriː/",
+    "pos": "n.",
+    "meaning": "学位；程度；度数",
+    "memoryCue": " 想象拿到学位证；另看温度计刻度记“度”，看程度刻度记“程度”。",
+    "usageNote": "作为名词使用。先分清在本释义中指人、事物还是抽象概念；介词和动词应按下面完整搭配记。",
+    "collocations": [
+      {
+        "pattern": "a master's degree",
+        "meaning": "硕士学位",
+        "note": ""
+      },
+      {
+        "pattern": "to some degree",
+        "meaning": "在某种程度上",
+        "note": ""
+      }
+    ],
+    "example": "During her master's degree, she mastered several research skills.",
+    "exampleTranslation": "在攻读硕士学位期间，她掌握了几项研究技能。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "congress",
+    "ipa": "/ˈkɒŋɡres/",
+    "pos": "n.",
+    "meaning": "国会；代表大会；正式会议",
+    "memoryCue": " 想象一个大厅里坐着许多代表，轮流举手发言。特指美国国会时写Congress。",
+    "usageNote": "作为名词使用。先分清在本释义中指人、事物还是抽象概念；介词和动词应按下面完整搭配记。",
+    "collocations": [
+      {
+        "pattern": "a member of Congress",
+        "meaning": "美国国会议员",
+        "note": ""
+      }
+    ],
+    "example": "Congress passed legislation to protect the environment.",
+    "exampleTranslation": "美国国会通过了保护环境的法律。此句是教学示例，不指某一真实事件。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "legislation",
+    "ipa": "/ˌledʒɪsˈleɪʃən/",
+    "pos": "n.",
+    "meaning": "法律；法规；立法",
+    "memoryCue": " 想象桌上一摞正在讨论的法律文件，把注意力从开会的人移到法律和立法工作。通常不可数。",
+    "usageNote": "作为名词使用。先分清在本释义中指人、事物还是抽象概念；介词和动词应按下面完整搭配记。",
+    "collocations": [
+      {
+        "pattern": "pass legislation",
+        "meaning": "通过法律",
+        "note": ""
+      },
+      {
+        "pattern": "introduce legislation",
+        "meaning": "提出法案或立法措施，依语境而定",
+        "note": ""
+      }
+    ],
+    "example": "Congress passed legislation to protect the environment.",
+    "exampleTranslation": "美国国会通过了保护环境的法律。此句是教学示例，不指某一真实事件。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "jury",
+    "ipa": "/ˈdʒʊəri/",
+    "pos": "n.",
+    "meaning": "陪审团；评审团",
+    "memoryCue": " 想象比赛中一排坐着的评委，先抓住“负责评判的一组人”，再记法庭中的陪审团。",
+    "usageNote": "作为名词使用。先分清在本释义中指人、事物还是抽象概念；介词和动词应按下面完整搭配记。",
+    "collocations": [
+      {
+        "pattern": "a jury member",
+        "meaning": "陪审团或评审团成员",
+        "note": ""
+      }
+    ],
+    "example": "The jury discussed the entries before making a judgement.",
+    "exampleTranslation": "评审团讨论了参赛作品后作出判断。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "judgement",
+    "ipa": "/ˈdʒʌdʒmənt/",
+    "pos": "n.",
+    "meaning": "判断；判断力；看法；裁决",
+    "memoryCue": " 想象评委认真看完作品，在评分纸上写下判断。也可拼judgment。",
+    "usageNote": "作为名词使用。先分清在本释义中指人、事物还是抽象概念；介词和动词应按下面完整搭配记。",
+    "collocations": [
+      {
+        "pattern": "make a judgement about",
+        "meaning": "对……作出判断",
+        "note": ""
+      },
+      {
+        "pattern": "exercise good judgement",
+        "meaning": "作出明智判断",
+        "note": ""
+      }
+    ],
+    "example": "The jury discussed the entries before making a judgement.",
+    "exampleTranslation": "评审团讨论了参赛作品后作出判断。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "justice",
+    "ipa": "/ˈdʒʌstɪs/",
+    "pos": "n.",
+    "meaning": "正义；公平；司法",
+    "memoryCue": " 想象把天平两边调平，每个人按同样的标准被对待。补充：在特定称谓或用法中也可指法官，见Cambridge justice（https://dictionary.cambridge.org/dictionary/english/justice）。",
+    "usageNote": "作为名词使用。先分清在本释义中指人、事物还是抽象概念；介词和动词应按下面完整搭配记。",
+    "collocations": [
+      {
+        "pattern": "social justice",
+        "meaning": "社会正义",
+        "note": ""
+      }
+    ],
+    "example": "Prejudice can prevent people from receiving justice.",
+    "exampleTranslation": "偏见可能妨碍人们获得公正对待。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "prejudice",
+    "ipa": "/ˈpredʒədɪs/",
+    "pos": "n.",
+    "meaning": "偏见；成见",
+    "memoryCue": "动词：使产生偏见；损害。 想象还没了解一个人，就先往天平一边放砝码，判断已经歪了，记prejudice。词首pre-可帮助联想“事先”，核心意思要记成“偏见”。",
+    "usageNote": "作为名词使用。先分清在本释义中指人、事物还是抽象概念；介词和动词应按下面完整搭配记。",
+    "collocations": [
+      {
+        "pattern": "prejudice against",
+        "meaning": "对……的偏见",
+        "note": ""
+      },
+      {
+        "pattern": "racial prejudice",
+        "meaning": "种族偏见",
+        "note": ""
+      }
+    ],
+    "example": "Prejudice can prevent people from receiving justice.",
+    "exampleTranslation": "偏见可能妨碍人们获得公正对待。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "legitimate",
+    "ipa": "/lɪˈdʒɪtɪmət/",
+    "pos": "adj.",
+    "meaning": "合法的；正当的；合理的",
+    "memoryCue": " 想象有人出示材料，证明自己的要求有根据，记“正当、合理”；也可描述合法活动。",
+    "usageNote": "作为形容词使用，说明人或事物的性质；搭配中的介词要整体记忆。",
+    "collocations": [
+      {
+        "pattern": "a legitimate concern",
+        "meaning": "合理的担忧",
+        "note": ""
+      },
+      {
+        "pattern": "a legitimate reason",
+        "meaning": "正当理由",
+        "note": ""
+      }
+    ],
+    "example": "They raised legitimate concerns about illegal activity.",
+    "exampleTranslation": "他们对非法活动提出了合理的担忧。此句为词汇示例。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "illegal",
+    "ipa": "/ɪˈliːɡəl/",
+    "pos": "adj.",
+    "meaning": "非法的；违法的",
+    "memoryCue": " 想象法律禁止的行为前出现一个红色禁止标志。词形可连到课外辅助词legal“合法的”，il-在这里表示否定。",
+    "usageNote": "作为形容词使用，说明人或事物的性质；搭配中的介词要整体记忆。",
+    "collocations": [
+      {
+        "pattern": "illegal activity",
+        "meaning": "非法活动",
+        "note": ""
+      },
+      {
+        "pattern": "be illegal to do sth.",
+        "meaning": "做某事是违法的",
+        "note": ""
+      }
+    ],
+    "example": "They raised legitimate concerns about illegal activity.",
+    "exampleTranslation": "他们对非法活动提出了合理的担忧。此句为词汇示例。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "justify",
+    "ipa": "/ˈdʒʌstɪfaɪ/",
+    "pos": "v.",
+    "meaning": "证明……有理；为……提供正当理由",
+    "memoryCue": " 想象有人问“为什么这样做”，你把理由一条条摆出来，记justify。",
+    "usageNote": "作为动词使用。注意时态和主语变化；及物性与固定介词要结合具体义项，不能把不同义项混用。",
+    "collocations": [
+      {
+        "pattern": "justify a decision",
+        "meaning": "为决定提供正当理由",
+        "note": ""
+      },
+      {
+        "pattern": "justify doing sth.",
+        "meaning": "为做某事提供正当理由",
+        "note": ""
+      }
+    ],
+    "example": "She used a logical argument to justify her decision.",
+    "exampleTranslation": "她用合乎逻辑的论证说明自己的决定有理。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "logical",
+    "ipa": "/ˈlɒdʒɪkəl/",
+    "pos": "adj.",
+    "meaning": "合乎逻辑的；合情合理的",
+    "memoryCue": " 想象几块骨牌按因果顺序排好，从前提顺畅地推到结论，记logical。",
+    "usageNote": "作为形容词使用，说明人或事物的性质；搭配中的介词要整体记忆。",
+    "collocations": [
+      {
+        "pattern": "a logical conclusion",
+        "meaning": "合乎逻辑的结论",
+        "note": ""
+      }
+    ],
+    "example": "She used a logical argument to justify her decision.",
+    "exampleTranslation": "她用合乎逻辑的论证说明自己的决定有理。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "administration",
+    "ipa": "/ədˌmɪnɪˈstreɪʃən/",
+    "pos": "n.",
+    "meaning": "管理；行政；行政部门；政府",
+    "memoryCue": " 想象办公室里有人处理表格、安排人员、组织事务，把焦点放在管理工作。它与government部分义项相关，但不能在所有语境互换。",
+    "usageNote": "作为名词使用。先分清在本释义中指人、事物还是抽象概念；介词和动词应按下面完整搭配记。",
+    "collocations": [
+      {
+        "pattern": "public administration",
+        "meaning": "公共行政",
+        "note": ""
+      },
+      {
+        "pattern": "business administration",
+        "meaning": "工商管理",
+        "note": ""
+      }
+    ],
+    "example": "The officer handles administration at a military base.",
+    "exampleTranslation": "这名军官在一处军事基地处理行政事务。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "military",
+    "ipa": "/ˈmɪlətri/",
+    "pos": "adj.",
+    "meaning": "军事的；军队的",
+    "memoryCue": "名词：军方；军队。 想象从办公室走到训练场，看到军队训练，把焦点切换到“军事”。名词常用the military。",
+    "usageNote": "作为名词使用。先分清在本释义中指人、事物还是抽象概念；介词和动词应按下面完整搭配记。",
+    "collocations": [
+      {
+        "pattern": "military service",
+        "meaning": "兵役",
+        "note": ""
+      },
+      {
+        "pattern": "military training",
+        "meaning": "军事训练",
+        "note": ""
+      }
+    ],
+    "example": "The officer handles administration at a military base.",
+    "exampleTranslation": "这名军官在一处军事基地处理行政事务。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "license",
+    "ipa": "/ˈlaɪsəns/",
+    "pos": "n.",
+    "meaning": "许可证；执照",
+    "memoryCue": "动词：许可；批准。 想象开店前，把许可证挂到墙上。美式名词用license；英式名词通常用licence，动词仍用license。",
+    "usageNote": "作为名词使用。先分清在本释义中指人、事物还是抽象概念；介词和动词应按下面完整搭配记。",
+    "collocations": [
+      {
+        "pattern": "a business license",
+        "meaning": "营业执照",
+        "note": ""
+      }
+    ],
+    "example": "The software license permits commercial use.",
+    "exampleTranslation": "该软件许可允许商业使用。教学句设定为某份许可，不代表所有软件许可。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "commercial",
+    "ipa": "/kəˈmɜːʃəl/",
+    "pos": "adj.",
+    "meaning": "商业的；以营利为目的的",
+    "memoryCue": "名词：商业广告。 想象店里买卖商品，屏幕上还播放广告，连记形容词和名词义。",
+    "usageNote": "作为形容词使用，说明人或事物的性质；搭配中的介词要整体记忆。",
+    "collocations": [
+      {
+        "pattern": "commercial use",
+        "meaning": "商业用途",
+        "note": ""
+      },
+      {
+        "pattern": "a television commercial",
+        "meaning": "电视广告",
+        "note": ""
+      }
+    ],
+    "example": "The software license permits commercial use.",
+    "exampleTranslation": "该软件许可允许商业使用。教学句设定为某份许可，不代表所有软件许可。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "journalist",
+    "ipa": "/ˈdʒɜːnəlɪst/",
+    "pos": "n.",
+    "meaning": "记者；新闻工作者",
+    "memoryCue": " 想象一个人拿着话筒采访、拿本子记新闻，记journalist。",
+    "usageNote": "作为名词使用。先分清在本释义中指人、事物还是抽象概念；介词和动词应按下面完整搭配记。",
+    "collocations": [
+      {
+        "pattern": "a newspaper journalist",
+        "meaning": "报社记者",
+        "note": ""
+      }
+    ],
+    "example": "The journalist asked her to comment on the proposal.",
+    "exampleTranslation": "记者请她对这项提议发表评论。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "comment",
+    "ipa": "/ˈkɒment/",
+    "pos": "n.",
+    "meaning": "评论；意见",
+    "memoryCue": "动词：评论；发表意见。 对方对着话筒说出自己的看法，这段评论是comment。它和remark有重叠；本组优先记comment on这个结构。",
+    "usageNote": "作为名词使用。先分清在本释义中指人、事物还是抽象概念；介词和动词应按下面完整搭配记。",
+    "collocations": [
+      {
+        "pattern": "comment on a proposal",
+        "meaning": "对提议发表评论",
+        "note": ""
+      },
+      {
+        "pattern": "make a comment about",
+        "meaning": "就……发表评论",
+        "note": ""
+      }
+    ],
+    "example": "The journalist asked her to comment on the proposal.",
+    "exampleTranslation": "记者请她对这项提议发表评论。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "lecture",
+    "ipa": "/ˈlektʃə/",
+    "pos": "n.",
+    "meaning": "讲座；讲课；训诫",
+    "memoryCue": "动词：讲授；训斥。 想象讲台前有人讲，台下有人听，这是lecture；若长辈喋喋不休地教训，也可能用lecture。",
+    "usageNote": "作为名词使用。先分清在本释义中指人、事物还是抽象概念；介词和动词应按下面完整搭配记。",
+    "collocations": [
+      {
+        "pattern": "give a lecture on history",
+        "meaning": "做历史讲座",
+        "note": ""
+      }
+    ],
+    "example": "The lecture encouraged a liberal attitude towards different opinions.",
+    "exampleTranslation": "这场讲座鼓励以宽容的态度看待不同意见。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "liberal",
+    "ipa": "/ˈlɪbərəl/",
+    "pos": "adj.",
+    "meaning": "开明的；宽容的；自由主义的；慷慨的",
+    "memoryCue": " 想象讲者张开双手，允许不同意见，不因观点不同就打断别人，先记“开明、宽容”。政治义具体含义受语境影响。",
+    "usageNote": "作为名词使用。先分清在本释义中指人、事物还是抽象概念；介词和动词应按下面完整搭配记。",
+    "collocations": [
+      {
+        "pattern": "a liberal attitude",
+        "meaning": "宽容开明的态度",
+        "note": ""
+      },
+      {
+        "pattern": "liberal arts",
+        "meaning": "文科或博雅学科，依教育语境理解",
+        "note": ""
+      }
+    ],
+    "example": "The lecture encouraged a liberal attitude towards different opinions.",
+    "exampleTranslation": "这场讲座鼓励以宽容的态度看待不同意见。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "immigrant",
+    "ipa": "/ˈɪmɪɡrənt/",
+    "pos": "n.",
+    "meaning": "移民；移入另一国家定居的人",
+    "memoryCue": " 想象有人提着行李，进入一个新的国家并准备长期生活。关键是“移入并定居”，普通游客不因此成为immigrant。",
+    "usageNote": "作为名词使用。先分清在本释义中指人、事物还是抽象概念；介词和动词应按下面完整搭配记。",
+    "collocations": [
+      {
+        "pattern": "an immigrant family",
+        "meaning": "移民家庭",
+        "note": ""
+      }
+    ],
+    "example": "An immigrant family emerged from the station.",
+    "exampleTranslation": "一个移民家庭从车站走了出来。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "emerge",
+    "ipa": "/ɪˈmɜːdʒ/",
+    "pos": "v.",
+    "meaning": "出现；浮现；显露；从困境中走出",
+    "memoryCue": " 想象那个人从车站出口走出来，身影终于出现；也可以想一个想法渐渐变清楚。",
+    "usageNote": "作为动词使用。注意时态和主语变化；及物性与固定介词要结合具体义项，不能把不同义项混用。",
+    "collocations": [
+      {
+        "pattern": "emerge from",
+        "meaning": "从……出现或走出",
+        "note": ""
+      },
+      {
+        "pattern": "emerge as a leader",
+        "meaning": "崭露头角成为领导者",
+        "note": ""
+      }
+    ],
+    "example": "An immigrant family emerged from the station.",
+    "exampleTranslation": "一个移民家庭从车站走了出来。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "insect",
+    "ipa": "/ˈɪnsekt/",
+    "pos": "n.",
+    "meaning": "昆虫",
+    "memoryCue": " 想象一只六条腿的小蚂蚁爬到指尖，把这个具体形象挂到insect上。",
+    "usageNote": "作为名词使用。先分清在本释义中指人、事物还是抽象概念；介词和动词应按下面完整搭配记。",
+    "collocations": [
+      {
+        "pattern": "insect bites",
+        "meaning": "昆虫叮咬",
+        "note": ""
+      }
+    ],
+    "example": "The forest provides a natural habitat for many insects.",
+    "exampleTranslation": "这片森林为许多昆虫提供了自然栖息地。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "habitat",
+    "ipa": "/ˈhæbɪtæt/",
+    "pos": "n.",
+    "meaning": "栖息地；生境",
+    "memoryCue": " 把镜头拉远，看昆虫生活的草地、土壤和植物环境。那片生活环境是habitat。",
+    "usageNote": "作为名词使用。先分清在本释义中指人、事物还是抽象概念；介词和动词应按下面完整搭配记。",
+    "collocations": [
+      {
+        "pattern": "a natural habitat",
+        "meaning": "自然栖息地",
+        "note": ""
+      },
+      {
+        "pattern": "habitat loss",
+        "meaning": "栖息地丧失",
+        "note": ""
+      }
+    ],
+    "example": "The forest provides a natural habitat for many insects.",
+    "exampleTranslation": "这片森林为许多昆虫提供了自然栖息地。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "pollution",
+    "ipa": "/pəˈluːʃən/",
+    "pos": "n.",
+    "meaning": "污染；也可统称造成污染的物质",
+    "memoryCue": " 想象清水中流入一股污水，清澈变浑浊。通常不可数。义项核对见Oxford pollution（https://www.oxfordlearnersdictionaries.com/us/definition/english/pollution）。",
+    "usageNote": "作为名词使用。先分清在本释义中指人、事物还是抽象概念；介词和动词应按下面完整搭配记。",
+    "collocations": [
+      {
+        "pattern": "air pollution",
+        "meaning": "空气污染",
+        "note": ""
+      },
+      {
+        "pattern": "reduce pollution",
+        "meaning": "减少污染",
+        "note": ""
+      }
+    ],
+    "example": "Severe pollution can contribute to the collapse of an ecosystem.",
+    "exampleTranslation": "严重污染可能促成生态系统崩溃。该句用于练习“污染”和“崩溃”的表达。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "collapse",
+    "ipa": "/kəˈlæps/",
+    "pos": "v.",
+    "meaning": "倒塌；崩溃；垮掉",
+    "memoryCue": " 另想一座积木塔突然塌下。把“由完整到垮掉”的突然变化挂到collapse上；经济、系统等也可比喻性地collapse。",
+    "usageNote": "作为名词使用。先分清在本释义中指人、事物还是抽象概念；介词和动词应按下面完整搭配记。",
+    "collocations": [
+      {
+        "pattern": "the collapse of a system",
+        "meaning": "系统的崩溃",
+        "note": ""
+      },
+      {
+        "pattern": "collapse under pressure",
+        "meaning": "在压力下崩溃或垮掉",
+        "note": ""
+      }
+    ],
+    "example": "Severe pollution can contribute to the collapse of an ecosystem.",
+    "exampleTranslation": "严重污染可能促成生态系统崩溃。该句用于练习“污染”和“崩溃”的表达。",
+    "pronunciationSource": "带练词条"
+  },
+  {
+    "term": "analyse",
+    "ipa": "/ˈænəlaɪz/",
+    "pos": "v.",
+    "meaning": "分析；剖析",
+    "memoryCue": " 想象把一份复杂资料分成几小块，分别检查每块，再看它们怎样联系。这种“拆开看关系”的思考就是analyse。美式拼写为analyze。",
+    "usageNote": "作为动词使用。注意时态和主语变化；及物性与固定介词要结合具体义项，不能把不同义项混用。",
+    "collocations": [
+      {
+        "pattern": "analyse data",
+        "meaning": "分析数据",
+        "note": ""
+      },
+      {
+        "pattern": "analyse the causes of a problem",
+        "meaning": "分析问题的原因",
+        "note": ""
+      },
+      {
+        "pattern": "analyse the results",
+        "meaning": "分析结果",
+        "note": ""
+      }
+    ],
+    "example": "We need to analyse the data before making a judgement.",
+    "exampleTranslation": "作出判断前，我们需要分析数据。",
+    "pronunciationSource": "带练词条"
+  }
+]

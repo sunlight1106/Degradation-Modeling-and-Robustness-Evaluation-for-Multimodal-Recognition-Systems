@@ -282,7 +282,7 @@ class AccountSecurityIntegrationTest {
         jdbc.update("INSERT INTO vocabulary_word (id, book_id, term, ipa, pos, meaning, example_text, example_translation, distractors, sort_order) VALUES (?, ?, 'apple', '', 'noun', '苹果', '', '', '[]', 0)", ownWord, ownBook);
         jdbc.update("INSERT INTO vocabulary_word (id, book_id, term, ipa, pos, meaning, example_text, example_translation, distractors, sort_order) VALUES (?, ?, 'OTHER_VOCAB_WORD_MARKER', '', 'noun', 'other', '', '', '[]', 0)", otherWord, otherBook);
         jdbc.update("INSERT INTO vocabulary_profile (owner_id, zone_id, daily_goal, selected_book_id, updated_at) VALUES (?, 'UTC', 10, ?, CURRENT_TIMESTAMP)", alice.getId(), ownBook);
-        jdbc.update("INSERT INTO vocabulary_progress (id, owner_id, word_id, learning_correct, review_stage, wrong_count, mistake, starred) VALUES (?, ?, ?, 1, 0, 0, false, true)", UUID.randomUUID().toString(), alice.getId(), ownWord);
+        jdbc.update("INSERT INTO vocabulary_progress (id, owner_id, word_id, term_key, learning_correct, review_stage, wrong_count, mistake, starred) VALUES (?, ?, ?, 'apple', 1, 0, 0, false, true)", UUID.randomUUID().toString(), alice.getId(), ownWord);
         jdbc.update("INSERT INTO vocabulary_question (id, owner_id, word_id, book_id, mode, options_json, correct_option_id, created_at, expires_at) VALUES (?, ?, ?, ?, 'LEARN', '[]', 'ANSWER_SNAPSHOT_MARKER', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)", UUID.randomUUID().toString(), alice.getId(), ownWord, ownBook);
         String token = login(alice);
         mvc.perform(json(post("/api/v1/account/export"), token, Map.of("currentPassword", "incorrect")))

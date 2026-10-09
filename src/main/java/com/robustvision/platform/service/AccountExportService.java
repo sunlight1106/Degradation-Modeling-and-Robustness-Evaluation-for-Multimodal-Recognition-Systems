@@ -46,10 +46,10 @@ public class AccountExportService {
         data.put("sentMessages", rows("SELECT id, subject, body, created_at FROM internal_message WHERE sender_id = ? ORDER BY created_at, id", id));
         data.put("personalRecognition", rows("SELECT r.id, r.file_id, r.file_name, r.provider, r.model, r.task_type, r.result_text, r.input_tokens, r.output_tokens, r.created_at FROM personal_recognition_result r JOIN file_asset f ON f.id = r.file_id WHERE r.owner_id = ? AND f.owner_id = r.owner_id ORDER BY r.created_at, r.id", id));
         data.put("vocabularyBooks", rows("SELECT id, title, description, attribution, level, created_at FROM vocabulary_book WHERE owner_id = ? ORDER BY created_at, id", id));
-        data.put("vocabularyWords", rows("SELECT w.id, w.book_id, w.term, w.ipa, w.pos, w.meaning, w.example_text, w.example_translation, w.distractors, w.sort_order FROM vocabulary_word w JOIN vocabulary_book b ON b.id = w.book_id WHERE b.owner_id = ? ORDER BY w.book_id, w.sort_order, w.id", id));
+        data.put("vocabularyWords", rows("SELECT w.id, w.book_id, w.term, w.term_key, w.ipa, w.pos, w.meaning, w.example_text, w.example_translation, w.distractors, w.sort_order, w.lesson_json FROM vocabulary_word w JOIN vocabulary_book b ON b.id = w.book_id WHERE b.owner_id = ? ORDER BY w.book_id, w.sort_order, w.id", id));
         data.put("vocabularyBookImports", bookImports(id));
-        data.put("vocabularyProfile", rows("SELECT zone_id, daily_goal, selected_book_id, updated_at FROM vocabulary_profile WHERE owner_id = ?", id));
-        data.put("vocabularyProgress", rows("SELECT p.id, p.word_id, w.book_id, w.term, p.learning_correct, p.review_stage, p.wrong_count, p.mistake, p.starred, p.due_date, p.learned_date, p.last_attempt_at, p.last_review_date FROM vocabulary_progress p JOIN vocabulary_word w ON w.id = p.word_id JOIN vocabulary_book b ON b.id = w.book_id WHERE p.owner_id = ? AND (b.owner_id IS NULL OR b.owner_id = p.owner_id) ORDER BY p.id", id));
+        data.put("vocabularyProfile", rows("SELECT zone_id, daily_goal, selected_book_id, history_json, updated_at FROM vocabulary_profile WHERE owner_id = ?", id));
+        data.put("vocabularyProgress", rows("SELECT p.id, p.word_id, w.book_id, w.term, p.term_key, p.learning_correct, p.review_stage, p.wrong_count, p.mistake, p.starred, p.skipped, p.independent_correct, p.prompted_correct, p.immediate_correct, p.spelling_correct, p.collocation_correct, p.introduced_at, p.last_viewed_at, p.updated_at, p.due_date, p.learned_date, p.last_attempt_at, p.last_review_date FROM vocabulary_progress p JOIN vocabulary_word w ON w.id = p.word_id JOIN vocabulary_book b ON b.id = w.book_id WHERE p.owner_id = ? AND (b.owner_id IS NULL OR b.owner_id = p.owner_id) ORDER BY p.id", id));
         data.put("exclusions", List.of("Passwords and password hashes", "API keys and encrypted credentials", "Session, sharing and payment tokens", "Raw uploaded media and internal storage paths", "Raw upstream inference payloads", "Vocabulary question and answer snapshots", "Other users' private data"));
         return data;
     }
@@ -57,9 +57,16 @@ public class AccountExportService {
     private List<ImportRequest> bookImports(Long owner) {
         return jdbc.query("SELECT id, title, description, attribution FROM vocabulary_book WHERE owner_id = ? ORDER BY created_at, id",
                 (book, rowNumber) -> new ImportRequest(book.getString("title"), book.getString("description"), book.getString("attribution"), false,
-                        jdbc.query("SELECT w.term, w.ipa, w.pos, w.meaning, w.example_text, w.example_translation, w.distractors FROM vocabulary_word w JOIN vocabulary_book b ON b.id = w.book_id WHERE w.book_id = ? AND b.owner_id = ? ORDER BY w.sort_order, w.id",
-                                (word, wordNumber) -> new ImportWord(word.getString("term"), word.getString("ipa"), word.getString("pos"), word.getString("meaning"),
-                                        word.getString("example_text"), word.getString("example_translation"), distractors(word.getString("distractors"))), book.getString("id"), owner), 1), owner);
+                        jdbc.query("SELECT w.term, w.ipa, w.pos, w.meaning, w.example_text, w.example_translation, w.distractors, w.lesson_json FROM vocabulary_word w JOIN vocabulary_book b ON b.id = w.book_id WHERE w.book_id = ? AND b.owner_id = ? ORDER BY w.sort_order, w.id",
+                                (word, wordNumber) -> portableWord(word), book.getString("id"), owner), 1), owner);
+    }
+    private ImportWord portableWord(java.sql.ResultSet word) throws java.sql.SQLException {
+        var custom=lesson(word.getString("lesson_json"));
+        return new ImportWord(word.getString("term"),word.getString("ipa"),word.getString("pos"),word.getString("meaning"),word.getString("example_text"),word.getString("example_translation"),distractors(word.getString("distractors")),custom.memoryCue(),custom.usageNote(),custom.collocations());
+    }
+    private ImportWord lesson(String value) {
+        if(value==null)return new ImportWord(null,null,null,null,null,null,null);
+        try{return json.readValue(value,ImportWord.class);}catch(JsonProcessingException error){throw new IllegalStateException("Vocabulary lesson export is invalid",error);}
     }
     private List<String> distractors(String encoded) {
         try { return json.readValue(encoded, new TypeReference<List<String>>() {}); }

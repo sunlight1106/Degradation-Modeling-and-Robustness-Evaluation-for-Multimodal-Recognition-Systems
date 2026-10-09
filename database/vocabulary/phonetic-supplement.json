@@ -1,0 +1,1762 @@
+{
+  "accidents": {
+    "ipa": "/ˈæksədənts/",
+    "source": "CMU · 美式"
+  },
+  "accommodations": {
+    "ipa": "/əˌkɑməˈdeɪʃənz/",
+    "source": "CMU · 美式"
+  },
+  "accompanying": {
+    "ipa": "/əˈkəmpəniɪŋ/",
+    "source": "CMU · 美式"
+  },
+  "account for": {
+    "ipa": "/əˈkaʊnt fər/",
+    "source": "CMU · 美式"
+  },
+  "accountants": {
+    "ipa": "/əˈkaʊntənts/",
+    "source": "CMU · 美式"
+  },
+  "actions": {
+    "ipa": "/ˈækʃənz/",
+    "source": "CMU · 美式"
+  },
+  "activities": {
+    "ipa": "/ækˈtɪvɪtiz/",
+    "source": "CMU · 美式"
+  },
+  "adults": {
+    "ipa": "/ˈædəlts/",
+    "source": "CMU · 美式"
+  },
+  "advantages": {
+    "ipa": "/ædˈvæntɪʤɪz/",
+    "source": "CMU · 美式"
+  },
+  "adversely": {
+    "ipa": "/ædˈvərsli/",
+    "source": "CMU · 美式"
+  },
+  "advertisements": {
+    "ipa": "/ˈædvərˌtaɪzmənts/",
+    "source": "CMU · 美式"
+  },
+  "affairs": {
+    "ipa": "/əˈfɛrz/",
+    "source": "CMU · 美式"
+  },
+  "agencies": {
+    "ipa": "/ˈeɪʤənsiz/",
+    "source": "CMU · 美式"
+  },
+  "aggressiveness": {
+    "ipa": "/əˈgrɛsɪvnəs/",
+    "source": "CMU · 美式"
+  },
+  "animals": {
+    "ipa": "/ˈænəməlz/",
+    "source": "CMU · 美式"
+  },
+  "antibiotics": {
+    "ipa": "/ˌæntibaɪˈɑtɪks/",
+    "source": "CMU · 美式"
+  },
+  "approaches": {
+    "ipa": "/əˈproʊʧɪz/",
+    "source": "CMU · 美式"
+  },
+  "approaching": {
+    "ipa": "/əˈproʊʧɪŋ/",
+    "source": "CMU · 美式"
+  },
+  "areas": {
+    "ipa": "/ˈɛriəz/",
+    "source": "CMU · 美式"
+  },
+  "articles": {
+    "ipa": "/ˈɑrtɪkəlz/",
+    "source": "CMU · 美式"
+  },
+  "artifacts": {
+    "ipa": "/ˈɑrtəˌfækts/",
+    "source": "CMU · 美式"
+  },
+  "assignments": {
+    "ipa": "/əˈsaɪnmənts/",
+    "source": "CMU · 美式"
+  },
+  "astonished": {
+    "ipa": "/əˈstɑnɪʃt/",
+    "source": "CMU · 美式"
+  },
+  "asymmetrical": {
+    "ipa": "/ˌeɪsəˈmɛtrɪkəl/",
+    "source": "CMU · 美式"
+  },
+  "attacks": {
+    "ipa": "/əˈtæks/",
+    "source": "CMU · 美式"
+  },
+  "attempts": {
+    "ipa": "/əˈtɛmpts/",
+    "source": "CMU · 美式"
+  },
+  "automated": {
+    "ipa": "/ˈɔtəˌmeɪtɪd/",
+    "source": "CMU · 美式"
+  },
+  "avocational": {
+    "ipa": "/ˌævəˈkeɪʃənəl/",
+    "source": "补充标注"
+  },
+  "awkwardly": {
+    "ipa": "/ˈɔkwərdli/",
+    "source": "CMU · 美式"
+  },
+  "axe": {
+    "ipa": "/æks/",
+    "source": "CMU · 美式"
+  },
+  "baby-sitter": {
+    "ipa": "/ˈbeɪbiˌsɪtər/",
+    "source": "CMU · 美式"
+  },
+  "ballpoint": {
+    "ipa": "/ˈbɔlpɔɪnt/",
+    "source": "CMU · 美式"
+  },
+  "barbershop": {
+    "ipa": "/ˈbɑrbərˌʃɑp/",
+    "source": "CMU · 美式"
+  },
+  "barrenness": {
+    "ipa": "/ˈbærənnəs/",
+    "source": "补充标注"
+  },
+  "beds": {
+    "ipa": "/bɛdz/",
+    "source": "CMU · 美式"
+  },
+  "beginners": {
+    "ipa": "/bɪˈgɪnərz/",
+    "source": "CMU · 美式"
+  },
+  "belts": {
+    "ipa": "/bɛlts/",
+    "source": "CMU · 美式"
+  },
+  "benefits": {
+    "ipa": "/ˈbɛnəfɪts/",
+    "source": "CMU · 美式"
+  },
+  "bicycles": {
+    "ipa": "/ˈbaɪsɪkəlz/",
+    "source": "CMU · 美式"
+  },
+  "birds": {
+    "ipa": "/bərdz/",
+    "source": "CMU · 美式"
+  },
+  "blighted": {
+    "ipa": "/ˈblaɪtɪd/",
+    "source": "CMU · 美式"
+  },
+  "books": {
+    "ipa": "/bʊks/",
+    "source": "CMU · 美式"
+  },
+  "bored": {
+    "ipa": "/bɔrd/",
+    "source": "CMU · 美式"
+  },
+  "bowls": {
+    "ipa": "/boʊlz/",
+    "source": "CMU · 美式"
+  },
+  "bring about": {
+    "ipa": "/brɪŋ əˈbaʊt/",
+    "source": "CMU · 美式"
+  },
+  "brothers": {
+    "ipa": "/ˈbrəðərz/",
+    "source": "CMU · 美式"
+  },
+  "buildings": {
+    "ipa": "/ˈbɪldɪŋz/",
+    "source": "CMU · 美式"
+  },
+  "byline": {
+    "ipa": "/ˈbaɪˌlaɪn/",
+    "source": "CMU · 美式"
+  },
+  "candles": {
+    "ipa": "/ˈkændəlz/",
+    "source": "CMU · 美式"
+  },
+  "cardiologist": {
+    "ipa": "/ˌkɑrdiˈɑləʤɪst/",
+    "source": "CMU · 美式"
+  },
+  "cards": {
+    "ipa": "/kɑrdz/",
+    "source": "CMU · 美式"
+  },
+  "causes": {
+    "ipa": "/ˈkɔzɪz/",
+    "source": "CMU · 美式"
+  },
+  "cd": {
+    "ipa": "/ˈsiˈdi/",
+    "source": "CMU · 美式"
+  },
+  "charges": {
+    "ipa": "/ˈʧɑrʤɪz/",
+    "source": "CMU · 美式"
+  },
+  "cheaper": {
+    "ipa": "/ˈʧipər/",
+    "source": "CMU · 美式"
+  },
+  "checks": {
+    "ipa": "/ʧɛks/",
+    "source": "CMU · 美式"
+  },
+  "choices": {
+    "ipa": "/ˈʧɔɪsɪz/",
+    "source": "CMU · 美式"
+  },
+  "cities": {
+    "ipa": "/ˈsɪtiz/",
+    "source": "CMU · 美式"
+  },
+  "clients": {
+    "ipa": "/klaɪənts/",
+    "source": "CMU · 美式"
+  },
+  "clubs": {
+    "ipa": "/kləbz/",
+    "source": "CMU · 美式"
+  },
+  "co-operation": {
+    "ipa": "/koʊ ˌɑpərˈeɪʃən/",
+    "source": "CMU · 美式"
+  },
+  "colleagues": {
+    "ipa": "/ˈkɑligz/",
+    "source": "CMU · 美式"
+  },
+  "colleges": {
+    "ipa": "/ˈkɑlɪʤɪz/",
+    "source": "CMU · 美式"
+  },
+  "cometary": {
+    "ipa": "/ˈkɑməˌtɛri/",
+    "source": "CMU · 美式"
+  },
+  "committed": {
+    "ipa": "/kəˈmɪtɪd/",
+    "source": "CMU · 美式"
+  },
+  "companies": {
+    "ipa": "/ˈkəmpəˌniz/",
+    "source": "CMU · 美式"
+  },
+  "competing": {
+    "ipa": "/kəmˈpitɪŋ/",
+    "source": "CMU · 美式"
+  },
+  "computers": {
+    "ipa": "/kəmˈpjutərz/",
+    "source": "CMU · 美式"
+  },
+  "conditions": {
+    "ipa": "/kənˈdɪʃənz/",
+    "source": "CMU · 美式"
+  },
+  "consciously": {
+    "ipa": "/ˈkɑnʃəsli/",
+    "source": "CMU · 美式"
+  },
+  "consistently": {
+    "ipa": "/kənˈsɪstəntli/",
+    "source": "CMU · 美式"
+  },
+  "consultancy": {
+    "ipa": "/kənˈsəltənsi/",
+    "source": "CMU · 美式"
+  },
+  "contacts": {
+    "ipa": "/ˈkɑnˌtækts/",
+    "source": "CMU · 美式"
+  },
+  "coordinated": {
+    "ipa": "/koʊˈɔrdəneɪtɪd/",
+    "source": "CMU · 美式"
+  },
+  "costs": {
+    "ipa": "/kɔsts/",
+    "source": "CMU · 美式"
+  },
+  "cosy": {
+    "ipa": "/ˈkoʊzi/",
+    "source": "CMU · 美式"
+  },
+  "countries": {
+    "ipa": "/ˈkəntriz/",
+    "source": "CMU · 美式"
+  },
+  "courteously": {
+    "ipa": "/ˈkɜːtiəsli/",
+    "source": "补充标注"
+  },
+  "credentials": {
+    "ipa": "/krəˈdɛnʃəlz/",
+    "source": "CMU · 美式"
+  },
+  "cringing": {
+    "ipa": "/ˈkrɪnʤɪŋ/",
+    "source": "CMU · 美式"
+  },
+  "crossroads": {
+    "ipa": "/ˈkrɔsˌroʊdz/",
+    "source": "CMU · 美式"
+  },
+  "cups": {
+    "ipa": "/kəps/",
+    "source": "CMU · 美式"
+  },
+  "customers": {
+    "ipa": "/ˈkəstəmərz/",
+    "source": "CMU · 美式"
+  },
+  "customs": {
+    "ipa": "/ˈkəstəmz/",
+    "source": "CMU · 美式"
+  },
+  "damages": {
+    "ipa": "/ˈdæmɪʤɪz/",
+    "source": "CMU · 美式"
+  },
+  "damped": {
+    "ipa": "/dæmpt/",
+    "source": "CMU · 美式"
+  },
+  "decorations": {
+    "ipa": "/ˌdɛkərˈeɪʃənz/",
+    "source": "CMU · 美式"
+  },
+  "deflated": {
+    "ipa": "/dɪˈfleɪtɪd/",
+    "source": "CMU · 美式"
+  },
+  "derangement": {
+    "ipa": "/dɪˈreɪndʒmənt/",
+    "source": "补充标注"
+  },
+  "despoiler": {
+    "ipa": "/dɪˈspɔɪlə/",
+    "source": "补充标注"
+  },
+  "details": {
+    "ipa": "/ˈditeɪlz/",
+    "source": "CMU · 美式"
+  },
+  "diligently": {
+    "ipa": "/ˈdɪləʤəntli/",
+    "source": "CMU · 美式"
+  },
+  "diplomas": {
+    "ipa": "/dɪˈploʊməz/",
+    "source": "CMU · 美式"
+  },
+  "diseases": {
+    "ipa": "/dɪˈzizɪz/",
+    "source": "CMU · 美式"
+  },
+  "dishes": {
+    "ipa": "/ˈdɪʃɪz/",
+    "source": "CMU · 美式"
+  },
+  "disillusioned": {
+    "ipa": "/ˌdɪsɪˈluʒənd/",
+    "source": "CMU · 美式"
+  },
+  "distil": {
+    "ipa": "/dɪˈstɪl/",
+    "source": "CMU · 美式"
+  },
+  "doctors": {
+    "ipa": "/ˈdɑktərz/",
+    "source": "CMU · 美式"
+  },
+  "documents": {
+    "ipa": "/ˈdɑkjəmənts/",
+    "source": "CMU · 美式"
+  },
+  "donations": {
+    "ipa": "/doʊˈneɪʃənz/",
+    "source": "CMU · 美式"
+  },
+  "doors": {
+    "ipa": "/dɔrz/",
+    "source": "CMU · 美式"
+  },
+  "double-cross": {
+    "ipa": "/ˈdəbəl krɔs/",
+    "source": "CMU · 美式"
+  },
+  "down-to-earth": {
+    "ipa": "/daʊn tɪ ərθ/",
+    "source": "CMU · 美式"
+  },
+  "dr": {
+    "ipa": "/ˈdɑktər/",
+    "source": "CMU · 美式"
+  },
+  "draws": {
+    "ipa": "/drɔz/",
+    "source": "CMU · 美式"
+  },
+  "drinks": {
+    "ipa": "/drɪŋks/",
+    "source": "CMU · 美式"
+  },
+  "drugs": {
+    "ipa": "/drəgz/",
+    "source": "CMU · 美式"
+  },
+  "dues": {
+    "ipa": "/duz/",
+    "source": "CMU · 美式"
+  },
+  "duties": {
+    "ipa": "/ˈdutiz/",
+    "source": "CMU · 美式"
+  },
+  "dvd": {
+    "ipa": "/ˌdiˌviˈdi/",
+    "source": "CMU · 美式"
+  },
+  "eclat": {
+    "ipa": "/eɪˈklɑː/",
+    "source": "补充标注"
+  },
+  "effects": {
+    "ipa": "/ˈifɛkts/",
+    "source": "CMU · 美式"
+  },
+  "emergencies": {
+    "ipa": "/ˈimərʤənsiz/",
+    "source": "CMU · 美式"
+  },
+  "employees": {
+    "ipa": "/ɪmˈplɔɪiz/",
+    "source": "CMU · 美式"
+  },
+  "engineers": {
+    "ipa": "/ˈɛnʤəˈnɪrz/",
+    "source": "CMU · 美式"
+  },
+  "enlightening": {
+    "ipa": "/ˌɛnˈlaɪtənɪŋ/",
+    "source": "CMU · 美式"
+  },
+  "entrenched": {
+    "ipa": "/ɪnˈtrɛnʧt/",
+    "source": "CMU · 美式"
+  },
+  "ethically": {
+    "ipa": "/ˈɛθɪkəli/",
+    "source": "CMU · 美式"
+  },
+  "even-tempered": {
+    "ipa": "/ˈivɪn ˈtɛmpərd/",
+    "source": "CMU · 美式"
+  },
+  "examples": {
+    "ipa": "/ɪgˈzæmpəlz/",
+    "source": "CMU · 美式"
+  },
+  "exams": {
+    "ipa": "/ɪgˈzæmz/",
+    "source": "CMU · 美式"
+  },
+  "exceptionally": {
+    "ipa": "/ɪkˈsɛpʃənəli/",
+    "source": "CMU · 美式"
+  },
+  "expenses": {
+    "ipa": "/ɪkˈspɛnsɪz/",
+    "source": "CMU · 美式"
+  },
+  "eye-catching": {
+    "ipa": "/aɪ ˈkæʧɪŋ/",
+    "source": "CMU · 美式"
+  },
+  "facelift": {
+    "ipa": "/ˈfeɪsˌlɪft/",
+    "source": "CMU · 美式"
+  },
+  "facilities": {
+    "ipa": "/fəˈsɪlɪtiz/",
+    "source": "CMU · 美式"
+  },
+  "factories": {
+    "ipa": "/ˈfæktəriz/",
+    "source": "CMU · 美式"
+  },
+  "factors": {
+    "ipa": "/ˈfæktərz/",
+    "source": "CMU · 美式"
+  },
+  "fail-safe": {
+    "ipa": "/ˈfeɪlˌseɪf/",
+    "source": "CMU · 美式"
+  },
+  "falcons": {
+    "ipa": "/ˈfælkənz/",
+    "source": "CMU · 美式"
+  },
+  "families": {
+    "ipa": "/ˈfæməliz/",
+    "source": "CMU · 美式"
+  },
+  "far-reaching": {
+    "ipa": "/fɑr ˈriʧɪŋ/",
+    "source": "CMU · 美式"
+  },
+  "farmers": {
+    "ipa": "/ˈfɑrmərz/",
+    "source": "CMU · 美式"
+  },
+  "farms": {
+    "ipa": "/fɑrmz/",
+    "source": "CMU · 美式"
+  },
+  "features": {
+    "ipa": "/ˈfiʧərz/",
+    "source": "CMU · 美式"
+  },
+  "fees": {
+    "ipa": "/fiz/",
+    "source": "CMU · 美式"
+  },
+  "figures": {
+    "ipa": "/ˈfɪgjərz/",
+    "source": "CMU · 美式"
+  },
+  "filings": {
+    "ipa": "/ˈfaɪlɪŋz/",
+    "source": "CMU · 美式"
+  },
+  "filmed": {
+    "ipa": "/fɪlmd/",
+    "source": "CMU · 美式"
+  },
+  "fingers": {
+    "ipa": "/ˈfɪŋgərz/",
+    "source": "CMU · 美式"
+  },
+  "firework": {
+    "ipa": "/ˈfaɪrˌwərk/",
+    "source": "CMU · 美式"
+  },
+  "firms": {
+    "ipa": "/fərmz/",
+    "source": "CMU · 美式"
+  },
+  "first-rate": {
+    "ipa": "/ˌfərˈstreɪt/",
+    "source": "CMU · 美式"
+  },
+  "flatulence": {
+    "ipa": "/ˈflætʃələns/",
+    "source": "补充标注"
+  },
+  "fleeting": {
+    "ipa": "/ˈflitɪŋ/",
+    "source": "CMU · 美式"
+  },
+  "forms": {
+    "ipa": "/fɔrmz/",
+    "source": "CMU · 美式"
+  },
+  "four-poster": {
+    "ipa": "/fɔr ˈpoʊstər/",
+    "source": "CMU · 美式"
+  },
+  "freelancer": {
+    "ipa": "/ˈfriˌlænsər/",
+    "source": "CMU · 美式"
+  },
+  "fruitfulness": {
+    "ipa": "/ˈfruːtfəlnəs/",
+    "source": "补充标注"
+  },
+  "fruitlessly": {
+    "ipa": "/ˈfrutləsli/",
+    "source": "CMU · 美式"
+  },
+  "full-blown": {
+    "ipa": "/ˌfʊlˈbloʊn/",
+    "source": "CMU · 美式"
+  },
+  "full-bodied": {
+    "ipa": "/fʊl ˈbɑdid/",
+    "source": "CMU · 美式"
+  },
+  "full-time": {
+    "ipa": "/ˈfʊlˌtaɪm/",
+    "source": "CMU · 美式"
+  },
+  "fund-raising": {
+    "ipa": "/fənd ˈreɪzɪŋ/",
+    "source": "CMU · 美式"
+  },
+  "furnished": {
+    "ipa": "/ˈfərnɪʃt/",
+    "source": "CMU · 美式"
+  },
+  "garbled": {
+    "ipa": "/ˈgɑrbəld/",
+    "source": "CMU · 美式"
+  },
+  "genetically": {
+    "ipa": "/ʤəˈnɛtɪkli/",
+    "source": "CMU · 美式"
+  },
+  "girlfriend": {
+    "ipa": "/ˈgərlˌfrɛnd/",
+    "source": "CMU · 美式"
+  },
+  "goals": {
+    "ipa": "/goʊlz/",
+    "source": "CMU · 美式"
+  },
+  "governments": {
+    "ipa": "/ˈgəvərnmənts/",
+    "source": "CMU · 美式"
+  },
+  "graduated": {
+    "ipa": "/ˈgræʤəˌweɪtɪd/",
+    "source": "CMU · 美式"
+  },
+  "grandparents": {
+    "ipa": "/ˈgrændˌpɛrənts/",
+    "source": "CMU · 美式"
+  },
+  "gripping": {
+    "ipa": "/ˈgrɪpɪŋ/",
+    "source": "CMU · 美式"
+  },
+  "groups": {
+    "ipa": "/grups/",
+    "source": "CMU · 美式"
+  },
+  "guests": {
+    "ipa": "/gɛsts/",
+    "source": "CMU · 美式"
+  },
+  "habits": {
+    "ipa": "/ˈhæbəts/",
+    "source": "CMU · 美式"
+  },
+  "hard-working": {
+    "ipa": "/ˌhɑrdˈwərkɪŋ/",
+    "source": "CMU · 美式"
+  },
+  "hats": {
+    "ipa": "/hæts/",
+    "source": "CMU · 美式"
+  },
+  "heavy-handedness": {
+    "ipa": "/ˈhɛvi ˈhændədnəs/",
+    "source": "CMU · 美式"
+  },
+  "herpetologist": {
+    "ipa": "/ˌhɜːpɪˈtɒlədʒɪst/",
+    "source": "补充标注"
+  },
+  "high-rise": {
+    "ipa": "/haɪ raɪz/",
+    "source": "CMU · 美式"
+  },
+  "hints": {
+    "ipa": "/hɪnts/",
+    "source": "CMU · 美式"
+  },
+  "hits": {
+    "ipa": "/hɪts/",
+    "source": "CMU · 美式"
+  },
+  "hobbies": {
+    "ipa": "/ˈhɑbiz/",
+    "source": "CMU · 美式"
+  },
+  "horses": {
+    "ipa": "/ˈhɔrsɪz/",
+    "source": "CMU · 美式"
+  },
+  "hotdog": {
+    "ipa": "/ˈhɑtˌdɔg/",
+    "source": "CMU · 美式"
+  },
+  "humans": {
+    "ipa": "/ˈjumənz/",
+    "source": "CMU · 美式"
+  },
+  "hyperactivity": {
+    "ipa": "/ˌhaɪpərækˈtɪvɪti/",
+    "source": "CMU · 美式"
+  },
+  "hypotheses": {
+    "ipa": "/haɪˈpɑθəˌsiz/",
+    "source": "CMU · 美式"
+  },
+  "ice cream": {
+    "ipa": "/aɪs krim/",
+    "source": "CMU · 美式"
+  },
+  "ideas": {
+    "ipa": "/aɪˈdiəz/",
+    "source": "CMU · 美式"
+  },
+  "imports": {
+    "ipa": "/ˌɪmˈpɔrts/",
+    "source": "CMU · 美式"
+  },
+  "impressed": {
+    "ipa": "/ˌɪmˈprɛst/",
+    "source": "CMU · 美式"
+  },
+  "in spite of": {
+    "ipa": "/ɪn spaɪt əv/",
+    "source": "CMU · 美式"
+  },
+  "indefinitely": {
+    "ipa": "/ˌɪnˈdɛfənətli/",
+    "source": "CMU · 美式"
+  },
+  "indispensability": {
+    "ipa": "/ˌɪndɪˌspensəˈbɪləti/",
+    "source": "补充标注"
+  },
+  "inextricably": {
+    "ipa": "/ˌɪˈnɛkstrɪˌkəbli/",
+    "source": "CMU · 美式"
+  },
+  "inflamed": {
+    "ipa": "/ɪnˈfleɪmd/",
+    "source": "CMU · 美式"
+  },
+  "insects": {
+    "ipa": "/ˈɪnˌsɛkts/",
+    "source": "CMU · 美式"
+  },
+  "instinctively": {
+    "ipa": "/ˌɪnˈstɪŋktɪvˌli/",
+    "source": "CMU · 美式"
+  },
+  "institutes": {
+    "ipa": "/ˈɪnstɪˌtuts/",
+    "source": "CMU · 美式"
+  },
+  "institutions": {
+    "ipa": "/ˌɪnstɪˈtuʃənz/",
+    "source": "CMU · 美式"
+  },
+  "instruments": {
+    "ipa": "/ˈɪnstrəmənts/",
+    "source": "CMU · 美式"
+  },
+  "intellectually": {
+    "ipa": "/ˌɪnəˈlɛkʧuəli/",
+    "source": "CMU · 美式"
+  },
+  "intentionally": {
+    "ipa": "/ˌɪnˈtɛnʃənəli/",
+    "source": "CMU · 美式"
+  },
+  "inured": {
+    "ipa": "/ˌɪnˈjʊrd/",
+    "source": "CMU · 美式"
+  },
+  "inversely": {
+    "ipa": "/ˌɪnˈvərsli/",
+    "source": "CMU · 美式"
+  },
+  "ironically": {
+    "ipa": "/aɪˈrɑnɪkli/",
+    "source": "CMU · 美式"
+  },
+  "irregularly": {
+    "ipa": "/ˌɪˈrɛgjələrli/",
+    "source": "CMU · 美式"
+  },
+  "issues": {
+    "ipa": "/ˈɪʃuz/",
+    "source": "CMU · 美式"
+  },
+  "items": {
+    "ipa": "/ˈaɪtəmz/",
+    "source": "CMU · 美式"
+  },
+  "jewels": {
+    "ipa": "/ʤuəlz/",
+    "source": "CMU · 美式"
+  },
+  "judiciousness": {
+    "ipa": "/dʒuːˈdɪʃəsnəs/",
+    "source": "补充标注"
+  },
+  "keys": {
+    "ipa": "/kiz/",
+    "source": "CMU · 美式"
+  },
+  "kids": {
+    "ipa": "/kɪdz/",
+    "source": "CMU · 美式"
+  },
+  "kits": {
+    "ipa": "/kɪts/",
+    "source": "CMU · 美式"
+  },
+  "laboriously": {
+    "ipa": "/ləˈbɔriəsli/",
+    "source": "CMU · 美式"
+  },
+  "lackluster": {
+    "ipa": "/ˈlæˌkləstər/",
+    "source": "CMU · 美式"
+  },
+  "lakes": {
+    "ipa": "/leɪks/",
+    "source": "CMU · 美式"
+  },
+  "larvae": {
+    "ipa": "/ˈlɑrvi/",
+    "source": "CMU · 美式"
+  },
+  "laurels": {
+    "ipa": "/ˈlɔrəlz/",
+    "source": "CMU · 美式"
+  },
+  "levels": {
+    "ipa": "/ˈlɛvəlz/",
+    "source": "CMU · 美式"
+  },
+  "libraries": {
+    "ipa": "/ˈlaɪbrɛˌriz/",
+    "source": "CMU · 美式"
+  },
+  "lions": {
+    "ipa": "/laɪənz/",
+    "source": "CMU · 美式"
+  },
+  "living-room": {
+    "ipa": "/ˈlɪvɪŋ rum/",
+    "source": "CMU · 美式"
+  },
+  "loans": {
+    "ipa": "/loʊnz/",
+    "source": "CMU · 美式"
+  },
+  "locations": {
+    "ipa": "/loʊˈkeɪʃənz/",
+    "source": "CMU · 美式"
+  },
+  "long-range": {
+    "ipa": "/ˈlɔŋˈreɪnʤ/",
+    "source": "CMU · 美式"
+  },
+  "lyrically": {
+    "ipa": "/ˈlɪrɪkli/",
+    "source": "CMU · 美式"
+  },
+  "machines": {
+    "ipa": "/məˈʃinz/",
+    "source": "CMU · 美式"
+  },
+  "maculated": {
+    "ipa": "/ˈmækjʊleɪtɪd/",
+    "source": "补充标注"
+  },
+  "mails": {
+    "ipa": "/meɪlz/",
+    "source": "CMU · 美式"
+  },
+  "majors": {
+    "ipa": "/ˈmeɪʤərz/",
+    "source": "CMU · 美式"
+  },
+  "marks": {
+    "ipa": "/mɑrks/",
+    "source": "CMU · 美式"
+  },
+  "materials": {
+    "ipa": "/məˈtɪriəlz/",
+    "source": "CMU · 美式"
+  },
+  "meals": {
+    "ipa": "/milz/",
+    "source": "CMU · 美式"
+  },
+  "measurements": {
+    "ipa": "/ˈmɛʒərmənts/",
+    "source": "CMU · 美式"
+  },
+  "measures": {
+    "ipa": "/ˈmɛʒərz/",
+    "source": "CMU · 美式"
+  },
+  "mechanized": {
+    "ipa": "/ˈmɛkəˌnaɪzd/",
+    "source": "CMU · 美式"
+  },
+  "methods": {
+    "ipa": "/ˈmɛθədz/",
+    "source": "CMU · 美式"
+  },
+  "meticulously": {
+    "ipa": "/məˈtɪkjələsli/",
+    "source": "CMU · 美式"
+  },
+  "miles": {
+    "ipa": "/maɪəlz/",
+    "source": "CMU · 美式"
+  },
+  "mills": {
+    "ipa": "/mɪlz/",
+    "source": "CMU · 美式"
+  },
+  "minutes": {
+    "ipa": "/ˈmɪnəts/",
+    "source": "CMU · 美式"
+  },
+  "mm": {
+    "ipa": "/ˌem ˈem/",
+    "source": "补充标注"
+  },
+  "muffled": {
+    "ipa": "/ˈməfəld/",
+    "source": "CMU · 美式"
+  },
+  "multistory": {
+    "ipa": "/ˈməltiˌstɔri/",
+    "source": "CMU · 美式"
+  },
+  "muniments": {
+    "ipa": "/ˈmjuːnɪmənts/",
+    "source": "补充标注"
+  },
+  "muscles": {
+    "ipa": "/ˈməsəlz/",
+    "source": "CMU · 美式"
+  },
+  "muted": {
+    "ipa": "/mˈjutɪd/",
+    "source": "CMU · 美式"
+  },
+  "narrator": {
+    "ipa": "/ˈnɛreɪtər/",
+    "source": "CMU · 美式"
+  },
+  "nationalities": {
+    "ipa": "/ˌnæʃəˈnælɪtiz/",
+    "source": "CMU · 美式"
+  },
+  "naysayer": {
+    "ipa": "/ˌneɪˈseɪər/",
+    "source": "CMU · 美式"
+  },
+  "nets": {
+    "ipa": "/nɛts/",
+    "source": "CMU · 美式"
+  },
+  "newspapers": {
+    "ipa": "/ˈnuzˌpeɪpərz/",
+    "source": "CMU · 美式"
+  },
+  "nippers": {
+    "ipa": "/ˈnɪpəz/",
+    "source": "补充标注"
+  },
+  "notes": {
+    "ipa": "/noʊts/",
+    "source": "CMU · 美式"
+  },
+  "notoriously": {
+    "ipa": "/noʊˈtɔriəsli/",
+    "source": "CMU · 美式"
+  },
+  "oafishness": {
+    "ipa": "/ˈəʊfɪʃnəs/",
+    "source": "补充标注"
+  },
+  "obsessed": {
+    "ipa": "/əbˈsɛst/",
+    "source": "CMU · 美式"
+  },
+  "occupants": {
+    "ipa": "/ˈɑkjəpənts/",
+    "source": "CMU · 美式"
+  },
+  "off-key": {
+    "ipa": "/ɔf ki/",
+    "source": "CMU · 美式"
+  },
+  "offstage": {
+    "ipa": "/ˈɔfˈsteɪʤ/",
+    "source": "CMU · 美式"
+  },
+  "ohp": {
+    "ipa": "/ˌəʊ eɪtʃ ˈpiː/",
+    "source": "补充标注"
+  },
+  "open-book": {
+    "ipa": "/ˈoʊpən bʊk/",
+    "source": "CMU · 美式"
+  },
+  "options": {
+    "ipa": "/ˈɔpʃənz/",
+    "source": "CMU · 美式"
+  },
+  "packed": {
+    "ipa": "/pækt/",
+    "source": "CMU · 美式"
+  },
+  "pages": {
+    "ipa": "/ˈpeɪʤɪz/",
+    "source": "CMU · 美式"
+  },
+  "palings": {
+    "ipa": "/ˈpeɪlɪŋz/",
+    "source": "补充标注"
+  },
+  "papers": {
+    "ipa": "/ˈpeɪpərz/",
+    "source": "CMU · 美式"
+  },
+  "paradoxically": {
+    "ipa": "/ˌpɛrəˈdɑksəkəli/",
+    "source": "CMU · 美式"
+  },
+  "parents": {
+    "ipa": "/ˈpɛrənts/",
+    "source": "CMU · 美式"
+  },
+  "part-time": {
+    "ipa": "/ˈpɑrtˈtaɪm/",
+    "source": "CMU · 美式"
+  },
+  "parties": {
+    "ipa": "/ˈpɑrtiz/",
+    "source": "CMU · 美式"
+  },
+  "patients": {
+    "ipa": "/ˈpeɪʃənz/",
+    "source": "CMU · 美式"
+  },
+  "patroller": {
+    "ipa": "/pəˈtrəʊlə/",
+    "source": "补充标注"
+  },
+  "patterns": {
+    "ipa": "/ˈpætərnz/",
+    "source": "CMU · 美式"
+  },
+  "pennies": {
+    "ipa": "/ˈpɛniz/",
+    "source": "CMU · 美式"
+  },
+  "perennially": {
+    "ipa": "/pərˈɛniəli/",
+    "source": "CMU · 美式"
+  },
+  "phd": {
+    "ipa": "/ˈpiˌeɪʧˈdi/",
+    "source": "CMU · 美式"
+  },
+  "phone-in": {
+    "ipa": "/foʊn ɪn/",
+    "source": "CMU · 美式"
+  },
+  "photographs": {
+    "ipa": "/ˈfoʊtəˌgræfs/",
+    "source": "CMU · 美式"
+  },
+  "photos": {
+    "ipa": "/ˈfoʊˌtoʊz/",
+    "source": "CMU · 美式"
+  },
+  "pictures": {
+    "ipa": "/ˈpɪkʧərz/",
+    "source": "CMU · 美式"
+  },
+  "pills": {
+    "ipa": "/pɪlz/",
+    "source": "CMU · 美式"
+  },
+  "pioneering": {
+    "ipa": "/ˌpaɪəˈnɪrɪŋ/",
+    "source": "CMU · 美式"
+  },
+  "places": {
+    "ipa": "/ˈpleɪsɪz/",
+    "source": "CMU · 美式"
+  },
+  "planning": {
+    "ipa": "/ˈplænɪŋ/",
+    "source": "CMU · 美式"
+  },
+  "plants": {
+    "ipa": "/plænts/",
+    "source": "CMU · 美式"
+  },
+  "positions": {
+    "ipa": "/pəˈzɪʃənz/",
+    "source": "CMU · 美式"
+  },
+  "positively": {
+    "ipa": "/ˈpɑzətɪvli/",
+    "source": "CMU · 美式"
+  },
+  "positiveness": {
+    "ipa": "/ˈpɒzətɪvnəs/",
+    "source": "补充标注"
+  },
+  "predominantly": {
+    "ipa": "/ˌprɪˈdɑmənənˌtli/",
+    "source": "CMU · 美式"
+  },
+  "prescribed": {
+    "ipa": "/priˈskraɪbd/",
+    "source": "CMU · 美式"
+  },
+  "problems": {
+    "ipa": "/ˈprɑbləmz/",
+    "source": "CMU · 美式"
+  },
+  "products": {
+    "ipa": "/ˈprɑdəkts/",
+    "source": "CMU · 美式"
+  },
+  "professions": {
+    "ipa": "/prəˈfɛʃənz/",
+    "source": "CMU · 美式"
+  },
+  "profits": {
+    "ipa": "/ˈprɑfɪts/",
+    "source": "CMU · 美式"
+  },
+  "prohibitively": {
+    "ipa": "/proʊˈhɪbətɪvli/",
+    "source": "CMU · 美式"
+  },
+  "purified": {
+    "ipa": "/ˈpjʊrəˌfaɪd/",
+    "source": "CMU · 美式"
+  },
+  "puzzled": {
+    "ipa": "/ˈpəzəld/",
+    "source": "CMU · 美式"
+  },
+  "qualifications": {
+    "ipa": "/kˌwɑləfəˈkeɪʃənz/",
+    "source": "CMU · 美式"
+  },
+  "qualms": {
+    "ipa": "/kwɑmz/",
+    "source": "CMU · 美式"
+  },
+  "questions": {
+    "ipa": "/kˈwɛsʧənz/",
+    "source": "CMU · 美式"
+  },
+  "readers": {
+    "ipa": "/ˈridərz/",
+    "source": "CMU · 美式"
+  },
+  "reasons": {
+    "ipa": "/ˈrizənz/",
+    "source": "CMU · 美式"
+  },
+  "records": {
+    "ipa": "/ˈrɛkərdz/",
+    "source": "CMU · 美式"
+  },
+  "refreshments": {
+    "ipa": "/rəˈfrɛʃmənts/",
+    "source": "CMU · 美式"
+  },
+  "regards": {
+    "ipa": "/rɪˈgɑrdz/",
+    "source": "CMU · 美式"
+  },
+  "regulations": {
+    "ipa": "/ˌrɛgjəˈleɪʃənz/",
+    "source": "CMU · 美式"
+  },
+  "reinforced": {
+    "ipa": "/ˌriɪnˈfɔrst/",
+    "source": "CMU · 美式"
+  },
+  "relations": {
+    "ipa": "/riˈleɪʃənz/",
+    "source": "CMU · 美式"
+  },
+  "rentable": {
+    "ipa": "/ˈrɛntəbəl/",
+    "source": "CMU · 美式"
+  },
+  "repairs": {
+    "ipa": "/rɪˈpɛrz/",
+    "source": "CMU · 美式"
+  },
+  "reports": {
+    "ipa": "/rɪˈpɔrts/",
+    "source": "CMU · 美式"
+  },
+  "reservior": {
+    "ipa": "/ˈrezəvwɑː/",
+    "source": "补充标注"
+  },
+  "residents": {
+    "ipa": "/ˈrɛzɪdənts/",
+    "source": "CMU · 美式"
+  },
+  "resources": {
+    "ipa": "/ˈrisɔrsɪz/",
+    "source": "CMU · 美式"
+  },
+  "responsiveness": {
+    "ipa": "/rɪˈspɑnsɪvnəs/",
+    "source": "CMU · 美式"
+  },
+  "restiveness": {
+    "ipa": "/ˈrɛstɪvnəs/",
+    "source": "CMU · 美式"
+  },
+  "restored": {
+    "ipa": "/rɪˈstɔrd/",
+    "source": "CMU · 美式"
+  },
+  "results": {
+    "ipa": "/rɪˈzəlts/",
+    "source": "CMU · 美式"
+  },
+  "retails": {
+    "ipa": "/ˈriˌteɪlz/",
+    "source": "CMU · 美式"
+  },
+  "reverently": {
+    "ipa": "/ˈrɛvərəntli/",
+    "source": "CMU · 美式"
+  },
+  "risks": {
+    "ipa": "/rɪsks/",
+    "source": "CMU · 美式"
+  },
+  "rivers": {
+    "ipa": "/ˈrɪvərz/",
+    "source": "CMU · 美式"
+  },
+  "robots": {
+    "ipa": "/ˈroʊˌbəts/",
+    "source": "CMU · 美式"
+  },
+  "rocks": {
+    "ipa": "/rɑks/",
+    "source": "CMU · 美式"
+  },
+  "roommate": {
+    "ipa": "/ˈruˌmeɪt/",
+    "source": "CMU · 美式"
+  },
+  "routinely": {
+    "ipa": "/ruˈtinli/",
+    "source": "CMU · 美式"
+  },
+  "rows": {
+    "ipa": "/roʊz/",
+    "source": "CMU · 美式"
+  },
+  "ruins": {
+    "ipa": "/ruɪnz/",
+    "source": "CMU · 美式"
+  },
+  "rules": {
+    "ipa": "/rulz/",
+    "source": "CMU · 美式"
+  },
+  "runtime": {
+    "ipa": "/ˈrʌntaɪm/",
+    "source": "补充标注"
+  },
+  "ruthlessness": {
+    "ipa": "/ˈruθləsnəs/",
+    "source": "CMU · 美式"
+  },
+  "sales": {
+    "ipa": "/seɪlz/",
+    "source": "CMU · 美式"
+  },
+  "saltiness": {
+    "ipa": "/ˈsɔːltɪnəs/",
+    "source": "补充标注"
+  },
+  "scads": {
+    "ipa": "/skædz/",
+    "source": "CMU · 美式"
+  },
+  "scrupulously": {
+    "ipa": "/ˈskrupjələsli/",
+    "source": "CMU · 美式"
+  },
+  "seamen": {
+    "ipa": "/ˈsimən/",
+    "source": "CMU · 美式"
+  },
+  "seats": {
+    "ipa": "/sits/",
+    "source": "CMU · 美式"
+  },
+  "shattered": {
+    "ipa": "/ˈʃætərd/",
+    "source": "CMU · 美式"
+  },
+  "shavings": {
+    "ipa": "/ˈʃeɪvɪŋz/",
+    "source": "CMU · 美式"
+  },
+  "sheltered": {
+    "ipa": "/ˈʃɛltərd/",
+    "source": "CMU · 美式"
+  },
+  "shiftiness": {
+    "ipa": "/ˈʃɪftinəs/",
+    "source": "补充标注"
+  },
+  "shoes": {
+    "ipa": "/ʃuz/",
+    "source": "CMU · 美式"
+  },
+  "shoplift": {
+    "ipa": "/ˈʃɑˌplɪft/",
+    "source": "CMU · 美式"
+  },
+  "sites": {
+    "ipa": "/saɪts/",
+    "source": "CMU · 美式"
+  },
+  "sitting-room": {
+    "ipa": "/ˈsɪtɪŋ rum/",
+    "source": "CMU · 美式"
+  },
+  "sizes": {
+    "ipa": "/ˈsaɪzɪz/",
+    "source": "CMU · 美式"
+  },
+  "skillfully": {
+    "ipa": "/ˈskɪlfəli/",
+    "source": "CMU · 美式"
+  },
+  "skills": {
+    "ipa": "/skɪlz/",
+    "source": "CMU · 美式"
+  },
+  "snacks": {
+    "ipa": "/snæks/",
+    "source": "CMU · 美式"
+  },
+  "so-called": {
+    "ipa": "/ˈsoʊˈkɔld/",
+    "source": "CMU · 美式"
+  },
+  "socks": {
+    "ipa": "/sɑks/",
+    "source": "CMU · 美式"
+  },
+  "sources": {
+    "ipa": "/ˈsɔrsəz/",
+    "source": "CMU · 美式"
+  },
+  "space shuttle": {
+    "ipa": "/speɪs ˈʃətəl/",
+    "source": "CMU · 美式"
+  },
+  "sparingly": {
+    "ipa": "/ˈspɛrɪŋli/",
+    "source": "CMU · 美式"
+  },
+  "specialized": {
+    "ipa": "/ˈspɛʃəˌlaɪzd/",
+    "source": "CMU · 美式"
+  },
+  "specified": {
+    "ipa": "/ˈspɛsəˌfaɪd/",
+    "source": "CMU · 美式"
+  },
+  "spectacularly": {
+    "ipa": "/spɛkˈtækjələrli/",
+    "source": "CMU · 美式"
+  },
+  "spectra": {
+    "ipa": "/ˈspɛktrə/",
+    "source": "CMU · 美式"
+  },
+  "spontaneously": {
+    "ipa": "/spɑnˈteɪniəsli/",
+    "source": "CMU · 美式"
+  },
+  "sporadically": {
+    "ipa": "/spərˈædɪkli/",
+    "source": "CMU · 美式"
+  },
+  "sprawling": {
+    "ipa": "/ˈsprɔlɪŋ/",
+    "source": "CMU · 美式"
+  },
+  "stairs": {
+    "ipa": "/stɛrz/",
+    "source": "CMU · 美式"
+  },
+  "standards": {
+    "ipa": "/ˈstændərdz/",
+    "source": "CMU · 美式"
+  },
+  "star-crossed": {
+    "ipa": "/stɑr krɔst/",
+    "source": "CMU · 美式"
+  },
+  "states": {
+    "ipa": "/steɪts/",
+    "source": "CMU · 美式"
+  },
+  "stations": {
+    "ipa": "/ˈsteɪʃənz/",
+    "source": "CMU · 美式"
+  },
+  "steps": {
+    "ipa": "/stɛps/",
+    "source": "CMU · 美式"
+  },
+  "stimuli": {
+    "ipa": "/ˈstɪmjəˌlaɪ/",
+    "source": "CMU · 美式"
+  },
+  "stinginess": {
+    "ipa": "/ˈstɪnʤinɪs/",
+    "source": "CMU · 美式"
+  },
+  "stones": {
+    "ipa": "/stoʊnz/",
+    "source": "CMU · 美式"
+  },
+  "stores": {
+    "ipa": "/stɔrz/",
+    "source": "CMU · 美式"
+  },
+  "stranded": {
+    "ipa": "/ˈstrændɪd/",
+    "source": "CMU · 美式"
+  },
+  "strenuously": {
+    "ipa": "/ˈstrɛnjuəsli/",
+    "source": "CMU · 美式"
+  },
+  "stressful": {
+    "ipa": "/ˈstrɛsfəl/",
+    "source": "CMU · 美式"
+  },
+  "strikingly": {
+    "ipa": "/ˈstraɪkɪŋli/",
+    "source": "CMU · 美式"
+  },
+  "strings": {
+    "ipa": "/strɪŋz/",
+    "source": "CMU · 美式"
+  },
+  "stubbornness": {
+    "ipa": "/ˈstəbərnəs/",
+    "source": "CMU · 美式"
+  },
+  "studies": {
+    "ipa": "/ˈstədiz/",
+    "source": "CMU · 美式"
+  },
+  "styles": {
+    "ipa": "/staɪlz/",
+    "source": "CMU · 美式"
+  },
+  "stylized": {
+    "ipa": "/ˈstaɪˌlaɪzd/",
+    "source": "CMU · 美式"
+  },
+  "subduct": {
+    "ipa": "/səbˈdʌkt/",
+    "source": "补充标注"
+  },
+  "subjected": {
+    "ipa": "/səˈbʤɛktɪd/",
+    "source": "CMU · 美式"
+  },
+  "subjects": {
+    "ipa": "/ˈsəbʤɪkts/",
+    "source": "CMU · 美式"
+  },
+  "subtitles": {
+    "ipa": "/ˈsəbˌtaɪtəlz/",
+    "source": "CMU · 美式"
+  },
+  "suggestions": {
+    "ipa": "/səˈʤɛsʧənz/",
+    "source": "CMU · 美式"
+  },
+  "sunglasses": {
+    "ipa": "/ˈsənˌglæsɪz/",
+    "source": "CMU · 美式"
+  },
+  "superficially": {
+    "ipa": "/ˈsupərˌfɪʃəli/",
+    "source": "CMU · 美式"
+  },
+  "supremely": {
+    "ipa": "/suˈpriməli/",
+    "source": "CMU · 美式"
+  },
+  "surprisingly": {
+    "ipa": "/səˈpraɪzɪŋli/",
+    "source": "CMU · 美式"
+  },
+  "systems": {
+    "ipa": "/ˈsɪstəmz/",
+    "source": "CMU · 美式"
+  },
+  "tables": {
+    "ipa": "/ˈteɪbəlz/",
+    "source": "CMU · 美式"
+  },
+  "teams": {
+    "ipa": "/timz/",
+    "source": "CMU · 美式"
+  },
+  "techniques": {
+    "ipa": "/tɛkˈniks/",
+    "source": "CMU · 美式"
+  },
+  "temples": {
+    "ipa": "/ˈtɛmpəlz/",
+    "source": "CMU · 美式"
+  },
+  "terms": {
+    "ipa": "/tərmz/",
+    "source": "CMU · 美式"
+  },
+  "textured": {
+    "ipa": "/ˈtɛksʧərd/",
+    "source": "CMU · 美式"
+  },
+  "theatre": {
+    "ipa": "/ˈθiətər/",
+    "source": "CMU · 美式"
+  },
+  "thoughts": {
+    "ipa": "/θɔts/",
+    "source": "CMU · 美式"
+  },
+  "thousand-fold": {
+    "ipa": "/ˈθaʊzənd foʊld/",
+    "source": "CMU · 美式"
+  },
+  "throes": {
+    "ipa": "/θroʊz/",
+    "source": "CMU · 美式"
+  },
+  "tickets": {
+    "ipa": "/ˈtɪkɪts/",
+    "source": "CMU · 美式"
+  },
+  "tiles": {
+    "ipa": "/taɪlz/",
+    "source": "CMU · 美式"
+  },
+  "tones": {
+    "ipa": "/toʊnz/",
+    "source": "CMU · 美式"
+  },
+  "topics": {
+    "ipa": "/ˈtɑpɪks/",
+    "source": "CMU · 美式"
+  },
+  "toys": {
+    "ipa": "/tɔɪz/",
+    "source": "CMU · 美式"
+  },
+  "traditionally": {
+    "ipa": "/trəˈdɪʃənəli/",
+    "source": "CMU · 美式"
+  },
+  "trains": {
+    "ipa": "/treɪnz/",
+    "source": "CMU · 美式"
+  },
+  "travelers": {
+    "ipa": "/ˈtrævələrz/",
+    "source": "CMU · 美式"
+  },
+  "trees": {
+    "ipa": "/triz/",
+    "source": "CMU · 美式"
+  },
+  "trends": {
+    "ipa": "/trɛnz/",
+    "source": "CMU · 美式"
+  },
+  "tresses": {
+    "ipa": "/ˈtrɛsɪz/",
+    "source": "CMU · 美式"
+  },
+  "tropics": {
+    "ipa": "/ˈtrɑpɪks/",
+    "source": "CMU · 美式"
+  },
+  "troubling": {
+    "ipa": "/ˈtrəbəlɪŋ/",
+    "source": "CMU · 美式"
+  },
+  "turnpike": {
+    "ipa": "/ˈtərnˌpaɪk/",
+    "source": "CMU · 美式"
+  },
+  "types": {
+    "ipa": "/taɪps/",
+    "source": "CMU · 美式"
+  },
+  "ultrasonics": {
+    "ipa": "/ˌʌltrəˈsɒnɪks/",
+    "source": "补充标注"
+  },
+  "unevenly": {
+    "ipa": "/əˈnivənli/",
+    "source": "CMU · 美式"
+  },
+  "unquestionably": {
+    "ipa": "/ənkˈwɛsʧənəbli/",
+    "source": "CMU · 美式"
+  },
+  "unregulated": {
+    "ipa": "/ənˈrɛgjəˌleɪtɪd/",
+    "source": "CMU · 美式"
+  },
+  "unscrupulousness": {
+    "ipa": "/ʌnˈskruːpjʊləsnəs/",
+    "source": "补充标注"
+  },
+  "uptodate": {
+    "ipa": "/ˌʌp tə ˈdeɪt/",
+    "source": "补充标注"
+  },
+  "vacancies": {
+    "ipa": "/ˈveɪkənsiz/",
+    "source": "CMU · 美式"
+  },
+  "videos": {
+    "ipa": "/ˈvɪdioʊz/",
+    "source": "CMU · 美式"
+  },
+  "videotape": {
+    "ipa": "/ˈvɪdioʊˈteɪp/",
+    "source": "CMU · 美式"
+  },
+  "visitors": {
+    "ipa": "/ˈvɪzɪtərz/",
+    "source": "CMU · 美式"
+  },
+  "vividly": {
+    "ipa": "/ˈvɪvədli/",
+    "source": "CMU · 美式"
+  },
+  "waggon": {
+    "ipa": "/ˈwæɡən/",
+    "source": "补充标注"
+  },
+  "walkman": {
+    "ipa": "/ˈwɔkˌmæn/",
+    "source": "CMU · 美式"
+  },
+  "walls": {
+    "ipa": "/wɔlz/",
+    "source": "CMU · 美式"
+  },
+  "warranted": {
+    "ipa": "/ˈwɔrəntɪd/",
+    "source": "CMU · 美式"
+  },
+  "water-skiing": {
+    "ipa": "/ˈwɔtər skiɪŋ/",
+    "source": "CMU · 美式"
+  },
+  "website": {
+    "ipa": "/ˈwɛbˌsaɪt/",
+    "source": "CMU · 美式"
+  },
+  "weekdays": {
+    "ipa": "/ˈwikˌdeɪz/",
+    "source": "CMU · 美式"
+  },
+  "weekends": {
+    "ipa": "/ˈwiˌkɛndz/",
+    "source": "CMU · 美式"
+  },
+  "well-groomed": {
+    "ipa": "/wɛl grumd/",
+    "source": "CMU · 美式"
+  },
+  "well-known": {
+    "ipa": "/ˈwɛlˈnoʊn/",
+    "source": "CMU · 美式"
+  },
+  "westerner": {
+    "ipa": "/ˈwɛstərnər/",
+    "source": "CMU · 美式"
+  },
+  "willingness": {
+    "ipa": "/ˈwɪlɪŋnəs/",
+    "source": "CMU · 美式"
+  },
+  "words": {
+    "ipa": "/wərdz/",
+    "source": "CMU · 美式"
+  },
+  "workday": {
+    "ipa": "/ˈwərkˌdeɪ/",
+    "source": "CMU · 美式"
+  },
+  "workforce": {
+    "ipa": "/ˈwərkˌfɔrs/",
+    "source": "CMU · 美式"
+  },
+  "workmate": {
+    "ipa": "/ˈwɜːkmeɪt/",
+    "source": "补充标注"
+  },
+  "workplace": {
+    "ipa": "/ˈwərkˌpleɪs/",
+    "source": "CMU · 美式"
+  },
+  "works": {
+    "ipa": "/wərks/",
+    "source": "CMU · 美式"
+  },
+  "world-wide": {
+    "ipa": "/wərld waɪd/",
+    "source": "CMU · 美式"
+  },
+  "wounded": {
+    "ipa": "/ˈwundɪd/",
+    "source": "CMU · 美式"
+  }
+}

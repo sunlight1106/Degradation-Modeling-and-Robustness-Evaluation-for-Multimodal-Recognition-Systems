@@ -2,16 +2,17 @@
 
 ## 先选一本，马上开始
 
-1. 登录后打开「目录与账户 → 背单词」，首次使用先确认学习时区和每日目标。
+1. 登录后打开「目录与账户 → 背单词」，直接点开始学习。首次自动采用电脑时区；学习设置里可随时调整每日目标和时区。
 2. 打开「我的词书」，按 **考研 / 四六级 / 留学考试 / 中小学 / 专业与通用** 筛选，也可以输入名称搜索。
-3. 点「查看单词」先了解收录内容，或点「选这本词书」再「开始学习」。切换词书会保留此前各本书的学习进度。
-4. 每次选择一个释义；同一词条累计答对 4 次后进入次日复习。按键 1–4 可选答案，Enter 继续。
-5. 「单词本」可以搜索单词、查看释义、收藏或筛选错词；「学习记录」显示近期进度。
+3. 点「查看单词」先了解收录内容，或点「选这本词书」再「开始学习」。同一账号的同一个单词跨词书共享进度；学习、收藏、错词、复习日和 Skip 都会接续。
+4. 默认「每日带练」：看场景、音标与搭配 → 点「遮住答案，开始回忆」→ 输入英文 → 答完再看用法。之后交替练拼写和固定搭配；可以用 sb./sth. 作占位。也可切换「释义识记」四选一，用按键 1–4 选答案，Enter 继续。
+5. 熟词点 **Skip**，会在所有词书中跳过，不冒充掌握。到「单词本 → 已跳过」点「恢复学习」，原进度仍在。
+6. 「单词本」可以搜索单词、查看释义、收藏或筛选错词；「学习记录」显示近期进度。
 
 ## 内置词书
 
-现在共 **17 本**：14 本新增词书，加上原有日常生活、学习与研究、出行旅行各 20 词。
-新增词库包含 **14,894 个不同单词，43,632 个词条收录**；连同原有 60 词，全部词书合计 43,692 个收录。不同书之间有重叠，不能把收录总数当成不同单词数。
+现在共 **18 本**：14 本考试与主题词书、3 本原创入门词书，以及 **每日 · 场景与搭配（86 词）**。
+新增词库包含 **14,894 个不同单词，43,632 个词条收录**；连同原有 60 词，全部词书合计 43,778 个收录。不同书之间有重叠，不能把收录总数当成不同单词数。
 
 | 词书 | 实际收录 |
 | --- | ---: |
@@ -33,7 +34,7 @@
 - 考试分类来自 ECDICT 的已有标签，使用通用语料词频排序；不代表当前考试官方完整大纲。“高频”不代表历年试卷出现次数。
 - 小学衔接、基础、学术及专业词书是按说明筛选的学习合集。人教版具体年级、册次和单元尚未内置。
 - 没有把通用词库标为“闪过 2028”“红宝书 2028”等出版物。需要某一具体版本时，可以私有导入自己有权使用的内容。
-- 原有入门书包含原创例句。新增词条保留 ECDICT 的中文释义与可用音标；缺少的音标或例句留空，不伪造示例。练习干扰项为自动筛选，并排除中文释义字符重叠，仍可结合上下文辨析多义词。
+- 原有入门书包含原创例句。新增词条保留 ECDICT 的中文释义与音标；原来缺少的 440 条音标已补充，其中有美式词典转换和补充标注。完整音标不代表统一口音。8,665 个不同词已有搭配；未收录搭配的词会明确显示，可在私有词书中补充。例句缺失时不伪造示例。练习干扰项为自动筛选，并排除中文释义字符重叠，仍可结合上下文辨析多义词。
 
 ## 导入自己的版本
 
@@ -43,14 +44,25 @@
 
 词书数据随 Docker 镜像安装，启动与学习时无需再联网下载，也不会触发模型 API 费用。新增公共词书不会覆盖原来的私人词书和学习记录。
 
+## 备份与恢复（不用手动改 JSON）
+
+1. 打开背单词页面右上角 **备份与恢复**，点 **下载学习备份**，获得 `.json.gz` 文件。每次答题自动保存到服务器；下载文件用于另存副本，不会自动上传其他云盘。
+2. 恢复时登录目标账号，选择该文件，勾选合并确认，再点 **合并恢复**。支持压缩或普通 JSON，文件最大 20 MB、解压最大 64 MB。
+3. 私有词书使用新账号的独立 ID；相同内容的词书合并，同词进度不累加重复次数，重复恢复同一文件不会双倍计数。现有学习次数与错词次数保留较大值；复习日期、收藏和 Skip 采用较新的记录。
+4. 备份只含当前账号的词书、学习记录和设置，不含密码、API 密钥、会话或其他账号数据。它不能代替整个服务器的数据库与媒体备份。跨设备接续需要登录同一套服务器上的同一账号；单独下载代码不包含私人进度。
+
+## 每日带练如何算进度
+
+看过不算掌握。即时答对、提示后答对、隔开一段时间的无提示答对分开记录。带练中查看答案后至少间隔 60 秒，未使用提示答对才增加四次掌握计数；这是产品规则，不是长期记住的保证。连续练其他单词后再回头，次日再混合检查。不能把同屏看着英文输入当作独立回忆。
+
 ## Learning rules
 
 “初步掌握” means a product threshold, not a scientific guarantee of permanent memory.
 
-1. A correct LEARN answer increments that entry's cumulative count once. An incorrect answer adds a mistake and does not increment or erase previous correct answers.
+1. In recognition mode a correct LEARN choice increments the shared headword count once. In guided recall only a delayed, unprompted correct answer earns that count; immediate and prompted success remain separate evidence. An incorrect answer adds a mistake and does not increment or erase previous correct answers.
 2. At **4** correct answers the entry enters review, due on the **next local calendar date** in the user's explicitly saved IANA learning timezone.
 3. A correct due review schedules the next review in **3, 7, 14, 30, then 60 days**; later correct reviews keep a 60-day interval. A wrong review resets the interval stage and schedules the next local day.
-4. MISTAKES practice clears the mistake flag when correct but never increments learning or advances review. Historical wrong counts remain available.
+4. MISTAKES practice clears the mistake flag on a credited correct answer but never increments learning or advances review. Historical wrong counts remain available.
 5. The daily goal counts distinct newly learned words across all books. An unfinished small batch rotates between entries; already started entries can be finished after lowering the goal. Switching books retains all progress.
 6. Day records use the saved timezone at answer time. A later timezone change does not relabel historical study dates. DST is handled as calendar dates, rather than adding fixed 24-hour durations.
 
@@ -58,7 +70,7 @@
 
 Every mutation locks the authenticated user's `app_user` row inside an explicit READ_COMMITTED database transaction. READ_COMMITTED matters on MySQL because resolving the principal before acquiring the lock must not leave subsequent question/progress reads on a stale REPEATABLE_READ snapshot. Question/progress mutations additionally use pessimistic row locks. This serializes updates across application instances, avoids first-progress-row races, and ensures each submitted question grants credit at most once. The same completed question returns its original answer result on retry.
 
-Only one unexpired question is active per account. Repeated next-question calls for the same book/mode return the same question. Changing book/mode or the learning timezone expires the previous one. Questions expire after 30 minutes. Stale, foreign, or invalid-option submissions fail without modifying progress.
+Only one unexpired question is active per account. Repeated next-question calls for the same book/mode/style return the same question. Changing book/mode or the learning timezone expires the previous one. Questions expire after 30 minutes. Hints are tracked on the server; Skip grants no answer credit. Stale, foreign, or invalid-option submissions fail without modifying progress.
 
 Question payloads expose the prompt, IPA, part of speech and randomized opaque option IDs, but no correct-answer field, word database ID or example before submission. Grading uses the persisted server answer. This is a learning tool, not an anti-cheating exam: authorized word browsing intentionally exposes definitions.
 
@@ -68,13 +80,13 @@ The frontend uses Vue text interpolation for imported text, not raw HTML. Progre
 
 新增词条来自 [ECDICT](https://github.com/skywind3000/ECDICT)，固定提交 `bc015ed2e24a7abef49fc6dbbb7fe32c1dadaf8b`。保留 [MIT 许可全文](../database/vocabulary/ECDICT-LICENSE.txt)。[catalog.json](../database/vocabulary/catalog.json) 记录源文件与压缩词库的 SHA-256、词量和版本。
 
-从该提交下载 `ecdict.csv` 后，可用 `python scripts/build-vocabulary-catalog.py /path/to/ecdict.csv` 重建；脚本先核对源文件哈希，再按标签/词频/人工主题表选词。释义选择保留长度合适的完整一行，过滤无中文释义、无效拼写及大小写重复。音标沿用源文件，未统一口音。压缩数据只保存一次各个词条，各词书引用同一份数据；数据库按词书建立独立学习条目。
+从该提交下载 `ecdict.csv` 后，可用 `python scripts/build-vocabulary-catalog.py /path/to/ecdict.csv` 重建；脚本先核对源文件哈希，再按标签/词频/人工主题表选词。释义选择保留长度合适的完整一行，过滤无中文释义、无效拼写及大小写重复。音标沿用源文件，未统一口音。压缩数据只保存一次各个词条，各词书引用同一份数据；数据库保存各词书内容，学习状态以账号和规范化单词为唯一键共享。不混合同根词、不同词形或不同账号。
 
-V17 数据库迁移自动导入该离线包，原有 V11 入门词库不变。**已经发布的 V17 数据包和迁移不可原地改写**；后续词库修订须新增迁移，以保留升级校验与已有学习记录。迁移校验包含压缩包内容，缺失或损坏时启动失败而非静默提供空词库。
+V22–V23 保留旧答题历史并合并同账号的重复单词进度；V24 添加场景带练课。V17 数据库迁移自动导入该离线包，原有 V11 入门词库不变。**已经发布的 V17 数据包和迁移不可原地改写**；后续词库修订须新增迁移，以保留升级校验与已有学习记录。迁移校验包含压缩包内容，缺失或损坏时启动失败而非静默提供空词库。
 
 ## Exporting and reimporting private books
 
-Settings → Privacy and data → Export my data requires the current account password. The account JSON has `schemaVersion: 2`; it is a personal data copy, **not a complete system backup or an account-restore format**. It excludes uploaded file bytes, passwords, API credentials, sessions, question/answer snapshots and other accounts' data. It cannot recover media or keys. System recovery requires separately verified database, object-storage and encryption-key backups.
+Settings → Privacy and data → Export my data requires the current account password. The account JSON has `schemaVersion: 3`; it is a personal data copy, **not a complete system backup or an account-restore format**. It excludes uploaded file bytes, passwords, API credentials, sessions, question/answer snapshots and other accounts' data. It cannot recover media or keys. System recovery requires separately verified database, object-storage and encryption-key backups.
 
 The existing `vocabularyBooks`, `vocabularyWords`, `vocabularyProfile` and `vocabularyProgress` sections remain available for inspection. `vocabularyWords.distractors` now contains the stored JSON-encoded list of incorrect meanings. Older account exports (version 1) omitted this list and cannot reconstruct a private book completely without the original import or manually supplied distractors.
 
@@ -87,8 +99,8 @@ For content round trips, use **`vocabularyBookImports`**. Each object is one sel
    import json
    from pathlib import Path
    account = json.loads(Path("pkb-ai-evaluation-data.json").read_text(encoding="utf-8"))
-   if account.get("schemaVersion") != 2:
-       raise ValueError("Expected account export version 2")
+   if account.get("schemaVersion") not in (2, 3):
+       raise ValueError("Expected account export version 2 or 3")
    index = 0
    book = dict(account["vocabularyBookImports"][index])
    if book.pop("schemaVersion", None) != 1:
@@ -138,18 +150,18 @@ Run `./mvnw -Dtest=VocabularyIntegrationTest test` and `npm run build --prefix c
 
 `VocabularyMySqlIntegrationTest` inherits the same full contract and runs against a new, random `rv_vocab_test_*` schema when `MYSQL_TEST_URL` is set, using `MYSQL_TEST_USERNAME` and `MYSQL_TEST_PASSWORD`. It runs all Flyway migrations, validates Hibernate mappings and drops only the schema it created. It never migrates, resets or drops an existing selected database. Run `./mvnw -Dtest=VocabularyMySqlIntegrationTest test` inside the verified MySQL network namespace.
 
-## Morning acceptance checklist
+## 自己检查是否正常
 
-1. Sign in, open “背单词”, confirm the displayed learning timezone and set a one-word goal.
-2. Pick a starter book, answer incorrectly once, and confirm zero credit plus a mistake entry.
-3. Answer that same entry correctly four times; confirm 4/4, one newly learned word, and a next-local-day review date.
-4. Refresh, log out/in, and change accounts. Own progress should persist; another account should have none.
-5. Use wrong-word practice, stars, filters and search. Confirm meanings/examples render as plain text.
-6. Open “我的词书 → 导入词书”, load the sample, acknowledge rights and import. Confirm it is invisible from another account.
-7. Check mobile layout, keyboard 1–4/Enter, double-click suppression, navigation interruption, error recovery and a second tab replacing an unanswered question.
-8. On the next local date, complete a due review and inspect the next due date. Do not alter production database dates to simulate this.
+1. 登录，打开「背单词」，直接开始，系统自动采用电脑时区，默认每天 10 词。选「每日场景课 · 86 词」，点「学习新词」。
+2. 第一张卡应显示音标、场景、完整搭配、例句；点「遮住答案」后英文和音标应隐藏，输入框可直接打字。
+3. 输入答案，确认反馈区区分即时、提示后和延迟无提示回忆。先练其他词，至少隔开 60 秒后再无提示回忆，才增加带练掌握次数。
+4. 点 Skip，再在单词本筛选「已跳过」。点「恢复学习」，次数与复习进度应保留。换到收录同一个词的另一本书，也应接续该词的进度。
+5. 下载学习备份，重新选择该文件并确认恢复。重复恢复后词书数量、答题次数不应加倍。
+6. 退出并换另一个账号。其个人进度、私有词书和备份必须与前一个账号隔离。
+7. 想快速检查旧练习，可切换「释义识记」四选一：累计四次正确选择后进入次日复习。新带练不能用连续看答案输入来完成这项检查。
+8. 次日做「到期复习」，检查新的复习日。不要直接修改正在使用的数据库来模拟日期变化。
 
-Browser visual QA is a separate acceptance stage: compiler success is not screenshot or interaction verification. This environment has not supplied a supported browser preview for the local app.
+桌面检查包括答案遮挡、输入、提示、反馈、Skip、备份入口和键盘焦点；界面测试使用合成账号数据。接口与权限测试另在 H2 和独立 MySQL 8.4 数据库执行，不混入真实学习记录。
 
 ## Deliberate first-version limits
 

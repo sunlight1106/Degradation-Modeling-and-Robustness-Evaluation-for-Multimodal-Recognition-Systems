@@ -26,6 +26,11 @@ public class VocabularyRequestSizeFilter extends OncePerRequestFilter {
     @Override protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws IOException, ServletException {
         String path = request.getServletPath().isEmpty() ? request.getRequestURI() : request.getServletPath();
+        if(path.equals("/api/v1/vocabulary/backup/restore")) {
+            // Tomcat bounds the multipart file; do not consume its stream before getParts().
+            if(request.getContentLengthLong()>VocabularyBackupService.MAX_FILE_BYTES+65536L){reject(response);return;}
+            chain.doFilter(request,response);return;
+        }
         int max = path.equals("/api/v1/vocabulary/books/import") ? MAX_IMPORT_BYTES : MAX_WRITE_BYTES;
         if (request.getContentLengthLong() > max) { reject(response); return; }
         byte[] bytes = request.getInputStream().readNBytes(max + 1);

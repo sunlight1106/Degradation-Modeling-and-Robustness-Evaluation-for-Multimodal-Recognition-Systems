@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "sha256": "83b50af276c4f65937401025f959b0bf803624786adf37e253280a195b58e572",
+  "uniqueWords": 14894,
+  "withCollocations": 8665,
+  "dailyWords": 86,
+  "sourceCommit": "bc015ed2e24a7abef49fc6dbbb7fe32c1dadaf8b",
+  "phoneticSupplement": "eng_to_ipa 0.0.2 / CMU",
+  "sourceSha256": "1a6947e04785db63613a92e14903cdae7954f7e84860b10e68e5c7cbb3f9c3cf"
+}

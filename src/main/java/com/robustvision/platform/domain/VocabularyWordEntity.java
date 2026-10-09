@@ -10,6 +10,8 @@ public class VocabularyWordEntity {
     @Id @Column(length=36) public String id;
     @Column(name="book_id",nullable=false,length=36) public String bookId;
     @Column(nullable=false,length=80) public String term;
+    @org.hibernate.annotations.ColumnDefault("''")
+    @Column(name="term_key",nullable=false,length=80) public String termKey = "";
     @Column(nullable=false,length=120) public String ipa;
     @Column(nullable=false,length=24) public String pos;
     @Column(nullable=false,length=160) public String meaning;
@@ -17,4 +19,8 @@ public class VocabularyWordEntity {
     @Column(name="example_translation",nullable=false,length=400) public String exampleTranslation;
     @Column(nullable=false,length=1500) public String distractors;
     @Column(name="sort_order",nullable=false) public int sortOrder;
+    @Column(name="lesson_json",columnDefinition="TEXT") public String lessonJson;
+    @PrePersist @PreUpdate void canonicalize() {
+        termKey=com.robustvision.platform.service.VocabularyTermKey.of(term);
+    }
 }

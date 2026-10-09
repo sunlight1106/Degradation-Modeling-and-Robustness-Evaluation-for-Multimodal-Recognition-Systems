@@ -8,6 +8,15 @@ import java.security.MessageDigest;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class VocabularyCatalogTest {
+    @Test void lessonsHavePhoneticsAndDailyCourseHasScenesAndPatterns() throws Exception {
+        var json=new ObjectMapper();var manifest=json.readTree(getClass().getResourceAsStream("/vocabulary/lessons-manifest.json"));
+        byte[] raw=Objects.requireNonNull(getClass().getResourceAsStream("/vocabulary/lessons-v1.json.gz")).readAllBytes();
+        assertThat(HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(raw))).isEqualTo(manifest.path("sha256").asText());
+        var lessons=json.readTree(new GZIPInputStream(new java.io.ByteArrayInputStream(raw)));assertThat(lessons.size()).isEqualTo(manifest.path("uniqueWords").asInt());
+        for(var card:lessons){assertThat(card.path("ipa").asText()).isNotBlank().doesNotContain("*");assertThat(card.path("usageNote").asText()).isNotBlank();}
+        var daily=json.readTree(getClass().getResourceAsStream("/vocabulary/daily-lessons.json"));assertThat(daily.size()).isEqualTo(86);
+        for(var card:daily){assertThat(card.path("memoryCue").asText()).isNotBlank();assertThat(card.path("collocations").size()).isPositive();assertThat(card.path("example").asText()).isNotBlank();}
+    }
     @Test void shippedCatalogMatchesManifestAndHasValidUnambiguousOptions() throws Exception {
         var json=new ObjectMapper();
         var manifest=json.readTree(getClass().getResourceAsStream("/vocabulary/catalog.json"));
