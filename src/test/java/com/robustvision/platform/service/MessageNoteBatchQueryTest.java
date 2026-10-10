@@ -30,7 +30,7 @@ import static org.mockito.Mockito.when;
         "logging.level.org.hibernate.stat=OFF",
         "logging.level.org.hibernate.engine.internal.StatisticalLoggingSessionEventListener=OFF"
 })
-@Import({MessageService.class, NoteService.class, NoteHistoryService.class, NoteLinkService.class, LiveUpdateService.class})
+@Import({MessageService.class, ModerationGuard.class, NoteService.class, NoteHistoryService.class, NoteLinkService.class, LiveUpdateService.class})
 class MessageNoteBatchQueryTest {
     @Autowired EntityManager em;
     @Autowired EntityManagerFactory factory;

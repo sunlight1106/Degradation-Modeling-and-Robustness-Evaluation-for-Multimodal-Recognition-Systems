@@ -3,6 +3,7 @@ import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { sectionLinks as vSectionLinks } from '@/directives/sectionLinks'
 import WorkspaceTools from './WorkspaceTools.vue'
+import SafetyBanner from './SafetyBanner.vue'
 import AppIcon from './AppIcon.vue'
 import { authStore } from '@/stores/auth'
 import { themeStore } from '@/stores/theme'
@@ -42,12 +43,14 @@ const mainItems: NavItem[] = [
 ]
 
 const adminItems: NavItem[] = [
+  { label: '举报审核', to: '/app/moderation', icon: 'shield', permission: 'moderation:review' },
   { label: '平台总览', to: '/app/admin', icon: 'logs', any: ['admin:stats', 'admin:audit'] },
   { label: '用户管理', to: '/app/users', icon: 'users', permission: 'user:read' },
   { label: '权限管理', to: '/app/roles', icon: 'shield', permission: 'role:read' },
 ]
 
 const supportItems: NavItem[] = [
+  { label: '举报与处罚记录', to: '/app/safety', icon: 'shield' },
   { label: '操作文档', to: '/docs', icon: 'docs' },
   { label: '设置', to: '/app/settings', icon: 'settings' },
 ]
@@ -109,6 +112,6 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', outside))
         </details>
       </div>
     </header>
-    <main id="workspace-content" v-section-links class="app-content" :class="{'app-content--reader':route.path === '/app/upload'}" tabindex="-1"><RouterView v-if="authStore.state.user" :key="authStore.state.user.id" /></main>
+    <main id="workspace-content" v-section-links class="app-content" :class="{'app-content--reader':route.path === '/app/upload'}" tabindex="-1"><SafetyBanner v-if="authStore.state.user" :key="'safety-'+authStore.state.user.id" /><RouterView v-if="authStore.state.user" :key="authStore.state.user.id" /></main>
   </div>
 </template>

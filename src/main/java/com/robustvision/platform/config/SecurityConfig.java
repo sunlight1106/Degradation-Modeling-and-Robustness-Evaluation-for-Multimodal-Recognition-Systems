@@ -33,6 +33,8 @@ public class SecurityConfig {
     SecurityFilterChain securityFilterChain(HttpSecurity http,
                                             JwtAuthenticationFilter jwtFilter,
                                             RateLimitFilter rateLimitFilter,
+                                            com.robustvision.platform.service.ModerationGuard moderation,
+                                            com.robustvision.platform.repository.UserRepository users,
                                             ObjectMapper objectMapper) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
@@ -67,6 +69,7 @@ public class SecurityConfig {
                         }))
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
         http.addFilterAfter(rateLimitFilter, JwtAuthenticationFilter.class);
+        http.addFilterAfter(new com.robustvision.platform.security.ModerationFilter(moderation,users,objectMapper), RateLimitFilter.class);
         return http.build();
     }
 

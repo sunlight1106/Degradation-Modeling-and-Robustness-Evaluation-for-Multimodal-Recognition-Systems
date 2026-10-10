@@ -38,6 +38,7 @@ public final class Permissions {
             new Definition("training:use", "运行自己的本地训练", "个人 AI"),
             new Definition("admin:stats", "查看平台统计与趋势", "系统管理"),
             new Definition("admin:audit", "查看管理操作记录", "系统管理"),
+            new Definition("moderation:review", "审核举报、处罚与申诉", "系统管理"),
             new Definition("user:read", "查看用户", "系统管理"),
             new Definition("user:write", "管理用户", "系统管理"),
             new Definition("role:read", "查看角色权限", "系统管理"),

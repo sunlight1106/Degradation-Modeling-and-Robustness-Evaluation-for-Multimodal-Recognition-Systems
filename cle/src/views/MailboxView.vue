@@ -6,6 +6,7 @@ import type { MessageView, MessageContactView } from '@/types/api'
 import AppIcon from '@/components/AppIcon.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import MessageRecipientPicker from '@/components/MessageRecipientPicker.vue'
+import ReportButton from '@/components/ReportButton.vue'
 import { toastStore } from '@/stores/toast'
 import { authStore } from '@/stores/auth'
 
@@ -151,7 +152,7 @@ onBeforeUnmount(reset)
         <p v-if="error" class="inline-alert inline-alert--error">{{ error }}</p>
       </aside>
       <article class="mail-reader">
-        <template v-if="selected"><p class="page-kicker">{{ tab === 'inbox' ? 'INBOX' : 'SENT' }}</p><h3>{{ selected.subject }}</h3><div class="mail-meta"><b>{{ selected.senderName }}</b><span>发送给 {{ selected.recipients.map(r => r.displayName).join('、') }}</span><time>{{ new Date(selected.createdAt).toLocaleString('zh-CN') }}</time></div><button v-if="tab === 'inbox' && selected.senderId !== authStore.state.user?.id" class="button button--ghost" :disabled="busy || loading" @click="compose(selected.senderId, selected)">回复这封信</button><p class="mail-body">{{ selected.body }}</p><div v-if="selected.attachments.length" class="mail-attachments"><button v-for="file in selected.attachments" :key="file.id" @click="download(file)"><AppIcon name="file" :size="18" /><span>{{ file.fileName }}<small>{{ Math.ceil(file.sizeBytes / 1024) }} KB</small></span><AppIcon name="download" :size="16" /></button></div></template>
+        <template v-if="selected"><p class="page-kicker">{{ tab === 'inbox' ? 'INBOX' : 'SENT' }}</p><h3>{{ selected.subject }}</h3><div class="mail-meta"><b>{{ selected.senderName }}</b><span>发送给 {{ selected.recipients.map(r => r.displayName).join('、') }}</span><time>{{ new Date(selected.createdAt).toLocaleString('zh-CN') }}</time></div><button v-if="tab === 'inbox' && selected.senderId !== authStore.state.user?.id" class="button button--ghost" :disabled="busy || loading" @click="compose(selected.senderId, selected)">回复这封信</button><p class="mail-body">{{ selected.body }}</p><ReportButton v-if="selected.senderId !== authStore.state.user?.id" type="MESSAGE" :source-id="selected.id" /><div v-if="selected.attachments.length" class="mail-attachments"><button v-for="file in selected.attachments" :key="file.id" @click="download(file)"><AppIcon name="file" :size="18" /><span>{{ file.fileName }}<small>{{ Math.ceil(file.sizeBytes / 1024) }} KB</small></span><AppIcon name="download" :size="16" /></button></div></template>
         <EmptyState v-else title="选择一封消息" description="邮件内容和附件会显示在这里。" icon="mail" />
       </article>
     </section>

@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class CurrentUserService {
+    @org.springframework.beans.factory.annotation.Autowired private ModerationGuard moderation;
     private final UserRepository userRepository;
 
     public CurrentUserService(UserRepository userRepository) {
@@ -28,7 +29,7 @@ public class CurrentUserService {
     }
 
     public boolean hasPermission(UserEntity user, String permission) {
-        return com.robustvision.platform.security.Permissions.effective(user).contains(permission);
+        return moderation.permissions(user.getId(),com.robustvision.platform.security.Permissions.effective(user)).contains(permission);
     }
 
     public boolean isSuperAdmin(UserEntity user) { return "ADMIN".equals(user.getRole().getCode()); }

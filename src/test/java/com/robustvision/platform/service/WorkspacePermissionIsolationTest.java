@@ -14,7 +14,7 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.when;
 
 @DataJpaTest(showSql = false)
-@Import(WorkspaceService.class)
+@Import({WorkspaceService.class,ModerationGuard.class})
 class WorkspacePermissionIsolationTest {
     @Autowired EntityManager em;
     @Autowired WorkspaceService service;

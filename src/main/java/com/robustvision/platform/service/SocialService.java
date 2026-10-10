@@ -13,6 +13,7 @@ import java.util.*;
 
 @Service
 public class SocialService {
+    @org.springframework.beans.factory.annotation.Autowired private ModerationGuard moderation;
     @org.springframework.beans.factory.annotation.Autowired private LiveUpdateService live;
     @jakarta.persistence.PersistenceContext private jakarta.persistence.EntityManager entityManager;
     private final UserRepository users;
@@ -123,6 +124,7 @@ public class SocialService {
     @Transactional
     public SocialDtos.ChatMessage send(long id, SocialDtos.ChatRequest request) {
         UserEntity me = current.requireCurrent();
+        moderation.sending(me.getId());
         ContactLinkEntity link = locked(id, me.getId());
         requireChat(link, me.getId());
         // Client-generated key makes a retry after a lost HTTP response safe.

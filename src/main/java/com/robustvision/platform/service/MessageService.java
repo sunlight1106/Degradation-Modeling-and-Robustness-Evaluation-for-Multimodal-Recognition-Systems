@@ -14,6 +14,7 @@ import java.util.*;
 
 @Service
 public class MessageService {
+    @org.springframework.beans.factory.annotation.Autowired private ModerationGuard moderation;
     @org.springframework.beans.factory.annotation.Autowired private LiveUpdateService live;
     @org.springframework.beans.factory.annotation.Autowired private org.springframework.jdbc.core.JdbcTemplate jdbc;
     private static final int LIST_BATCH_SIZE = 500;
@@ -68,6 +69,7 @@ public class MessageService {
     @Transactional
     public ApiDtos.MessageView sendDirect(List<Long> recipientIds, String subject, String body, List<MultipartFile> files, String replyToId) {
         UserEntity sender = currentUserService.requireCurrent();
+        moderation.sending(sender.getId());
         LinkedHashSet<Long> ids = new LinkedHashSet<>(recipientIds == null ? List.of() : recipientIds);
         if (ids.isEmpty() || ids.size() > 20 || ids.contains(null)) throw new BusinessException(HttpStatus.BAD_REQUEST, "MESSAGE_RECIPIENTS_INVALID", "请选择 1 到 20 个收件人");
         if (sender.getStatus() != UserStatus.ACTIVE || userRepository.findMessageContacts(sender.getId(),
@@ -98,6 +100,7 @@ public class MessageService {
     public ApiDtos.MessageView sendGroup(Long workspaceId, String body, List<MultipartFile> files, String replyToId) {
         workspaceService.requireContentPermission(workspaceId, true);
         UserEntity sender = currentUserService.requireCurrent();
+        moderation.sending(sender.getId());
         MessageEntity message = saveMessage(sender, "群组交流", body, files, workspaceId, replyToId);
         if(live!=null) live.changed(jdbc.queryForList("SELECT user_id FROM workspace_member WHERE workspace_id=?",Long.class,workspaceId));
         return toView(message, sender);

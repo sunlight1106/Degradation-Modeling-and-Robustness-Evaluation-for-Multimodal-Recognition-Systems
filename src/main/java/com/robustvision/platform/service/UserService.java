@@ -310,7 +310,8 @@ public class UserService {
         if (!"ADMIN".equals(user.getRole().getCode()) || user.getStatus() != UserStatus.ACTIVE) return;
         boolean disabling = requestedStatus == com.robustvision.platform.domain.UserStatus.DISABLED;
         boolean demoting = requestedRoleId != null && !requestedRoleId.equals(user.getRole().getId());
-        if ((disabling || demoting) && userRepository.findLockedActiveAdminIds(user.getRole().getId()).size() <= 1) {
+        var available=userRepository.findLockedActiveAdminIds(user.getRole().getId());
+        if ((disabling || demoting) && available.contains(user.getId()) && available.size() <= 1) {
             throw new BusinessException(HttpStatus.CONFLICT, "LAST_ADMIN_REQUIRED", "必须至少保留一个启用的最高管理员");
         }
     }

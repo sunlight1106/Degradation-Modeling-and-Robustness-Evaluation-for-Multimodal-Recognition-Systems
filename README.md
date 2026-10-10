@@ -82,6 +82,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\deploy.ps1 -Port 4273
 - [个人 AI、共享记忆和训练](docs/PERSONAL_AI.md)
 - [群组与站内信](docs/GROUPS.md)
 - [管理员和用户权限](docs/ADMINISTRATION.md)
+- [举报、审核和处罚](docs/MODERATION.md)：用户提交消息举报，审核员填写理由和时长，支持禁言、功能限制、封禁与申诉。
 
 网页顶部的「操作文档」也提供逐步说明，可按 Ctrl K 搜索操作。
 

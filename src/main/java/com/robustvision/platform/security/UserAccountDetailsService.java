@@ -15,6 +15,7 @@ import java.util.List;
 
 @Service
 public class UserAccountDetailsService implements UserDetailsService {
+    @org.springframework.beans.factory.annotation.Autowired private com.robustvision.platform.service.ModerationGuard moderation;
     private final UserRepository userRepository;
 
     public UserAccountDetailsService(UserRepository userRepository) {
@@ -28,7 +29,7 @@ public class UserAccountDetailsService implements UserDetailsService {
                 .orElseThrow(() -> new UsernameNotFoundException("用户不存在"));
         List<SimpleGrantedAuthority> authorities = new ArrayList<>();
         authorities.add(new SimpleGrantedAuthority("ROLE_" + account.getRole().getCode()));
-        Permissions.effective(account).forEach(permission -> authorities.add(new SimpleGrantedAuthority(permission)));
+        moderation.permissions(account.getId(),Permissions.effective(account)).forEach(permission -> authorities.add(new SimpleGrantedAuthority(permission)));
         return User.withUsername(account.getUsername())
                 .password(account.getPasswordHash())
                 .disabled(account.getStatus() != UserStatus.ACTIVE)

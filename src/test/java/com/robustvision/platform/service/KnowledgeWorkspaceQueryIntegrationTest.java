@@ -30,7 +30,7 @@ import static org.mockito.Mockito.when;
         "logging.level.org.hibernate.stat=OFF",
         "logging.level.org.hibernate.engine.internal.StatisticalLoggingSessionEventListener=OFF"
 })
-@Import({KnowledgeService.class, WorkspaceService.class})
+@Import({KnowledgeService.class, WorkspaceService.class,ModerationGuard.class})
 class KnowledgeWorkspaceQueryIntegrationTest {
     @Autowired EntityManager entityManager;
     @Autowired EntityManagerFactory entityManagerFactory;

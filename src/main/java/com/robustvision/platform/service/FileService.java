@@ -31,6 +31,7 @@ import java.util.UUID;
 
 @Service
 public class FileService {
+    @org.springframework.beans.factory.annotation.Autowired private ModerationGuard moderation;
     private final FileAssetRepository fileRepository;
     private final CurrentUserService currentUserService;
     private final ObjectStorageService objectStorage;
@@ -115,6 +116,7 @@ public class FileService {
 
     @Transactional
     public FileAssetEntity storeMessageAttachment(MultipartFile multipartFile, UserEntity owner) {
+        moderation.uploading(owner.getId());
         if (multipartFile == null || multipartFile.isEmpty()) throw new BusinessException(HttpStatus.BAD_REQUEST, "EMPTY_ATTACHMENT", "附件不能为空");
         if (multipartFile.getSize() > maxSize) throw new BusinessException(HttpStatus.PAYLOAD_TOO_LARGE, "ATTACHMENT_TOO_LARGE", "单个附件不能超过 20 MB");
         try {

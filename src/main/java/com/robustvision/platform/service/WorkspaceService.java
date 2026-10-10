@@ -15,6 +15,7 @@ import java.util.*;
 
 @Service
 public class WorkspaceService {
+    @org.springframework.beans.factory.annotation.Autowired private ModerationGuard moderation;
     public static final Set<String> ALL = Set.of("CONTENT_READ", "CONTENT_WRITE", "MEMBERS_READ", "MEMBERS_WRITE", "SETTINGS_WRITE");
     private final WorkspaceRepository workspaceRepository;
     private final WorkspaceMemberRepository memberRepository;
@@ -143,6 +144,7 @@ public class WorkspaceService {
     /** Caller transaction holds the group lock during posts and membership mutations. */
     public void requireContentPermission(Long id, boolean write) {
         UserEntity current = currentUserService.requireCurrent();
+        moderation.group(current.getId());
         WorkspaceEntity workspace = write ? requireLocked(id, current) : requireAccessible(id, current);
         requirePermission(workspace, current, "CONTENT_READ");
         if (write) { if(workspace.isArchived()) throw new BusinessException(HttpStatus.CONFLICT,"GROUP_ARCHIVED","群组已经归档，当前只能阅读"); requirePermission(workspace, current, "CONTENT_WRITE"); }

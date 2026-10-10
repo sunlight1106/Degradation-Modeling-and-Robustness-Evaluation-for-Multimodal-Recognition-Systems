@@ -117,3 +117,7 @@ Contact preferences in V20 are independent for each side of a contact pair and u
 ## 收藏与常用搜索
 
 V26 新增 `workspace_shortcut`，保存每个账号的资料收藏标识和常用搜索条件；`owner_id` 外键随账号删除，`(owner_id,kind,resource_key)` 唯一约束防止重复保存。升级由 Flyway 自动执行，不需要手工导入。完整 Docker 数据备份包含该表。
+
+## 举报审核
+
+V33 新增 `moderation_report`、`moderation_penalty` 和 `moderation_event`。消息证据快照、限时处罚、申诉和处理记录一起保存在 MySQL。旧群组举报会迁入统一审核队列；证据不会因为原消息撤回或群组解散而丢失。处罚以截止时间和解除时间判断有效性，不改写原有角色或账号状态。操作步骤见 [举报与处罚](../docs/MODERATION.md)。

@@ -52,6 +52,8 @@ const router = createRouter({
         { path: 'groups', name: 'groups', component: () => import('@/views/GroupsView.vue'), meta: { permission: 'group:use' } },
         { path: 'admin', name: 'administration', component: () => import('@/views/AdministrationView.vue'), meta: { permissions: ['admin:stats', 'admin:audit'] } },
         { path: 'users', name: 'users', component: () => import('@/views/UsersView.vue'), meta: { permission: 'user:read' } },
+        { path: 'moderation', name: 'moderation', component: () => import('@/views/ModerationView.vue'), meta: { permission: 'moderation:review' } },
+        { path: 'safety', name: 'safety', component: () => import('@/views/SafetyView.vue') },
         { path: 'roles', name: 'roles', component: () => import('@/views/RolesView.vue'), meta: { permission: 'role:read' } },
         { path: 'docs', redirect: '/docs' },
         { path: 'settings', name: 'settings', component: () => import('@/views/SettingsView.vue') },

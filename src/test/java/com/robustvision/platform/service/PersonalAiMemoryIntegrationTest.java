@@ -14,7 +14,7 @@ import java.util.*;
 import static org.assertj.core.api.Assertions.*;
 
 @DataJpaTest(showSql=false)
-@Import({PersonalAiMemoryService.class, CurrentUserService.class})
+@Import({PersonalAiMemoryService.class, CurrentUserService.class,ModerationGuard.class})
 class PersonalAiMemoryIntegrationTest {
     @Autowired TestEntityManager em;
     @Autowired PersonalAiMemoryService service;

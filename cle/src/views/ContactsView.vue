@@ -6,6 +6,7 @@ import { socialApi, type Person, type Contact, type ChatMessage, type ContactAct
 import { ApiClientError } from '@/api/client'
 import { authStore } from '@/stores/auth'
 import IdentityCode from '@/components/IdentityCode.vue'
+import ReportButton from '@/components/ReportButton.vue'
 import AppIcon from '@/components/AppIcon.vue'
 import ActionConfirmDialog from '@/components/ActionConfirmDialog.vue'
 
@@ -234,7 +235,7 @@ onBeforeUnmount(() => { reset(); document.removeEventListener('visibilitychange'
             <div class="contact-danger-actions"><button :disabled="busy || sending" @click="act(current, 'clear')">清空聊天记录</button><button :disabled="busy || sending" @click="act(current, 'remove')">删除联系人</button><button :disabled="busy || sending" @click="act(current, 'block')">加入黑名单</button></div>
           </section>
           <template v-if="current.status === 'ACCEPTED' && current.available">
-            <div ref="transcript" class="chat-transcript" role="log" aria-label="聊天记录" aria-live="polite" @scroll.passive="readAtEnd"><button v-if="more" class="chat-older text-link" :disabled="historyBusy" @click="older">{{ historyBusy ? '读取中…' : '查看更早消息' }}</button><p v-if="!messages.length" class="chat-welcome">{{ historyBusy ? '正在读取聊天记录…' : '从一句问候开始。' }}</p><article v-for="message in messages" :key="message.id" class="chat-message" :class="{ mine: message.senderId === authStore.state.user?.id }"><header><strong>{{ message.senderId === authStore.state.user?.id ? '我' : display(current) }}</strong><time>{{ new Date(message.createdAt).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) }}</time></header><p>{{ message.body }}</p></article></div>
+            <div ref="transcript" class="chat-transcript" role="log" aria-label="聊天记录" aria-live="polite" @scroll.passive="readAtEnd"><button v-if="more" class="chat-older text-link" :disabled="historyBusy" @click="older">{{ historyBusy ? '读取中…' : '查看更早消息' }}</button><p v-if="!messages.length" class="chat-welcome">{{ historyBusy ? '正在读取聊天记录…' : '从一句问候开始。' }}</p><article v-for="message in messages" :key="message.id" class="chat-message" :class="{ mine: message.senderId === authStore.state.user?.id }"><header><strong>{{ message.senderId === authStore.state.user?.id ? '我' : display(current) }}</strong><time>{{ new Date(message.createdAt).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) }}</time></header><p>{{ message.body }}</p><ReportButton v-if="message.senderId !== authStore.state.user?.id" type="CHAT" :source-id="message.id" /></article></div>
             <form class="chat-compose" @submit.prevent="send"><textarea v-model="body" aria-label="聊天内容" maxlength="4000" rows="3" placeholder="写下消息…" :disabled="sending || historyBusy || busy" @keydown.ctrl.enter.prevent="send" @keydown.meta.enter.prevent="send" /><footer><span>Ctrl / ⌘ + Enter 发送 · {{ body.length }}/4000</span><button class="button button--dark" :disabled="sending || historyBusy || busy || !body.trim()">{{ sending ? '发送中…' : '发送' }}</button></footer></form>
           </template>
           <div v-else class="chat-empty"><AppIcon name="shield" :size="30" /><h3>当前无法交流</h3><p>联系人关系或账户状态发生了变化。<br />你仍可以管理自己的备注、黑名单与聊天记录。</p></div>

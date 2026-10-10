@@ -18,7 +18,7 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 @DataJpaTest(showSql = false)
-@Import({PersonalAiSettingsService.class, CurrentUserService.class, SecretEncryptionService.class, PersonalAiEndpointPolicy.class})
+@Import({PersonalAiSettingsService.class, CurrentUserService.class,ModerationGuard.class, SecretEncryptionService.class, PersonalAiEndpointPolicy.class})
 class PersonalAiIsolationIntegrationTest {
     @Autowired TestEntityManager entities;
     @Autowired PersonalAiSettingsService settingsService;

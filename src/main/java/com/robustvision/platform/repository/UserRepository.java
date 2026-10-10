@@ -70,7 +70,7 @@ public interface UserRepository extends JpaRepository<UserEntity, Long>, org.spr
         String getRoleCode();
     }
     /** A locking/current read, including on MySQL REPEATABLE READ transactions. */
-    @Query(value = "SELECT id FROM app_user WHERE role_id = :roleId AND status = 'ACTIVE' ORDER BY id FOR UPDATE", nativeQuery = true)
+    @Query(value = "SELECT u.id FROM app_user u WHERE u.role_id = :roleId AND u.status = 'ACTIVE' AND (u.access_expires_at IS NULL OR u.access_expires_at>CURRENT_TIMESTAMP) AND NOT EXISTS (SELECT 1 FROM moderation_penalty p WHERE p.target_id=u.id AND p.kind='BAN' AND p.revoked_at IS NULL AND p.expires_at>CURRENT_TIMESTAMP) ORDER BY u.id FOR UPDATE", nativeQuery = true)
     List<Long> findLockedActiveAdminIds(@Param("roleId") Long roleId);
 
     @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)

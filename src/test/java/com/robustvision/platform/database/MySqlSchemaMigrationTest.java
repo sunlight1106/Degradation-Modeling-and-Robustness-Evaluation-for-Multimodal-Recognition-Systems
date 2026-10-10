@@ -44,7 +44,7 @@ class MySqlSchemaMigrationTest {
 
     private static final Set<String> DOMAIN_TABLES = java.util.stream.Stream.concat(
             LEGACY_DOMAIN_TABLES.stream(), java.util.stream.Stream.of("personal_ai_setting", "personal_ai_usage", "user_session",
-                    "vocabulary_book", "vocabulary_word", "vocabulary_profile", "vocabulary_progress", "vocabulary_question", "personal_recognition_result", "contact_link", "chat_message", "personal_ai_memory", "note_version", "learning_record", "user_permission_override", "admin_audit", "workspace_shortcut", "workspace_notice", "workspace_preference", "account_security", "account_challenge", "group_invitation", "group_report", "note_link", "vocabulary_skill", "personal_preference", "note_reminder", "account_activity", "account_closure", "account_cleanup"))
+                    "vocabulary_book", "vocabulary_word", "vocabulary_profile", "vocabulary_progress", "vocabulary_question", "personal_recognition_result", "contact_link", "chat_message", "personal_ai_memory", "note_version", "learning_record", "user_permission_override", "admin_audit", "workspace_shortcut", "workspace_notice", "workspace_preference", "account_security", "account_challenge", "group_invitation", "group_report", "note_link", "vocabulary_skill", "personal_preference", "note_reminder", "account_activity", "account_closure", "account_cleanup", "moderation_report", "moderation_penalty", "moderation_event"))
             .collect(java.util.stream.Collectors.toUnmodifiableSet());
 
     @Test
@@ -158,6 +158,25 @@ class MySqlSchemaMigrationTest {
     }
 
     @Test
+    void groupReportUpgradeKeepsEvidenceAndTheOriginalReportIdentity() throws Exception {
+        try (TestDatabase database = new TestDatabase()) {
+            database.flyway("32").migrate();
+            try (Connection c=database.connect();Statement s=c.createStatement()) {
+                seedAllDomains(c);
+                s.executeUpdate("UPDATE internal_message SET workspace_id=201 WHERE id='message-1'");
+                s.executeUpdate("INSERT INTO group_report(id,workspace_id,message_id,reporter_id,reason,status,created_at) VALUES ('legacy-report',201,'message-1',101,'Synthetic historical report','OPEN',CURRENT_TIMESTAMP)");
+            }
+            assertThat(database.flyway(null).migrate().migrationsExecuted).isEqualTo(1);
+            try (Connection c=database.connect()) {
+                assertThat(scalar(c,"SELECT status FROM moderation_report WHERE id='legacy-report'")).isEqualTo("PENDING");
+                assertThat(scalar(c,"SELECT evidence FROM moderation_report WHERE id='legacy-report'")).contains("Markdown 正文");
+                assertThat(scalar(c,"SELECT COUNT(*) FROM moderation_penalty")).isEqualTo("0");
+            }
+            database.validateHibernateMappings();
+        }
+    }
+
+    @Test
     void identityUpgradeBackfillsEveryUserAndEnforcesUniqueNonNullCodes() throws Exception {
         try (TestDatabase database = new TestDatabase()) {
             database.flyway("18").migrate();
@@ -220,7 +239,7 @@ class MySqlSchemaMigrationTest {
         assertThat(scalar(c, "SELECT balance_cny FROM user_wallet WHERE user_id = 101")).isEqualTo("12.3456");
         assertThat(scalar(c, "SELECT cost_cny FROM inference_task WHERE id = 'task-1'")).isEqualTo("0.123456");
         assertThat(scalar(c, "SELECT COUNT(*) FROM information_schema.referential_constraints WHERE constraint_schema = DATABASE()"))
-                .isEqualTo("74");
+                .isEqualTo("82");
         assertThatThrownBy(() -> execute(c,
                 "INSERT INTO learning_record (id,owner_id,kind,title,payload,created_at,updated_at) VALUES ('orphan-record',999999,'CARD','orphan','{}',CURRENT_TIMESTAMP(6),CURRENT_TIMESTAMP(6))"))
                 .isInstanceOf(SQLException.class).satisfies(error -> assertThat(((SQLException) error).getErrorCode()).isEqualTo(1452));

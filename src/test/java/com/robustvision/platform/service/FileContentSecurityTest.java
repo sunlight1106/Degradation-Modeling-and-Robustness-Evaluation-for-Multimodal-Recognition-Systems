@@ -26,6 +26,8 @@ class FileContentSecurityTest {
         files = new FileService(repository, users, storage, antivirus, new ContentInspectionService(),
                 mock(MediaProcessingService.class), "/tmp/content-security-legacy-not-read", 20 * 1024 * 1024);
         when(users.requireCurrent()).thenReturn(owner);
+        when(owner.getId()).thenReturn(123L);
+        org.springframework.test.util.ReflectionTestUtils.setField(files,"moderation",mock(ModerationGuard.class));
     }
     @Test void unsafeAttachmentNeverReachesAntivirusStorageOrDatabase() {
         var attachment = new MockMultipartFile("file", "private-name.txt", "text/plain", ContentInspectionServiceTest.bytes("<script>example</script>"));
