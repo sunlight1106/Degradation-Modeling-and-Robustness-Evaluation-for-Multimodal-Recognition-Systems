@@ -10,6 +10,7 @@ import { api, ApiClientError } from '@/api/client'
 import { authStore } from '@/stores/auth'
 import { groupApi, type GroupFeatures, type GroupPerson } from '@/api/groups'
 import { createRequestGuard } from '@/lib/requestGuard'
+import { useUnsavedDraft } from '@/lib/useUnsavedDraft'
 import type { MessageView, WorkspaceMemberRole, WorkspaceView } from '@/types/api'
 
 const groups = ref<WorkspaceView[]>([])
@@ -33,6 +34,9 @@ const error = ref(''), notice = ref(''), groupName = ref(''), text = ref('')
 const editName = ref('')
 const files = ref<File[]>([]), fileInputKey = ref(0)
 const reply = ref<MessageView | null>(null)
+const messageDraft = computed(() => !!text.value.trim() || files.value.length > 0 || reply.value !== null)
+const noticeDraft = computed(() => editingAnnouncement.value && announcementDraft.value !== (currentFeatures.value?.announcement || ''))
+useUnsavedDraft(computed(() => messageDraft.value || noticeDraft.value || creating.value && !!groupName.value.trim() || !!selected.value && editName.value.trim() !== selected.value.name), computed(() => busy.value))
 const memberId = ref<number | null>(null), memberRole = ref<WorkspaceMemberRole>('MEMBER')
 const page = ref(0), more = ref(false)
 let epoch = 0, refreshing = false
@@ -59,6 +63,7 @@ async function markRead(id: number, version: number) {
   catch (reason) { if (version === epoch) error.value = detail(reason) }
 }
 async function loadGroups() {
+  if (busy.value) return
   const version = ++epoch
   loading.value = true; error.value = ''
   try {
@@ -66,25 +71,28 @@ async function loadGroups() {
     if (version !== epoch) return
     groups.value = result.groups
     features.value = Object.fromEntries(result.features.map(item => [item.groupId,item]))
-    if (result.groups.length) { const requested = result.groups.find(g => g.id === Number(route.query.group)); await selectGroup(requested?.id ?? (visibleGroups.value[0] || result.groups[0]).id) }
+    if (result.groups.length) { const requested = result.groups.find(g => g.id === Number(route.query.group)) || result.groups.find(g => g.id === selected.value?.id); await selectGroup(requested?.id ?? (visibleGroups.value[0] || result.groups[0]).id) }
   } catch (reason) { if (version === epoch) error.value = detail(reason) }
   finally { if (version === epoch) loading.value = false }
 }
 async function selectGroup(id: number) {
   const sameGroup = selected.value?.id === id
+  if (busy.value) return
+  if (!sameGroup && (messageDraft.value || noticeDraft.value) && !window.confirm('切换群组会丢弃当前未提交的内容，是否继续？')) return
+  const previousGroup = selected.value, previousMessages = messages.value, previousArchived = archived.value
   const version = ++epoch
   peopleGuard.cancel(); searchGuard.cancel(); clearTimeout(peopleTimer); pickerOpen.value = false; peopleBusy.value = false; searchBusy.value = false
-  searchOpen.value = false; searchResults.value = []; searchQuery.value = ''; searchSender.value='';searchFrom.value='';searchTo.value='';searchAttached.value=false; peopleQuery.value = ''; editingAnnouncement.value = false
+  searchOpen.value = false; searchResults.value = []; searchQuery.value = ''; searchSender.value='';searchFrom.value='';searchTo.value='';searchAttached.value=false; peopleQuery.value = ''; if (!sameGroup) editingAnnouncement.value = false
   archived.value = false; selected.value = null; messages.value = []; directory.value = []; page.value = 0; more.value = false
   memberId.value = null; memberRole.value = 'MEMBER'; loading.value = true; error.value = ''; notice.value = ''
   if (!sameGroup) clearDraft()
   try {
     const [group, metadata] = await Promise.all([groupApi.detail(id), groupApi.features(id)])
     if (version !== epoch) return
-    if (!group) throw new Error('该群组已不可访问')
+    if (!group) throw new ApiClientError('GROUP_UNAVAILABLE', '该群组已不可访问', 404)
     selected.value = group
     groups.value = groups.value.some(item => item.id === id) ? groups.value.map(item => item.id === id ? group : item) : [...groups.value, group]; storeFeatures(metadata)
-    editName.value = group.name
+    if (!sameGroup || editName.value === previousGroup?.name) editName.value = group.name
     if (canRead.value) {
       const result = await api.groupMessages(id)
       if (version !== epoch) return
@@ -92,7 +100,11 @@ async function selectGroup(id: number) {
       await markRead(id, version)
     }
   } catch (reason) {
-    if (version === epoch) { error.value = reason instanceof Error ? reason.message : detail(reason); selected.value = null; messages.value = []; directory.value = []; clearDraft() }
+    if (version === epoch) {
+      error.value = reason instanceof Error ? reason.message : detail(reason)
+      if (sameGroup && !(reason instanceof ApiClientError && [401, 403, 404].includes(reason.status))) { selected.value ||= groups.value.find(group => group.id === id) || previousGroup; messages.value = canRead.value ? previousMessages : []; archived.value = previousArchived }
+      else { selected.value = null; messages.value = []; directory.value = []; clearDraft() }
+    }
   } finally { if (version === epoch) loading.value = false }
 }
 async function findPeople(append = false) {
@@ -142,7 +154,7 @@ async function older() {
     if (version !== epoch) return
     const known = new Set(messages.value.map(item => item.id))
     messages.value.push(...result.filter(item => !known.has(item.id))); page.value++; more.value = result.length === 50
-  } catch (reason) { if (version === epoch) { error.value = detail(reason); messages.value = [] } }
+  } catch (reason) { if (version === epoch) error.value = detail(reason) }
   finally { if (version === epoch) loading.value = false }
 }
 async function createGroup() {
@@ -159,9 +171,10 @@ async function createGroup() {
 }
 function chooseFiles(event: Event) {
   const input = event.target as HTMLInputElement
-  const chosen = Array.from(input.files || [])
+  const chosen = [...files.value, ...Array.from(input.files || [])].filter((file, index, all) => all.findIndex(item => item.name === file.name && item.size === file.size && item.lastModified === file.lastModified) === index)
+  input.value = ''
   if (chosen.length > 5 || chosen.some(file => file.size > 20 * 1024 * 1024)) {
-    error.value = '最多选择 5 个附件，每个不超过 20 MB。'; input.value = ''; files.value = []; return
+    error.value = '最多选择 5 个附件，每个不超过 20 MB。已选附件仍保留。'; return
   }
   files.value = chosen; error.value = ''
 }

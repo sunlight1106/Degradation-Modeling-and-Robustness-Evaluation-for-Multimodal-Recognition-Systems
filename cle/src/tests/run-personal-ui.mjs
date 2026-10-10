@@ -22,6 +22,13 @@ for (const name of ['window','document','navigator','localStorage','history','lo
 globalThis.fetch = (...args) => window.fetch(...args)
 window.matchMedia = () => ({ matches:false,addEventListener(){},removeEventListener(){} })
 window.document.body.innerHTML = '<pre id="results">RUNNING</pre><div id="fixture"></div>'
+// Unresolved synthetic transports must not keep Node alive after a suite finishes.
+const nativeSetTimeout = globalThis.setTimeout, nativeClearTimeout = globalThis.clearTimeout, pendingTimers = new Set()
+globalThis.setTimeout = (callback, delay, ...args) => {
+  const timer = nativeSetTimeout(() => { pendingTimers.delete(timer); callback(...args) }, delay)
+  pendingTimers.add(timer); return timer
+}
+globalThis.clearTimeout = timer => { pendingTimers.delete(timer); nativeClearTimeout(timer) }
 const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'personal-ui-regression-'))
 const output = path.join(tempDir, 'bundle.mjs')
 try {
@@ -40,6 +47,8 @@ console.log(`${suite}: ${result}`)
 const passed = window.document.documentElement.dataset.result === 'passed'
 if (!passed) process.exitCode=1
 } finally {
+  for (const timer of pendingTimers) nativeClearTimeout(timer)
+  globalThis.setTimeout = nativeSetTimeout; globalThis.clearTimeout = nativeClearTimeout
   window.close()
   await fs.rm(tempDir, { recursive: true, force: true })
 }

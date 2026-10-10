@@ -36,6 +36,8 @@ import type {
   SharedNoteView,
 } from '@/types/api'
 
+import { RequestTimeoutError, withRequestDeadline } from '@/lib/requestDeadline'
+
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api/v1'
 const TOKEN_KEY = 'personal_platform_token'
 const LEGACY_TOKEN_KEY = 'robustvision_token'
@@ -43,6 +45,14 @@ const LEGACY_TOKEN_KEY = 'robustvision_token'
 export class ApiClientError extends Error {
   constructor(public code: string, message: string, public status: number, public traceId?: string) {
     super(message)
+  }
+}
+
+async function deadline<T>(signal: AbortSignal | null | undefined, duration: number, work: (signal: AbortSignal) => Promise<T>) {
+  try { return await withRequestDeadline(signal, duration, work) }
+  catch (reason) {
+    if (reason instanceof RequestTimeoutError) throw new ApiClientError('REQUEST_TIMEOUT', '请求等待超时。提交操作可能已完成，请刷新确认后再重试。', 408)
+    throw reason
   }
 }
 
@@ -119,37 +129,45 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
   headers.delete('Authorization')
   if (session.token) headers.set('Authorization', `Bearer ${session.token}`)
   if (init.body && !(init.body instanceof FormData)) headers.set('Content-Type', 'application/json')
-  const response = await fetch(`${API_BASE}${path}`, { ...init, headers })
-  const contentType = response.headers.get('content-type') || ''
-  const envelope = contentType.includes('application/json')
-    ? await response.json() as ApiEnvelope<T>
-    : null
-  assertSession(session)
-  if (!response.ok || !envelope?.success) {
-    if (response.status === 401) expireSession(session)
-    throw new ApiClientError(
-      envelope?.error?.code || 'REQUEST_FAILED',
-      envelope?.error?.message || `请求失败 (${response.status})`,
-      response.status,
-      envelope?.traceId,
-    )
-  }
-  return envelope.data
+  const timeout = path.endsWith('/execute') ? 180000 : init.body instanceof FormData ? 120000 : 30000
+  return deadline(init.signal, timeout, async signal => {
+    const response = await fetch(`${API_BASE}${path}`, { ...init, headers, signal })
+    const contentType = response.headers.get('content-type') || ''
+    const envelope = contentType.includes('application/json')
+      ? await response.json() as ApiEnvelope<T>
+      : null
+    signal.throwIfAborted()
+    assertSession(session)
+    if (!response.ok || !envelope?.success) {
+      if (response.status === 401) expireSession(session)
+      throw new ApiClientError(
+        envelope?.error?.code || 'REQUEST_FAILED',
+        envelope?.error?.message || `请求失败 (${response.status})`,
+        response.status,
+        envelope?.traceId,
+      )
+    }
+    return envelope.data
+  })
 }
 
 export async function fetchBlob(path: string): Promise<Blob> {
   const session = captureSession()
   const headers = new Headers()
   if (session.token) headers.set('Authorization', `Bearer ${session.token}`)
-  const response = await fetch(path.startsWith('/api/') ? path : `${API_BASE}${path}`, { headers })
-  assertSession(session)
-  if (!response.ok) {
-    if (response.status === 401) expireSession(session)
-    throw new ApiClientError('DOWNLOAD_FAILED', `下载失败 (${response.status})`, response.status)
-  }
-  const blob = await response.blob()
-  assertSession(session)
-  return blob
+  return deadline(undefined, 120000, async signal => {
+    const response = await fetch(path.startsWith('/api/') ? path : `${API_BASE}${path}`, { headers, signal })
+    signal.throwIfAborted()
+    assertSession(session)
+    if (!response.ok) {
+      if (response.status === 401) expireSession(session)
+      throw new ApiClientError('DOWNLOAD_FAILED', `下载失败 (${response.status})`, response.status)
+    }
+    const blob = await response.blob()
+    signal.throwIfAborted()
+    assertSession(session)
+    return blob
+  })
 }
 
 export const api = {

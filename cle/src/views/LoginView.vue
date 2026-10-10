@@ -17,21 +17,24 @@ const password = ref('')
 const error = ref('')
 const visible = ref(false), remember = ref(false)
 const otp = ref('')
+let active = true
 const passwordInput = ref<HTMLInputElement | null>(null)
 async function choose(name: string) { username.value = name; password.value = ''; error.value = ''; await nextTick(); passwordInput.value?.focus() }
 watch(() => authStore.state.user?.id, () => { password.value = '' }, { flush: 'sync' })
-onBeforeUnmount(() => { password.value = ''; otp.value = '' })
+onBeforeUnmount(() => { active = false; password.value = ''; otp.value = '' })
 
 async function submit() {
   if (authStore.state.loading) return
   error.value = ''
   try {
     const user = authStore.state.user ? await authStore.switchAccount(username.value.trim(), password.value, otp.value) : await authStore.login(username.value.trim(), password.value, otp.value, recovering.value)
+    if (!active) return
     if (remember.value && !rememberedAccounts.remember(user)) toastStore.info('登录成功；浏览器没有允许保存账号名称。')
     password.value = ''
     const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : ''
     await router.push(redirect.startsWith('/app/') && !redirect.includes('\\') || redirect.startsWith('/shared/') && !redirect.includes('\\') ? redirect : '/app/home')
   } catch (reason) {
+    if (!active) return
     password.value = ''
     error.value = reason instanceof ApiClientError ? reason.message : '暂时无法登录，请检查后端服务'
   } finally { otp.value = ''

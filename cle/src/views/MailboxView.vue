@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
+import { useUnsavedDraft } from '@/lib/useUnsavedDraft'
 import { api, ApiClientError } from '@/api/client'
 import type { MessageView, MessageContactView } from '@/types/api'
 import AppIcon from '@/components/AppIcon.vue'
@@ -21,6 +22,8 @@ const busy = ref(false), loading = ref(true), error = ref('')
 const composeForm = ref<HTMLFormElement | null>(null), recipientPicker = ref<InstanceType<typeof MessageRecipientPicker> | null>(null)
 const bodyEditor = ref<HTMLTextAreaElement | null>(null), attachmentInput = ref<HTMLInputElement | null>(null)
 const canSend = computed(() => recipients.value.length > 0 && recipients.value.length <= 20 && !!subject.value.trim() && !!body.value.trim())
+const hasDraft = computed(() => !!subject.value.trim() || !!body.value.trim() || selectedContacts.value.length > 0 || files.value.length > 0)
+useUnsavedDraft(hasDraft, computed(() => busy.value && composing.value))
 let previousOverflow: string | null = null, composeOpener: HTMLElement | null = null
 function releaseComposer() {
   if (previousOverflow !== null) { document.body.style.overflow = previousOverflow; previousOverflow = null }
@@ -88,6 +91,10 @@ async function open(item: MessageView) {
 }
 async function compose(to?: number, original?: MessageView) {
   if (busy.value || loading.value) return
+  if (hasDraft.value) {
+    if (!to && !original) { composeOpener = document.activeElement instanceof HTMLElement ? document.activeElement : null; composing.value = true; return }
+    if (!window.confirm('已有未发送的草稿。放弃草稿并写一封新信？')) return
+  }
   const version = epoch
   composeOpener = document.activeElement instanceof HTMLElement ? document.activeElement : null
   let contact: MessageContactView | undefined

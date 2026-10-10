@@ -1,12 +1,14 @@
 // All users, messages, and requests in this suite are synthetic.
-import { createApp, nextTick } from 'vue'
-import { createMemoryHistory, createRouter } from 'vue-router'
+import { createApp, h, nextTick } from 'vue'
+import { createMemoryHistory, createRouter, RouterView } from 'vue-router'
 import GroupsView from '../views/GroupsView.vue'
 import MailboxView from '../views/MailboxView.vue'
 import { authStore } from '../stores/auth.ts'
 import { tokenStorage } from '../api/client.ts'
 
 const passed = [], fixture = document.getElementById('fixture')
+const originalConfirm = window.confirm
+window.confirm = () => true
 const assert = (ok, label) => { if (!ok) throw new Error(label); passed.push(label) }
 const wait = async predicate => { for (let i = 0; i < 100; i++) { await new Promise(resolve => setTimeout(resolve, 5)); await nextTick(); if (predicate()) return } throw new Error('UI wait timed out') }
 const button = label => [...fixture.querySelectorAll('button')].find(node => node.textContent.includes(label))
@@ -50,9 +52,9 @@ window.fetch = async (url, init = {}) => {
   throw new Error(`Unexpected request: ${path}`)
 }
 async function mount(component) {
-  const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/:pathMatch(.*)*', component: { template: '<div />' } }] })
+  const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/:pathMatch(.*)*', component }] })
   await router.push('/app/groups'); await router.isReady()
-  app = createApp(component); app.use(router); app.mount(fixture)
+  app = createApp({ render: () => h(RouterView) }); app.use(router); app.mount(fixture)
 }
 try {
   tokenStorage.set('synthetic-group-session')
@@ -151,4 +153,4 @@ try {
 } catch (error) {
   document.documentElement.dataset.result = 'failed'
   document.getElementById('results').textContent = `FAIL after ${passed.length}: ${error.stack}`
-} finally { app?.unmount() }
+} finally { app?.unmount(); window.confirm = originalConfirm }

@@ -12,7 +12,8 @@ const username = ref('')
 const email = ref('')
 const password = ref('')
 const confirmation = ref(''), displayName = ref(''), discoverable = ref(true)
-onBeforeUnmount(()=>{password.value='';confirmation.value=''})
+let active = true
+onBeforeUnmount(()=>{active=false;password.value='';confirmation.value=''})
 const visible = ref(false)
 const busy = ref(false)
 const error = ref('')
@@ -43,9 +44,11 @@ async function submit() {
   busy.value = true
   try {
     await api.register({ username: username.value, email: email.value, password: password.value, displayName:displayName.value, discoverable:discoverable.value })
+    if (!active) return
     toastStore.success('账号创建成功，请登录')
     await router.push({ name: 'login', query: { registered: '1', username: username.value } })
   } catch (reason) {
+    if (!active) return
     error.value = reason instanceof ApiClientError ? reason.message : '注册失败，请稍后重试'
   } finally { busy.value = false; password.value=''; confirmation.value='' }
 }

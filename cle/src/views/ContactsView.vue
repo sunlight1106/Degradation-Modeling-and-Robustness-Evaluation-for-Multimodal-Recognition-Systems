@@ -9,6 +9,7 @@ import IdentityCode from '@/components/IdentityCode.vue'
 import ReportButton from '@/components/ReportButton.vue'
 import AppIcon from '@/components/AppIcon.vue'
 import ActionConfirmDialog from '@/components/ActionConfirmDialog.vue'
+import { useUnsavedDraft } from '@/lib/useUnsavedDraft'
 
 const historyQuery=ref(''), historyResults=ref<ChatMessage[]>([]),historyPage=ref(0)
 const route = useRoute()
@@ -25,6 +26,7 @@ async function searchHistory() {
 const contacts = ref<Contact[]>([]), results = ref<Person[]>([]), query = ref(''), searched = ref(false)
 const selected = ref<number | null>(null), messages = ref<ChatMessage[]>([]), body = ref('')
 const error = ref(''), loading = ref(true), searching = ref(false), busy = ref(false), sending = ref(false)
+useUnsavedDraft(computed(() => !!body.value.trim()), computed(() => sending.value || busy.value))
 const more = ref(false), historyBusy = ref(false), refreshing = ref(false), discoverable = ref(true), transcript = ref<HTMLElement | null>(null)
 const listTab = ref<'contacts' | 'requests' | 'blacklist'>('contacts'), managerOpen = ref(false), remarkDraft = ref('')
 const confirmation = ref<{ contact: Contact; action: ContactAction | 'clear'; title: string; description: string; label: string } | null>(null)

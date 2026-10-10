@@ -27,6 +27,7 @@ const tabs = [{ code: 'ALL', label: '全部' }, { code: 'DRAFT', label: '草稿'
 const libraryNotes = computed(() => notes.value.filter(note => !library.value || (note.library || '综合学习') === library.value))
 const filteredNotes = computed(() => libraryNotes.value.filter(note => status.value === 'ALL' || note.status.code === status.value))
 const folded = ref(new Set<string>())
+const deleting = ref(new Set<string>())
 const arranged = computed(() => [...filteredNotes.value].sort((a,b) => sort.value === 'title' ? a.title.localeCompare(b.title,'zh-CN') : sort.value === 'oldest' ? Date.parse(a.updatedAt)-Date.parse(b.updatedAt) : Date.parse(b.updatedAt)-Date.parse(a.updatedAt)))
 const tree = computed(() => noteTree(arranged.value,folded.value,!!keyword.value))
 const treeRows = computed(() => tree.value.rows.slice(page.value*50,(page.value+1)*50))
@@ -42,27 +43,30 @@ const hasChildren = (id: string) => tree.value.parents.has(id)
 const libraries = computed(() => [...new Set([...knownLibraries.value, ...(library.value ? [library.value] : [])])])
 const libraryCount = (name: string) => notes.value.filter(note => (note.library || '综合学习') === name).length
 const tabCount = (code: string) => libraryNotes.value.filter(note => code === 'ALL' || note.status.code === code).length
-let version = 0, timer: ReturnType<typeof setTimeout> | undefined
+let active = true, version = 0, timer: ReturnType<typeof setTimeout> | undefined
 async function load() {
   const current = ++version
   loading.value = true; error.value = ''
   try {
     const result = await api.notes({ keyword: keyword.value.trim() || undefined })
-    if (current !== version) return
+    if (!active || current !== version) return
     notes.value = result; page.value = 0; clearSelection()
     knownLibraries.value = [...new Set([...knownLibraries.value, ...result.map(note => note.library || '综合学习')])]
-  } catch (reason) { if (current === version) error.value = reason instanceof ApiClientError ? reason.message : '笔记加载失败' }
-  finally { if (current === version) loading.value = false }
+  } catch (reason) { if (active && current === version) { notes.value = []; clearSelection(); error.value = reason instanceof ApiClientError ? reason.message : '笔记加载失败' } }
+  finally { if (active && current === version) loading.value = false }
 }
 watch(keyword, () => { version++; clearTimeout(timer); timer = setTimeout(load, 250) })
 watch(library, () => { status.value = 'ALL' })
 async function remove(note: NoteSummaryView) {
+  if (deleting.value.has(note.id) || !active) return
   if (!window.confirm(`删除笔记「${note.title}」？将移入回收站，可随时恢复。`)) return
-  try { await api.deleteNote(note.id); toastStore.success('已移入回收站'); await load() }
-  catch (reason) { toastStore.error(reason instanceof ApiClientError ? reason.message : '删除失败') }
+  deleting.value = new Set([...deleting.value, note.id])
+  try { await api.deleteNote(note.id); if (active) { toastStore.success('已移入回收站'); await load() } }
+  catch (reason) { if (active) toastStore.error(reason instanceof ApiClientError ? reason.message : '删除失败') }
+  finally { if (active) { const remaining = new Set(deleting.value); remaining.delete(note.id); deleting.value = remaining } }
 }
 onMounted(load)
-onBeforeUnmount(() => { version++; clearTimeout(timer) })
+onBeforeUnmount(() => { active = false; version++; clearTimeout(timer) })
 </script>
 
 <template>
@@ -102,7 +106,7 @@ onBeforeUnmount(() => { version++; clearTimeout(timer) })
             <p>{{ row.note.excerpt || '暂无正文' }}</p>
             <div class="learning-note-tags"><button v-for="tag in row.note.tags" :key="tag" @click="keyword = tag">{{ tag }}</button></div>
           </div>
-          <div class="learning-note-end"><RouterLink v-if="canWrite" :to="{ name: 'note-create', query: { library: row.note.library, parent: row.note.id } }" class="page-child-link">＋ 子页面</RouterLink><time>{{ new Date(row.note.updatedAt).toLocaleDateString('zh-CN') }}</time><button v-if="canWrite" class="icon-button" :aria-label="`删除 ${row.note.title}`" @click="remove(row.note)"><AppIcon name="trash" :size="15" /></button></div>
+          <div class="learning-note-end"><RouterLink v-if="canWrite" :to="{ name: 'note-create', query: { library: row.note.library, parent: row.note.id } }" class="page-child-link">＋ 子页面</RouterLink><time>{{ new Date(row.note.updatedAt).toLocaleDateString('zh-CN') }}</time><button v-if="canWrite" class="icon-button" :aria-label="`删除 ${row.note.title}`" :disabled="deleting.has(row.note.id)" @click="remove(row.note)"><AppIcon name="trash" :size="15" /></button></div>
         </article>
         <nav v-if="pages>1" class="note-pagination" aria-label="笔记分页"><button class="button button--ghost" :disabled="page===0||batchBusy" @click="page--">上一页</button><span>{{ page+1 }} / {{ pages }}</span><button class="button button--ghost" :disabled="page+1>=pages||batchBusy" @click="page++">下一页</button></nav>
         <footer class="learning-list-footer">{{ keyword ? '搜索结果' : '当前列表' }} · {{ filteredNotes.length }} 篇笔记 <span>Markdown / HTML 编写 · MD / PDF / Word / HTML / TXT 导出</span></footer>

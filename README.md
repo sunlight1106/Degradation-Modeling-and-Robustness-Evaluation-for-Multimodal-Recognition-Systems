@@ -194,6 +194,8 @@ npm run build --prefix cle
 
 需要检查不同用户能做什么，可按 [权限检查](docs/PERMISSION_TESTS.md) 操作。权限矩阵会逐个验证单独授权和禁止，账号安全测试检查角色变更、登录撤销和私有资料隔离。
 
+点击、快速切换、重复提交、草稿保留和网络失败的复查步骤见 [交互检查](docs/INTERACTION_CHECKS.md)。自动检查使用模拟资料，不会发送真实消息或收费 AI 请求。
+
 [自动构建记录](https://github.com/sunlight1106/Personal-Knowledge-Base-and-AI-Recognition-Evaluation/actions) · [验证范围](docs/VALIDATION.md) · [账户安全](docs/SECURITY.md) · [上传内容检查](docs/CONTENT_SECURITY.md)
 
 ## 许可
