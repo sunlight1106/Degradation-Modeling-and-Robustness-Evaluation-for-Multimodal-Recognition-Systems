@@ -43,7 +43,7 @@ import static org.mockito.Mockito.when;
         "logging.level.org.hibernate.engine.internal.StatisticalLoggingSessionEventListener=OFF"
 })
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Import({NoteReferenceService.class, NoteService.class, NoteShareService.class, NoteHistoryService.class})
+@Import({NoteReferenceService.class, NoteService.class, NoteShareService.class, NoteHistoryService.class, NoteLinkService.class})
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class NoteReferenceBatchQueryTest {
     @Autowired EntityManager em;

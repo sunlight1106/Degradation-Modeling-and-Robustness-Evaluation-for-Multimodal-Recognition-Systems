@@ -9,6 +9,10 @@ spring:
       ddl-auto: create-drop
   flyway:
     enabled: false
+management:
+  health:
+    mail:
+      enabled: false
 app:
   storage:
     root: ${java.io.tmpdir}/robustvision-tests

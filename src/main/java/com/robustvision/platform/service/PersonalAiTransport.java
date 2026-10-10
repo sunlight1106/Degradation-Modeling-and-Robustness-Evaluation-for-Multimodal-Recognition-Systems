@@ -112,13 +112,44 @@ public class PersonalAiTransport {
             default -> request.header("Authorization", "Bearer " + apiKey);
         }
         try (Response response = client.newCall(request.build()).execute()) {
-            if (!response.isSuccessful() || response.body() == null) throw PersonalAiEndpointPolicy.unavailable();
+            if (!response.isSuccessful()) throw upstreamFailure(response.code());
+            if (response.body() == null) throw PersonalAiEndpointPolicy.unavailable();
             Completion result = parse(provider, readBounded(response.body()));
             if (result.text().contains(apiKey)) throw new PersonalAiUpstreamFailure(result.inputTokens(), result.outputTokens());
             return result;
         } catch (BusinessException exception) { throw exception; }
+        catch (java.net.SocketTimeoutException exception) { throw new BusinessException(org.springframework.http.HttpStatus.GATEWAY_TIMEOUT,"PERSONAL_AI_TIMEOUT","供应商响应超时，请稍后再试"); }
         catch (Exception exception) { throw PersonalAiEndpointPolicy.unavailable(); }
         finally { client.connectionPool().evictAll(); }
+    }
+    public Payload prepareDiagnostic(AiProvider provider,String base,String model) {
+        Payload original=prepare(provider,base,model,"Reply briefly.","Reply with OK only.");
+        try {var body=(ObjectNode)mapper.readTree(original.json());
+            if(provider.protocol()==AiProvider.Protocol.GEMINI)((ObjectNode)body.get("generationConfig")).put("maxOutputTokens",128);
+            else body.put(body.has("max_completion_tokens")?"max_completion_tokens":"max_tokens",128);
+            return new Payload(original.url(),mapper.writeValueAsString(body));
+        } catch(Exception e){throw PersonalAiEndpointPolicy.unavailable();}
+    }
+    public List<String> models(AiProvider provider,String base,String apiKey) {
+        policy.validateBase(provider,base);HttpUrl url=HttpUrl.get(base+"/models");
+        List<InetAddress> pinned=policy.resolvePublic(url.host());OkHttpClient client=connectionClient(url.host(),pinned);
+        Request.Builder request=new Request.Builder().url(url).get();
+        switch(provider.protocol()){case GEMINI->request.header("x-goog-api-key",apiKey);case ANTHROPIC->request.header("x-api-key",apiKey).header("anthropic-version","2023-06-01");default->request.header("Authorization","Bearer "+apiKey);}
+        try(Response response=client.newCall(request.build()).execute()){
+            if(!response.isSuccessful())throw upstreamFailure(response.code());if(response.body()==null)throw PersonalAiEndpointPolicy.unavailable();
+            var json=mapper.readTree(readBounded(response.body()));var entries=json.path(provider.protocol()==AiProvider.Protocol.GEMINI?"models":"data");if(!entries.isArray())throw PersonalAiEndpointPolicy.unavailable();
+            List<String> ids=new ArrayList<>();for(var entry:entries){String id=entry.path(provider.protocol()==AiProvider.Protocol.GEMINI?"name":"id").asText().replaceFirst("^models/","");if(id.length()<=120&&id.matches("[A-Za-z0-9._:/-]+")&&!id.contains(apiKey))ids.add(id);if(ids.size()==200)break;}return ids;
+        }catch(BusinessException e){throw e;}catch(Exception e){throw PersonalAiEndpointPolicy.unavailable();}finally{client.connectionPool().evictAll();}
+    }
+    static BusinessException upstreamFailure(int status){
+        String code,message;switch(status){
+            case 401,403->{code="PERSONAL_AI_AUTH_FAILED";message="密钥无效或没有调用权限，请检查自己的供应商配置";}
+            case 402->{code="PERSONAL_AI_QUOTA";message="供应商额度不足，请查看供应商账单";}
+            case 404->{code="PERSONAL_AI_MODEL_NOT_FOUND";message="模型或接口不可用，请核对模型 ID 和 API 端点";}
+            case 429->{code="PERSONAL_AI_RATE_OR_QUOTA";message="供应商限流或额度不足，请查看账户额度并稍后重试";}
+            case 400,422->{code="PERSONAL_AI_PROTOCOL";message="供应商不接受当前模型参数，请核对模型与接口兼容性";}
+            default->{code="PERSONAL_AI_UPSTREAM_UNAVAILABLE";message="供应商服务或网络暂不可用，请稍后重试";}
+        }return new BusinessException(org.springframework.http.HttpStatus.BAD_GATEWAY,code,message);
     }
     OkHttpClient connectionClient(String host, List<InetAddress> pinned) { return client(host, pinned); }
     static OkHttpClient client(String host, List<InetAddress> pinned) {

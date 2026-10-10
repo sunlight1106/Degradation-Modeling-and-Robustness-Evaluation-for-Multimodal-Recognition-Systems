@@ -23,7 +23,7 @@ public final class VocabularyDtos {
                             List<Day> history, long dueTotal, long starredTotal) {}
     public record NextRequest(@NotBlank @Size(max=36) String bookId,
                               @NotBlank @Pattern(regexp="LEARN|REVIEW|MISTAKES") String mode,
-                              @Pattern(regexp="CHOICE|RECALL") String style) {
+                              @Pattern(regexp="CHOICE|RECALL|LISTENING|MIXED|CONFUSABLE|MEANINGS") String style) {
         public NextRequest(String bookId,String mode){this(bookId,mode,"CHOICE");}
     }
     public record Option(String id, String meaning) {}

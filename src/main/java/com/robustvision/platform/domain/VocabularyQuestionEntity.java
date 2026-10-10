@@ -21,6 +21,8 @@ public class VocabularyQuestionEntity {
     @Column(name="answer_correct") public Boolean answerCorrect;
     @Column(name="result_json",columnDefinition="TEXT") public String resultJson;
     @org.hibernate.annotations.ColumnDefault("'CHOICE'") @Column(name="practice_kind",nullable=false,length=16) public String practiceKind="CHOICE";
+    @org.hibernate.annotations.ColumnDefault("'CHOICE'") @Column(name="study_style",nullable=false,length=12) public String studyStyle="CHOICE";
+    @Column(name="skill_detail",length=500) public String skillDetail;
     @org.hibernate.annotations.ColumnDefault("0") @Column(name="hint_level",nullable=false) public int hintLevel;
     @Column(name="prompt_text",length=400) public String promptText;
     @Column(name="expected_text",length=160) public String expectedText;

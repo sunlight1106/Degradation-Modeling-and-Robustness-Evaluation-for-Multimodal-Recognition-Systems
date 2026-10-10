@@ -27,6 +27,9 @@ public class MessageEntity {
     private String replyToId;
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
+    @Column(name="recalled_at") private Instant recalledAt;
+    public Instant getRecalledAt() { return recalledAt; }
+    public void recall() { body="消息已撤回"; recalledAt=Instant.now(); }
 
     protected MessageEntity() {}
     public MessageEntity(UserEntity sender, String subject, String body) { this.sender = sender; this.subject = subject; this.body = body; }

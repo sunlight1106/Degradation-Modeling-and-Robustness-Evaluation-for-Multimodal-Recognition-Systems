@@ -26,6 +26,7 @@ public class AuthService {
     private final UserService userService;
     private final UserSessionService sessions;
     private final PasswordEncoder passwordEncoder;
+    @org.springframework.beans.factory.annotation.Autowired private AccountSecurityService accountSecurity;
 
     public AuthService(AuthenticationManager authenticationManager, JwtService jwtService,
                        UserRepository userRepository, UserService userService, UserSessionService sessions, PasswordEncoder passwordEncoder) {
@@ -37,10 +38,10 @@ public class AuthService {
         this.passwordEncoder = passwordEncoder;
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = BusinessException.class)
     public ApiDtos.LoginResponse login(ApiDtos.LoginRequest request) { return login(request, null); }
 
-    @Transactional
+    @Transactional(noRollbackFor = BusinessException.class)
     public ApiDtos.LoginResponse login(ApiDtos.LoginRequest request, String userAgent) {
         try {
             if (request.password().getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 72) {
@@ -57,6 +58,7 @@ public class AuthService {
             if (user.getStatus() != UserStatus.ACTIVE || !passwordEncoder.matches(request.password(), user.getPasswordHash())) {
                 throw new BusinessException(HttpStatus.UNAUTHORIZED, "LOGIN_FAILED", "用户名或密码错误");
             }
+            accountSecurity.checkLogin(user, request.otp());
             Instant issuedAt = Instant.now();
             var session = sessions.create(user, issuedAt, jwtService.expiresAt(issuedAt), userAgent);
             return new ApiDtos.LoginResponse(

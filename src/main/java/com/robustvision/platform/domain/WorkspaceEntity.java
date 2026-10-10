@@ -21,6 +21,15 @@ public class WorkspaceEntity {
     private Instant createdAt = Instant.now();
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt = Instant.now();
+    @org.hibernate.annotations.ColumnDefault("false") @Column(nullable=false) private boolean archived;
+    @org.hibernate.annotations.ColumnDefault("false") @Column(nullable=false) private boolean dissolved;
+    @org.hibernate.annotations.ColumnDefault("false") @Column(name="accept_requests",nullable=false) private boolean acceptRequests;
+    public boolean isArchived() { return archived; }
+    public boolean isDissolved() { return dissolved; }
+    public boolean isAcceptRequests() { return acceptRequests; }
+    public void lifecycle(boolean archived,boolean requests) { this.archived=archived; this.acceptRequests=requests; this.updatedAt=Instant.now(); }
+    public void dissolve() { dissolved=true; lifecycle(true,false); }
+    public void transfer(UserEntity owner) { this.owner=owner; updatedAt=Instant.now(); }
 
     protected WorkspaceEntity() {}
     public WorkspaceEntity(String name, String slug, String color, UserEntity owner) {

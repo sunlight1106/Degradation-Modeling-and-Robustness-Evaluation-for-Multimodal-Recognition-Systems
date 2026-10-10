@@ -27,7 +27,7 @@ public class AccountSwitchService {
         this.sessions = sessions; this.auth = auth; this.entityManager = entityManager;
     }
 
-    @Transactional
+    @Transactional(noRollbackFor=BusinessException.class)
     public ApiDtos.LoginResponse switchAccount(ApiDtos.LoginRequest request, String userAgent) {
         var source = current.requireCurrent();
         String sessionId = sessions.currentSessionId();
@@ -37,11 +37,15 @@ public class AccountSwitchService {
         // Use the same stable user-lock order as other account mutations.
         Stream.of(source.getId(), targetId).sorted().forEach(id -> users.findLockedById(id).orElseThrow(this::invalidTarget));
         entityManager.refresh(source, LockModeType.PESSIMISTIC_WRITE);
-        if (!source.hasActiveAccess(Instant.now()) || sessionRows.revokeActive(sessionId, source.getId(), Instant.now()) != 1)
+        if (!source.hasActiveAccess(Instant.now()) || sessionRows.findActive(sessionId, source.getUsername(), Instant.now()).isEmpty())
             throw new BusinessException(HttpStatus.UNAUTHORIZED, "SESSION_REQUIRED", "当前会话已失效，请重新登录");
         try {
-            // The new session and old-session revocation commit together. Invalid credentials roll both back.
-            return auth.login(request, userAgent);
+            // Verify password and second factor before revoking the source session.
+            // Failed second-factor counters commit without logging out this account.
+            var response=auth.login(request,userAgent);
+            if(sessionRows.revokeActive(sessionId,source.getId(),Instant.now())!=1)
+                throw new IllegalStateException("Source session changed during account switch");
+            return response;
         } catch (BusinessException failure) {
             // A bad target password must not cause the browser to discard its still-valid source session.
             if ("LOGIN_FAILED".equals(failure.getCode())) throw invalidTarget();

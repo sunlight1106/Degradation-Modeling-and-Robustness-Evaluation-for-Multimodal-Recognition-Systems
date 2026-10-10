@@ -14,11 +14,11 @@ const state = reactive<{
 export const authStore = {
   state,
   get token() { return tokenStorage.get() },
-  async login(username: string, password: string) {
+  async login(username: string, password: string, otp?: string) {
     let operationGeneration = tokenStorage.generation()
     state.loading = true
     try {
-      const response = await api.login(username, password)
+      const response = await api.login(username, password, otp)
       if (tokenStorage.generation() !== operationGeneration) throw new ApiClientError('SESSION_CHANGED', '登录状态已更改，请重试。', 401)
       tokenStorage.set(response.token)
       operationGeneration = tokenStorage.generation()
@@ -30,12 +30,12 @@ export const authStore = {
       if (tokenStorage.generation() === operationGeneration) state.loading = false
     }
   },
-  async switchAccount(username: string, password: string) {
+  async switchAccount(username: string, password: string, otp?: string) {
     if (state.loading) throw new ApiClientError('ACCOUNT_BUSY', '正在处理登录，请稍候。', 409)
     let generation = tokenStorage.generation()
     state.loading = true
     try {
-      const response = await api.switchAccount(username, password)
+      const response = await api.switchAccount(username, password, otp)
       if (tokenStorage.generation() !== generation) throw new ApiClientError('SESSION_CHANGED', '登录状态已更改，请重新登录。', 401)
       tokenStorage.set(response.token)
       generation = tokenStorage.generation()

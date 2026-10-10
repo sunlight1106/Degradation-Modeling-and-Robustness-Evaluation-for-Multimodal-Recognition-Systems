@@ -153,10 +153,10 @@ export async function fetchBlob(path: string): Promise<Blob> {
 }
 
 export const api = {
-  login: (username: string, password: string) => request<LoginResponse>('/auth/login', {
-    method: 'POST', body: JSON.stringify({ username, password }),
+  login: (username: string, password: string, otp?: string) => request<LoginResponse>('/auth/login', {
+    method: 'POST', body: JSON.stringify({ username, password, otp }),
   }),
-  switchAccount: (username: string, password: string) => request<LoginResponse>('/account/switch', { method: 'POST', body: JSON.stringify({ username, password }) }),
+  switchAccount: (username: string, password: string, otp?: string) => request<LoginResponse>('/account/switch', { method: 'POST', body: JSON.stringify({ username, password, otp }) }),
   register: (payload: { username: string; email: string; password: string }) =>
     request<UserView>('/auth/register', { method: 'POST', body: JSON.stringify(payload) }),
   me: () => request<UserView>('/auth/me'),

@@ -2,6 +2,7 @@
 import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { vocabularyApi } from '@/api/vocabulary'
 import type { VocabularyAnswer, VocabularyLesson, VocabularyQuestion } from '@/api/vocabulary'
+import WordPronunciation from './WordPronunciation.vue'
 import VocabularyLessonCard from './VocabularyLessonCard.vue'
 const props = defineProps<{ question: VocabularyQuestion; answer: VocabularyAnswer | null; busy: boolean }>()
 const emit = defineEmits<{ submit: [text: string]; skip: []; next: [] }>()
@@ -19,7 +20,7 @@ async function retryLesson() {
 }
 watch(() => props.question.id, async () => {
   const version = ++generation; lesson.value = null; text.value = ''; hint.value = ''; error.value = ''; hintLevel.value = props.question.hintLevel || 0
-  phase.value = props.question.introduced ? 'recall' : 'introduce'
+  phase.value = props.question.practiceKind==='LISTENING'||props.question.introduced ? 'recall' : 'introduce'
   pending.value = phase.value === 'introduce'
   if (pending.value) try { const card = await vocabularyApi.lesson(props.question.id); if (active && version === generation) lesson.value = card }
   catch (reason) { if (active && version === generation) error.value = reason instanceof Error ? reason.message : '学习卡加载失败' }
@@ -44,7 +45,7 @@ onBeforeUnmount(() => { active = false; generation++ })
     <p v-if="error" role="alert" class="inline-alert inline-alert--error">{{ error }}<button class="button button--light" :disabled="pending" @click="phase === 'introduce' ? retryLesson() : getHint()">重试</button></p>
     <p v-if="pending && phase === 'introduce'" role="status">正在准备学习卡…</p>
     <template v-if="!answer && phase === 'introduce' && lesson"><VocabularyLessonCard :lesson="lesson" /><footer><p>想一下画面，读一遍完整搭配，然后遮住英文。</p><button class="button button--dark" :disabled="busy || pending" @click="hide">遮住答案，开始回忆 →</button></footer></template>
-    <form v-else-if="!answer && phase === 'recall'" class="recall-form" @submit.prevent="!busy && !pending && text.trim() && emit('submit', text.trim())"><p class="prompt-label">{{ question.practiceKind === 'COLLOCATION' ? '用英文写出完整搭配，可用 sb. / sth. 作占位' : '看到这个意思，你能想起哪个单词？' }}</p><h3 id="vocab-question-title">{{ question.prompt }}</h3><label for="vocab-recall-input">{{ question.practiceKind === 'COLLOCATION' ? '完整英文搭配' : '英文单词' }}</label><input id="vocab-recall-input" ref="input" v-model="text" class="field-input" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="160" :disabled="busy || pending" /><button class="button button--dark" :disabled="busy || pending || !text.trim()">确认回忆</button><button class="hint-button" type="button" :disabled="busy || pending || hintLevel >= 3" @click="getHint">{{ hintLevel >= 3 ? '已显示答案' : ['给我一个画面提示', '提示首字母', '查看答案'][hintLevel] }}</button><p v-if="hint" class="hint" role="status">{{ hint }}</p><p class="subtle">先独立想一下。使用提示会单独记录，不算独立回忆。</p></form>
+    <form v-else-if="!answer && phase === 'recall'" class="recall-form" @submit.prevent="!busy && !pending && text.trim() && emit('submit', text.trim())"><p class="prompt-label">{{ question.practiceKind === 'COLLOCATION' ? '用英文写出完整搭配，可用 sb. / sth. 作占位' : question.practiceKind==='LISTENING'?'点击听读，再写下单词':'看到这个意思，你能想起哪个单词？' }}</p><h3 id="vocab-question-title">{{ question.prompt }}</h3><WordPronunciation v-if="question.practiceKind==='LISTENING'" :key="question.id" :text="question.term" conceal /><label for="vocab-recall-input">{{ question.practiceKind === 'COLLOCATION' ? '完整英文搭配' : '英文单词' }}</label><input id="vocab-recall-input" ref="input" v-model="text" class="field-input" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="160" :disabled="busy || pending" /><button class="button button--dark" :disabled="busy || pending || !text.trim()">确认回忆</button><button class="hint-button" type="button" :disabled="busy || pending || hintLevel >= 3" @click="getHint">{{ hintLevel >= 3 ? '已显示答案' : ['给我一个画面提示', '提示首字母', '查看答案'][hintLevel] }}</button><p v-if="hint" class="hint" role="status">{{ hint }}</p><p class="subtle">先独立想一下。使用提示会单独记录，不算独立回忆。</p></form>
     <template v-else-if="answer"><section class="result" :class="{ wrong: !answer.correct }"><strong>{{ answer.correct ? '想起来了。' : '再看一遍，把它记回场景里。' }}</strong><p v-if="answer.expectedText">{{ answer.expectedText }}</p><small>{{ evidenceNames[answer.evidence] || answer.evidence }} · {{ answer.message }}</small></section><VocabularyLessonCard v-if="answer.lesson" :lesson="answer.lesson" /><div class="evidence"><span>独立 {{ answer.independentCorrect }} 次</span><span>即时 {{ answer.immediateCorrect }} 次</span><span>提示 {{ answer.promptedCorrect }} 次</span></div><footer><p>穿插其他词再来回忆，明天继续复习。</p><button ref="continueButton" class="button button--dark" :disabled="busy" @click="emit('next')">下一个单词 →</button></footer></template>
   </div>
 </template>

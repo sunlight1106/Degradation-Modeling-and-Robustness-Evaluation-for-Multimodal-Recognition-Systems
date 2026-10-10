@@ -20,6 +20,7 @@ import java.util.zip.*;
 /** Portable owner-only snapshots. Restore merges monotonically and never adopts foreign IDs. */
 @Service
 public class VocabularyBackupService {
+    @org.springframework.beans.factory.annotation.Autowired private VocabularySkillsService skills;
     public static final int MAX_FILE_BYTES=20*1024*1024, MAX_JSON_BYTES=64*1024*1024;
     private final VocabularyService service;
     private final VocabularyLessons lessons;
@@ -36,11 +37,13 @@ public class VocabularyBackupService {
             @Min(0) @Max(10000000) int independentCorrect,@Min(0) @Max(10000000) int promptedCorrect,
             @Min(0) @Max(10000000) int immediateCorrect,@Min(0) @Max(10000000) int spellingCorrect,
             @Min(0) @Max(10000000) int collocationCorrect,Instant introducedAt,Instant lastViewedAt,Instant updatedAt) {}
-    public record Backup(@Pattern(regexp="PKB_VOCABULARY") String format,@Min(1) @Max(1) int schemaVersion,
+    public record Backup(@Pattern(regexp="PKB_VOCABULARY") String format,@Min(1) @Max(2) int schemaVersion,
             @NotNull Instant exportedAt,@NotNull Settings settings,
             @NotNull @Size(max=20) List<@NotNull @Valid BookSnapshot> books,
             @NotNull @Size(max=30000) List<@NotNull @Valid ProgressSnapshot> progress,
-            @NotNull @Size(max=20000) List<@NotNull Day> history) {}
+            @NotNull @Size(max=20000) List<@NotNull Day> history, @Size(max=100000) List<VocabularySkillsService.Skill> skills) {
+        public Backup(String format,int schemaVersion,Instant exportedAt,Settings settings,List<BookSnapshot> books,List<ProgressSnapshot> progress,List<Day> history){this(format,schemaVersion,exportedAt,settings,books,progress,history,List.of());}
+    }
     public record Restored(int booksImported,int booksMerged,int wordsRestored,int progressMerged,int duplicateProgressRemoved) {}
 
     @Transactional(isolation=Isolation.READ_COMMITTED)
@@ -51,7 +54,7 @@ public class VocabularyBackupService {
             var w=em.find(VocabularyWordEntity.class,p.wordId);
             return new ProgressSnapshot(w.term,p.learningCorrect,p.reviewStage,p.wrongCount,p.mistake,p.starred,p.dueDate,p.learnedDate,p.lastAttemptAt,p.lastReviewDate,p.skipped,p.independentCorrect,p.promptedCorrect,p.immediateCorrect,p.spellingCorrect,p.collocationCorrect,p.introducedAt,p.lastViewedAt,p.updatedAt);
         }).toList();
-        var backup=new Backup("PKB_VOCABULARY",1,service.now(),service.settings(profile),books,progress,history(owner,profile).values().stream().sorted(Comparator.comparing(Day::date)).toList());
+        var backup=new Backup("PKB_VOCABULARY",2,service.now(),service.settings(profile),books,progress,history(owner,profile).values().stream().sorted(Comparator.comparing(Day::date)).toList(),skills.export(owner));
         try(var output=new ByteArrayOutputStream()) {
             try(var gzip=new GZIPOutputStream(output)){json.writeValue(gzip,backup);}
             return output.toByteArray();
@@ -92,7 +95,7 @@ public class VocabularyBackupService {
                 backup=json.readValue(data,Backup.class);
             }
         } catch(BusinessException expected){throw expected;}catch(IOException invalid){throw bad("备份文件损坏或格式无效");}
-        if(backup==null||!"PKB_VOCABULARY".equals(backup.format())||backup.schemaVersion()!=1||!validator.validate(backup).isEmpty())throw bad("备份版本或内容无效");
+        if(backup==null||!"PKB_VOCABULARY".equals(backup.format())||backup.schemaVersion()<1||backup.schemaVersion()>2||!validator.validate(backup).isEmpty())throw bad("备份版本或内容无效");
         if(backup.settings().dailyGoal()<1||backup.settings().dailyGoal()>100||
                 (backup.settings().zoneId()!=null&&!ZoneId.getAvailableZoneIds().contains(backup.settings().zoneId())))throw bad("备份学习设置无效");
         if(backup.exportedAt().isAfter(service.now().plusSeconds(300)))throw bad("备份时间不能在未来");
@@ -143,7 +146,7 @@ public class VocabularyBackupService {
         if(profile.zoneId==null&&input.zoneId()!=null)service.updateSettings(new SettingsRequest(input.zoneId(),input.dailyGoal(),selected));
         else if(profile.selectedBookId==null)profile.selectedBookId=selected;
         em.createQuery("update VocabularyQuestionEntity q set q.expiresAt=:now where q.ownerId=:owner and q.answeredAt is null").setParameter("now",service.now()).setParameter("owner",owner).executeUpdate();
-        profile.updatedAt=service.now();em.flush();return new Restored(imported,merged,words,unique.size(),backup.progress().size()-unique.size());
+        profile.updatedAt=service.now();em.flush();skills.restore(owner,backup.skills());return new Restored(imported,merged,words,unique.size(),backup.progress().size()-unique.size());
     }
     private Instant instant(Instant value){return value==null?Instant.EPOCH:value;}
     private Instant max(Instant first,Instant second){return first==null?second:second==null?first:first.isAfter(second)?first:second;}

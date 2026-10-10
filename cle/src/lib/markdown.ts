@@ -19,17 +19,19 @@ const SANITIZE_CONFIG: Config = {
   FORBID_TAGS: ['style', 'form', 'input', 'button', 'select', 'textarea', 'iframe', 'object', 'embed', 'img', 'picture', 'source', 'video', 'audio', 'link'],
   FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'onfocus', 'formaction', 'srcdoc', 'style', 'src', 'srcset', 'poster'],
   ALLOW_DATA_ATTR: false,
+  ADD_ATTR: ['data-note-attachment'],
 }
 
+function attachmentMarkers(source:string):string { return source.replace(/!\[[^\]\n]{0,180}\]\(attachment:([a-f0-9-]{36})\)/g, '<span data-note-attachment="$1">图片附件</span>') }
 export function renderNote(source: string | null | undefined, format = "MARKDOWN"): string {
-  return format === "HTML" ? DOMPurify.sanitize(source || "", SANITIZE_CONFIG) : renderMarkdown(source)
+  return format === "HTML" ? DOMPurify.sanitize(attachmentMarkers(source || ""), SANITIZE_CONFIG) : renderMarkdown(source)
 }
 
 /** 把 Markdown 渲染为消毒后的 HTML 字符串。 */
 export function renderMarkdown(source: string | null | undefined): string {
   if (!source || !source.trim()) return ''
   // Never auto-load images/media from notes or untrusted model output: a remote URL can exfiltrate viewing activity.
-  const raw = marked.parse(source, { async: false }) as string
+  const raw = marked.parse(attachmentMarkers(source), { async: false }) as string
   return DOMPurify.sanitize(raw, SANITIZE_CONFIG)
 }
 

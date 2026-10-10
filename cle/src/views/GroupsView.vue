@@ -1,4 +1,8 @@
 <script setup lang="ts">
+import GroupLifecycle from '@/components/GroupLifecycle.vue'
+import GroupInvitations from '@/components/GroupInvitations.vue'
+import GroupMessageActions from '@/components/GroupMessageActions.vue'
+import { request } from '@/api/client'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import { api, ApiClientError } from '@/api/client'
@@ -32,7 +36,8 @@ const page = ref(0), more = ref(false)
 let epoch = 0, refreshing = false
 const isAdmin = computed(() => authStore.state.user?.roleCode === 'ADMIN')
 const canCreate = computed(() => isAdmin.value || authStore.has('workspace:manage'))
-const canWrite = computed(() => canRead.value && selected.value?.currentPermissions.includes('CONTENT_WRITE'))
+const archived = ref(false)
+const canWrite = computed(() => !archived.value && canRead.value && selected.value?.currentPermissions.includes('CONTENT_WRITE'))
 const canRead = computed(() => selected.value?.currentPermissions.includes('CONTENT_READ') && authStore.has('message:read'))
 const canSettings = computed(() => selected.value?.currentPermissions.includes('SETTINGS_WRITE') && canRead.value)
 const canManage = computed(() => selected.value?.currentPermissions.includes('MEMBERS_WRITE'))
@@ -68,7 +73,7 @@ async function selectGroup(id: number) {
   const version = ++epoch
   peopleGuard.cancel(); searchGuard.cancel(); clearTimeout(peopleTimer); pickerOpen.value = false; peopleBusy.value = false; searchBusy.value = false
   searchOpen.value = false; searchResults.value = []; searchQuery.value = ''; peopleQuery.value = ''; editingAnnouncement.value = false
-  selected.value = null; messages.value = []; directory.value = []; page.value = 0; more.value = false
+  archived.value = false; selected.value = null; messages.value = []; directory.value = []; page.value = 0; more.value = false
   memberId.value = null; memberRole.value = 'MEMBER'; loading.value = true; error.value = ''; notice.value = ''
   if (!sameGroup) clearDraft()
   try {
@@ -176,6 +181,7 @@ async function memberAction(userId: number, role?: WorkspaceMemberRole) {
   const version = epoch, id = selected.value.id
   busy.value = true; error.value = ''
   try {
+    if(role && !selected.value.members.some(m=>m.userId===userId)) { await request(`/workspaces/${id}/invitations`,{method:'POST',body:JSON.stringify({targetId:userId,role})});if(version===epoch){memberId.value=null;pickerOpen.value=false;directory.value=[];notice.value='邀请已发送，等待对方确认'};return }
     const group = role ? await api.upsertWorkspaceMember(id, { userId, role, permissions: [] }) : await api.removeWorkspaceMember(id, userId)
     if (version !== epoch) return
     selected.value = group; memberId.value = null; pickerOpen.value = false; directory.value = []; notice.value = '成员设置已更新'
@@ -230,13 +236,13 @@ onBeforeUnmount(()=>window.removeEventListener('pkb:live-update',liveRefresh))
     <section class="page-intro page-intro--split"><div><p class="page-kicker">CONVERSATIONS</p><h2>群组</h2><p>讨论问题，分享资料，把有用的内容留在一起。</p></div><button v-if="canCreate" class="button button--ghost" :disabled="busy" @click="creating = !creating">{{ creating ? '取消新建' : '新建群组' }}</button></section>
     <form v-if="creating" class="group-create" @submit.prevent="createGroup"><label class="field-label">群组名称<input v-model="groupName" class="field-input" maxlength="100" required :disabled="busy" placeholder="例如：论文研读" /></label><button class="button button--dark" :disabled="busy">创建群组</button></form>
     <p v-if="error" class="inline-alert inline-alert--error" role="alert">{{ error }}</p><p v-if="notice" class="field-hint" role="status">{{ notice }}</p>
-    <div class="group-layout">
+    <GroupInvitations @refresh="loadGroups" /><div class="group-layout">
       <aside class="group-sidebar"><p class="page-kicker">{{ isAdmin ? '全部群组' : '我的会话' }}</p><input v-model="groupQuery" type="search" class="field-input group-filter" aria-label="筛选群组" placeholder="搜索群组" /><button class="group-refresh" :disabled="busy || loading" @click="loadGroups">刷新列表</button>
         <button v-for="group in visibleGroups" :key="group.id" :class="{ active: selected?.id === group.id }" :disabled="busy" @click="selectGroup(group.id)"><strong>{{ group.name }}</strong><span v-if="features[group.id]?.unread" class="unread-badge">{{ features[group.id].unread > 99 ? '99+' : features[group.id].unread }}</span><small>{{ features[group.id]?.pinned ? '置顶 · ' : '' }}{{ features[group.id]?.muted ? '免打扰 · ' : '' }}{{ group.ownerName }}</small></button>
         <p v-if="!visibleGroups.length && !loading">{{ groups.length ? '没有匹配的群组。' : '还没有群组。新建一个，或请群主通过身份码添加你。' }}</p><RouterLink to="/app/mail">联系管理员 ↗</RouterLink>
       </aside>
       <main class="group-main" :aria-busy="loading"><template v-if="selected">
-        <header class="group-header"><div><h3>{{ selected.name }}</h3><p>{{ selected.members.length }} 位可见成员 · {{ roles[selected.currentRole] }}<span v-if="isAdmin"> · 平台管理员</span></p></div><button class="table-action" :disabled="busy || loading" @click="selectGroup(selected.id)">刷新</button></header>
+        <GroupLifecycle :key="selected.id" :group="selected" :owner="canPromote" :manager="!!canSettings" @state="archived=$event.archived" @refresh="selectGroup(selected.id)" /><header class="group-header"><div><h3>{{ selected.name }}</h3><p>{{ selected.members.length }} 位可见成员 · {{ roles[selected.currentRole] }}<span v-if="isAdmin"> · 平台管理员</span></p></div><button class="table-action" :disabled="busy || loading" @click="selectGroup(selected.id)">刷新</button></header>
         <div class="group-toolbar"><button :disabled="busy" @click="preferences('pinned')">{{ currentFeatures?.pinned ? '取消置顶会话' : '置顶会话' }}</button><button :disabled="busy" @click="preferences('muted')">{{ currentFeatures?.muted ? '关闭免打扰' : '免打扰' }}</button><button v-if="canRead" @click="searchOpen ? closeSearch() : searchOpen = true">{{ searchOpen ? '关闭搜索' : '查找消息' }}</button><button v-if="canLeave" :disabled="busy" @click="leave">退出群组</button></div>
         <section v-if="canRead && (currentFeatures?.announcement || canSettings)" class="group-announcement"><header><span class="page-kicker">群公告</span><button v-if="canSettings" class="table-action" :disabled="busy" @click="editAnnouncement">{{ editingAnnouncement ? '取消' : '编辑' }}</button></header><p v-if="!editingAnnouncement">{{ currentFeatures?.announcement || '暂未发布公告。' }}</p><form v-else @submit.prevent="updateNotice()"><textarea v-model="announcementDraft" class="field-input" rows="3" maxlength="2000" aria-label="群公告内容" :disabled="busy" /><button class="button button--ghost button--small" :disabled="busy">保存公告</button></form></section>
         <section v-if="canRead && currentFeatures?.pinnedMessage" class="group-pin"><span class="page-kicker">置顶消息 · {{ currentFeatures.pinnedMessage.senderName }}</span><p>{{ currentFeatures.pinnedMessage.body }}</p><button v-if="canSettings" class="table-action" :disabled="busy" @click="updateNotice(null)">取消置顶消息</button></section>
@@ -247,7 +253,7 @@ onBeforeUnmount(()=>window.removeEventListener('pkb:live-update',liveRefresh))
         </details>
         <section v-if="searchOpen && canRead" class="group-search"><form @submit.prevent="searchMessages()"><input v-model="searchQuery" class="field-input" type="search" maxlength="100" required aria-label="搜索群内消息" placeholder="输入消息关键词" /><button class="button button--ghost" :disabled="searchBusy">搜索</button></form><p class="field-hint">搜索本群文字；附件请在会话中下载。</p><article v-for="message in searchResults" :key="message.id" class="search-result"><strong>{{ message.senderName }}</strong><time>{{ time(message.createdAt) }}</time><p>{{ message.body }}</p></article><p v-if="!searchBusy && searchQuery && !searchResults.length">暂无匹配消息。</p><button v-if="searchMore" class="table-action" :disabled="searchBusy" @click="searchMessages(true)">更多结果</button></section>
         <div v-else class="group-thread"><button v-if="more" class="table-action" :disabled="busy || loading" @click="older">查看更早的消息</button><p v-if="!messages.length && !loading" class="group-empty">{{ canRead ? '还没有讨论，从第一条消息开始。' : '你没有阅读本群内容的权限。' }}</p>
-          <article v-for="message in timeline" :key="message.id" class="group-message" :class="{ 'group-message--own': message.senderId === authStore.state.user?.id }"><header><span class="message-avatar">{{ message.senderName.slice(0,1) }}</span><strong>{{ message.senderName }}</strong><time>{{ time(message.createdAt) }}</time><button v-if="canWrite" :disabled="busy" @click="startReply(message)">回复</button><button v-if="canSettings" :disabled="busy" @click="updateNotice(message.id)">置顶</button></header><small v-if="message.replyToId" class="reply-context">回复 {{ messages.find(item => item.id === message.replyToId)?.senderName || '较早的讨论' }} · {{ messages.find(item => item.id === message.replyToId)?.body.slice(0,100) }}</small><p>{{ message.body }}</p><div class="group-files"><button v-for="file in message.attachments" :key="file.id" @click="download(file)">{{ file.fileName }} <small>{{ Math.ceil(file.sizeBytes / 1024) }} KB ↓</small></button></div></article>
+          <article v-for="message in timeline" :key="message.id" class="group-message" :class="{ 'group-message--own': message.senderId === authStore.state.user?.id }"><header><span class="message-avatar">{{ message.senderName.slice(0,1) }}</span><strong>{{ message.senderName }}</strong><time>{{ time(message.createdAt) }}</time><button v-if="canWrite" :disabled="busy" @click="startReply(message)">回复</button><button v-if="canSettings" :disabled="busy" @click="updateNotice(message.id)">置顶</button></header><small v-if="message.replyToId" class="reply-context">回复 {{ messages.find(item => item.id === message.replyToId)?.senderName || '较早的讨论' }} · {{ messages.find(item => item.id === message.replyToId)?.body.slice(0,100) }}</small><p>{{ message.body }}</p><div class="group-files"><button v-for="file in message.attachments" :key="file.id" @click="download(file)">{{ file.fileName }} <small>{{ Math.ceil(file.sizeBytes / 1024) }} KB ↓</small></button></div><GroupMessageActions :group-id="selected.id" :message-id="message.id" :can-recall="!!canSettings||(message.senderId===authStore.state.user?.id&&Date.now()-Date.parse(message.createdAt)<600000)" :recalled="message.body==='消息已撤回'" @refresh="selectGroup(selected.id)" /></article>
         </div>
         <form v-if="canWrite" class="group-compose" @submit.prevent="send"><label class="field-label" for="group-draft">发送消息</label><p v-if="reply" class="group-reply">回复 {{ reply.senderName }}：{{ reply.body.slice(0,90) }} <button type="button" :disabled="busy" @click="reply = null">取消回复</button></p><textarea id="group-draft" v-model="text" class="field-input" maxlength="20000" rows="3" placeholder="写下问题，或分享一份资料…" :disabled="busy" @keydown.ctrl.enter.prevent="send" /><div class="group-compose-actions"><label class="attachment-picker">添加资料<input :key="fileInputKey" type="file" multiple :disabled="busy" @change="chooseFiles" /></label><small>5 个 / 每个 20 MB · Ctrl + Enter 发送</small><button class="button button--dark" :disabled="busy || loading || (!text.trim() && !files.length)">{{ busy ? '正在处理…' : '发送到群组' }}</button></div><ul v-if="files.length" class="group-draft-files"><li v-for="(file,index) in files" :key="index">{{ file.name }}<button type="button" :disabled="busy" :aria-label="`移除 ${file.name}`" @click="files.splice(index,1)">×</button></li></ul></form><p v-else class="group-readonly">本群为只读，消息和资料按你的权限显示。</p>
       </template><p v-else>{{ loading ? '正在加载…' : '从左侧选择一个群组。' }}</p></main>

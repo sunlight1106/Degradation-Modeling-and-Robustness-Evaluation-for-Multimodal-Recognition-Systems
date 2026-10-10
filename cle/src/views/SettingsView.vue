@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import AccountSecurity from '@/components/AccountSecurity.vue'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { ApiClientError } from '@/api/client'
@@ -140,7 +141,7 @@ onBeforeUnmount(() => { active = false; loadVersion++; clearSecrets() })
           </article>
           <RouterLink v-if="authStore.has('billing:read')" to="/app/billing" class="settings-inline-link">查看平台实验余额与充值 →</RouterLink>
         </template>
-        <template v-else-if="section === 'security'">
+        <template v-else-if="section === 'security'"><AccountSecurity />
           <article class="panel settings-card"><header><div><h3>修改密码</h3><p>修改成功后，所有会话（含当前会话）立即失效。</p></div><AppIcon name="shield" :size="22" /></header><form class="settings-form" @submit.prevent="changePassword"><label class="field-label">当前密码<input v-model="passwords.current" type="password" class="field-input" autocomplete="current-password" required :disabled="!!busy" /></label><div class="settings-fields"><label class="field-label">新密码<input v-model="passwords.next" type="password" class="field-input" autocomplete="new-password" minlength="8" maxlength="72" required :disabled="!!busy" /></label><label class="field-label">再次输入新密码<input v-model="passwords.confirm" type="password" class="field-input" autocomplete="new-password" minlength="8" maxlength="72" required :disabled="!!busy" /></label></div><small>至少 8 个字符。请为这个账户使用独立密码。</small><button class="button button--dark" :disabled="!!busy">{{ busy === 'password' ? '更新中…' : '更新密码并重新登录' }}</button></form></article>
           <article class="panel settings-card"><header><div><h3>登录会话</h3><p>查看仍然有效的会话，撤销不再使用的登录。</p></div><button class="button button--ghost button--small" :disabled="loading || !!busy" @click="loadSection">刷新</button></header><label class="field-label">当前密码（撤销会话时确认）<input v-model="securityPassword" class="field-input" type="password" autocomplete="current-password" :disabled="!!busy" /></label><p v-if="loading" role="status">正在加载会话…</p><p v-else-if="sessionsLoaded && !sessions.length" class="settings-empty">没有可展示的有效会话。</p><div class="settings-session-list"><div v-for="item in sessions" :key="item.id" class="settings-session"><AppIcon name="shield" :size="18" /><div><strong>{{ item.current ? '当前会话' : '其他会话' }}</strong><small>{{ item.userAgent || '未记录设备信息' }}</small><small>登录 {{ fmt(item.createdAt) }} · 到期 {{ fmt(item.expiresAt) }}</small><small v-if="item.lastSeenAt">最近使用 {{ fmt(item.lastSeenAt) }}</small></div><button class="button button--ghost button--small" :disabled="!!busy || !securityPassword" @click="revoke(item)">{{ item.current ? '退出' : '撤销' }}</button></div></div><button class="button button--ghost" :disabled="!!busy || !securityPassword || !sessions.some(item => !item.current)" @click="revoke()">退出其他所有会话</button></article>
         </template>

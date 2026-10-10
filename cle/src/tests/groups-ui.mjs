@@ -24,6 +24,8 @@ const metadataRows = new Map()
 const metadata = id => metadataRows.get(id) || { groupId: id, announcement: '', revision: 0, pinned: false, muted: false, unread: 0, pinnedMessage: null }
 window.fetch = async (url, init = {}) => {
   const path = String(url); requests.push({ path, method: init.method || 'GET' })
+  if(path.endsWith('/invitations')||path.endsWith('/reports'))return envelope([])
+  if(path.endsWith('/lifecycle'))return envelope({archived:false,dissolved:false,acceptRequests:false})
   if (path === '/api/v1/workspaces') return envelope(groups)
   if (path === '/api/v1/workspaces/overview') return envelope({ groups, features: groups.map(g => metadata(g.id)) })
   if (/\/workspaces\/\d+$/.test(path)) return envelope(groups.find(g => g.id === Number(path.split('/').at(-1))))

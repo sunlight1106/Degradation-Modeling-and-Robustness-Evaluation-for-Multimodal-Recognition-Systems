@@ -44,7 +44,7 @@ class MySqlSchemaMigrationTest {
 
     private static final Set<String> DOMAIN_TABLES = java.util.stream.Stream.concat(
             LEGACY_DOMAIN_TABLES.stream(), java.util.stream.Stream.of("personal_ai_setting", "personal_ai_usage", "user_session",
-                    "vocabulary_book", "vocabulary_word", "vocabulary_profile", "vocabulary_progress", "vocabulary_question", "personal_recognition_result", "contact_link", "chat_message", "personal_ai_memory", "note_version", "learning_record", "user_permission_override", "admin_audit", "workspace_shortcut", "workspace_notice", "workspace_preference"))
+                    "vocabulary_book", "vocabulary_word", "vocabulary_profile", "vocabulary_progress", "vocabulary_question", "personal_recognition_result", "contact_link", "chat_message", "personal_ai_memory", "note_version", "learning_record", "user_permission_override", "admin_audit", "workspace_shortcut", "workspace_notice", "workspace_preference", "account_security", "account_challenge", "group_invitation", "group_report", "note_link", "vocabulary_skill"))
             .collect(java.util.stream.Collectors.toUnmodifiableSet());
 
     @Test
@@ -132,6 +132,7 @@ class MySqlSchemaMigrationTest {
                 assertThat(after.remove("role_permission")).containsAll(before.remove("role_permission"));
                 assertThat(scalar(connection, "SELECT COUNT(*) FROM role_permission WHERE role_id=91 AND permission_code IN ('contacts:use','group:use','vocabulary:use','research:use','personal-ai:manage','personal-ai:use','training:use','message:read')")).isEqualTo("8");
                 assertThat(after).isEqualTo(before);
+                assertThat(scalar(connection,"SELECT COUNT(*) FROM workspace WHERE archived=TRUE OR dissolved=TRUE OR accept_requests=TRUE")).isEqualTo("0");
                 seedAccountSettings(connection);
                 assertThat(rows(connection,
                         "SELECT version, checksum FROM flyway_schema_history WHERE CAST(version AS UNSIGNED) <= " + baseline + " ORDER BY installed_rank"))
@@ -219,7 +220,7 @@ class MySqlSchemaMigrationTest {
         assertThat(scalar(c, "SELECT balance_cny FROM user_wallet WHERE user_id = 101")).isEqualTo("12.3456");
         assertThat(scalar(c, "SELECT cost_cny FROM inference_task WHERE id = 'task-1'")).isEqualTo("0.123456");
         assertThat(scalar(c, "SELECT COUNT(*) FROM information_schema.referential_constraints WHERE constraint_schema = DATABASE()"))
-                .isEqualTo("57");
+                .isEqualTo("69");
         assertThatThrownBy(() -> execute(c,
                 "INSERT INTO learning_record (id,owner_id,kind,title,payload,created_at,updated_at) VALUES ('orphan-record',999999,'CARD','orphan','{}',CURRENT_TIMESTAMP(6),CURRENT_TIMESTAMP(6))"))
                 .isInstanceOf(SQLException.class).satisfies(error -> assertThat(((SQLException) error).getErrorCode()).isEqualTo(1452));
@@ -288,6 +289,7 @@ class MySqlSchemaMigrationTest {
             // Compare original columns across V13 message and V14/V15 note additions.
             String columns = table.equals("internal_message") ? "id,sender_id,subject,body,created_at"
                     : table.equals("app_user") ? "id,username,password_hash,display_name,email,status,role_id,created_at,updated_at"
+                    : table.equals("workspace") ? "id,name,slug,color,owner_id,created_at,updated_at"
                     : table.equals("note") ? "id,owner_id,title,body,tags,status,created_at,updated_at" : "*";
             List<String> values = rows(c, "SELECT " + columns + " FROM `" + table + "`");
             values.sort(String::compareTo);

@@ -27,6 +27,7 @@ import java.util.Locale;
  */
 @Service
 public class NoteService {
+    @org.springframework.beans.factory.annotation.Autowired private NoteLinkService links;
 
     @org.springframework.beans.factory.annotation.Autowired private NoteHistoryService history;
     private static final int EXCERPT_LENGTH = 160;
@@ -100,6 +101,7 @@ public class NoteService {
         assignParent(note, request.parentId(), user);
         note.setLibrary(normalizeLibrary(request.library()));
         if (request.contentFormat() != null) note.setContentFormat(request.contentFormat());
+        noteRepository.flush(); links.sync(note);
         return toView(note);
     }
 
@@ -120,7 +122,7 @@ public class NoteService {
         if (request.tags() != null) note.setTags(trimToNull(request.tags()));
         if (request.status() != null && !request.status().isBlank()) note.setStatus(parseStatus(request.status()));
         note.setUpdatedAt(Instant.now());
-        return toView(noteRepository.save(note));
+        noteRepository.saveAndFlush(note); links.sync(note); return toView(note);
     }
 
     @Transactional

@@ -15,6 +15,7 @@ const username = ref(typeof route.query.username === 'string' ? route.query.user
 const password = ref('')
 const error = ref('')
 const visible = ref(false), remember = ref(false)
+const otp = ref('')
 const passwordInput = ref<HTMLInputElement | null>(null)
 async function choose(name: string) { username.value = name; password.value = ''; error.value = ''; await nextTick(); passwordInput.value?.focus() }
 watch(() => authStore.state.user?.id, () => { password.value = '' }, { flush: 'sync' })
@@ -24,7 +25,7 @@ async function submit() {
   if (authStore.state.loading) return
   error.value = ''
   try {
-    const user = authStore.state.user ? await authStore.switchAccount(username.value.trim(), password.value) : await authStore.login(username.value.trim(), password.value)
+    const user = authStore.state.user ? await authStore.switchAccount(username.value.trim(), password.value, otp.value) : await authStore.login(username.value.trim(), password.value, otp.value)
     if (remember.value && !rememberedAccounts.remember(user)) toastStore.info('登录成功；浏览器没有允许保存账号名称。')
     password.value = ''
     const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : ''
@@ -58,13 +59,13 @@ async function submit() {
             <button type="button" @click="visible = !visible">{{ visible ? '隐藏' : '显示' }}</button>
           </span>
         </label>
-        <label class="account-remember"><input v-model="remember" type="checkbox" :disabled="authStore.state.loading" />在此浏览器记住这个账号名称</label>
+        <label class="field-label">验证码或恢复码（启用双重验证时填写）<input v-model="otp" class="field-input" autocomplete="one-time-code" maxlength="32" /></label><label class="account-remember"><input v-model="remember" type="checkbox" :disabled="authStore.state.loading" />在此浏览器记住这个账号名称</label>
         <p v-if="error" class="form-error">{{ error }}</p>
         <button class="button button--dark button--full" type="submit" :disabled="authStore.state.loading">
           {{ authStore.state.loading ? '正在验证…' : '登录平台' }} <AppIcon v-if="!authStore.state.loading" name="arrow" :size="17" />
         </button>
       </form>
-      <p class="login-register-link">还没有账号？<RouterLink to="/register">创建账号</RouterLink></p>
+      <p class="login-register-link"><RouterLink to="/forgot-password">忘记密码？</RouterLink></p><p class="login-register-link">还没有账号？<RouterLink to="/register">创建账号</RouterLink></p>
       <p class="login-footnote">初始账号由部署环境变量设置。首次登录后请修改默认密码。</p>
     </section>
     <aside class="login-aside research-login-note"><p class="research-eyebrow">KNOWLEDGE / AI EVALUATION</p><h2>让每次探索，<br>都有清晰的记录。</h2><p>连接模型，整理知识，对照实验结果。<br>从这里继续你的研究。</p><ol><li>01 / 准备输入</li><li>02 / 运行实验</li><li>03 / 记录发现</li></ol><RouterLink to="/docs">查看使用文档 →</RouterLink></aside>

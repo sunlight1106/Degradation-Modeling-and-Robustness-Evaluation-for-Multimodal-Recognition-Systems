@@ -31,8 +31,9 @@ public final class ApiDtos {
 
     public record LoginRequest(
             @NotBlank @Size(max = 60) String username,
-            @NotBlank @Size(max = 100) String password
-    ) {}
+            @NotBlank @Size(max = 100) String password,
+            @Size(max = 32) String otp
+    ) { public LoginRequest(String username, String password) { this(username,password,null); } }
 
     public record LoginResponse(String token, String tokenType, Instant expiresAt, UserView user) {}
 

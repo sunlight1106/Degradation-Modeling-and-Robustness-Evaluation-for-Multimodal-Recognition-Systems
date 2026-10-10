@@ -32,8 +32,11 @@ function Get-DockerSocketFailure([datetime]$Since) {
     return $false
 }
 
-function Repair-DockerSockets {
+function Repair-DockerSockets([switch]$SkipStop,[string]$LocalData=$env:LOCALAPPDATA) {
     if (Test-DockerReady) { return }
+    if ($SkipStop) {
+        if (Get-Process -Name 'Docker Desktop','com.docker.backend','com.docker.build' -ErrorAction SilentlyContinue) { return }
+    } else {
     $stop = Start-Process -FilePath (Get-Command docker).Source -ArgumentList @('desktop','stop','--timeout','30') -WindowStyle Hidden -PassThru
     if (-not $stop.WaitForExit(30000)) {
         Get-CimInstance Win32_Process -Filter "ParentProcessId=$($stop.Id)" |
@@ -52,10 +55,11 @@ function Repair-DockerSockets {
         }
     }
     Start-Sleep -Seconds 2
+    }
     $runtimePaths = @('Docker\run', 'docker-secrets-engine')
     $knownNames = @('dockerEthernetVfkit','dockerInference','sailor-ingest.sock','userAnalyticsOtlpHttp.sock','engine.sock')
     foreach ($relative in $runtimePaths) {
-        $path = Join-Path $env:LOCALAPPDATA $relative
+        $path = Join-Path $LocalData $relative
         if (-not (Test-Path -LiteralPath $path)) { continue }
         $resolved = (Resolve-Path -LiteralPath $path).Path
         $root = Get-Item -LiteralPath $resolved -Force
@@ -75,6 +79,12 @@ function Ensure-Docker {
     if (Test-DockerReady) { return }
     $desktop = Join-Path $env:ProgramFiles 'Docker\Docker\Docker Desktop.exe'
     if (-not (Test-Path -LiteralPath $desktop)) { throw 'Docker engine is unavailable and Docker Desktop was not found.' }
+    # Windows AF_UNIX endpoints survive a stopped/crashed Desktop as reparse files.
+    # Quarantine ONLY known zero-byte runtime entries while ALL Desktop processes
+    # are absent. This avoids paying for one failed Desktop boot before recovery.
+    if (-not (Get-Process -Name 'Docker Desktop','com.docker.backend','com.docker.build' -ErrorAction SilentlyContinue)) {
+        Repair-DockerSockets -SkipStop
+    }
     $since = [datetime]::UtcNow
     Write-Host 'Starting Docker Desktop...'
     Start-Process -FilePath $desktop -WindowStyle Hidden

@@ -26,6 +26,8 @@ import java.util.stream.Collectors;
  * the lock and could miss a concurrent committed answer/progress row. */
 @Service
 public class VocabularyService {
+    @org.springframework.beans.factory.annotation.Autowired private VocabularySkillsService skills;
+    private static final List<List<String>> CONFUSABLES=List.of(List.of("accept","except"),List.of("affect","effect"),List.of("advice","advise"),List.of("adapt","adopt"),List.of("borrow","lend"),List.of("raise","rise"),List.of("work","job"),List.of("say","tell"),List.of("learn","study"),List.of("remember","remind"),List.of("economic","economical"),List.of("later","latter"),List.of("personal","personnel"),List.of("quite","quiet"));
     static final int MASTERY_TARGET = 4;
     private static final int[] REVIEW_DAYS = {3, 7, 14, 30, 60};
     private final EntityManager em;
@@ -130,7 +132,7 @@ public class VocabularyService {
         // A single active question per account prevents parallel tabs accumulating credit for one encounter.
         var active=em.createQuery("select q from VocabularyQuestionEntity q where q.ownerId=:owner and q.answeredAt is null and q.expiresAt>:now order by q.createdAt desc",VocabularyQuestionEntity.class)
                 .setParameter("owner",owner).setParameter("now",now()).getResultList();
-        for(var q:active) if(q.bookId.equals(request.bookId()) && q.mode.equals(request.mode()) && ("RECALL".equals(request.style())?!q.practiceKind.equals("CHOICE"):q.practiceKind.equals("CHOICE"))) return new Next(question(q),null,-1);
+        for(var q:active) if(q.bookId.equals(request.bookId()) && q.mode.equals(request.mode()) && Objects.equals(q.studyStyle,request.style()==null?"CHOICE":request.style())) return new Next(question(q),null,-1);
         for(var q:active) q.expiresAt=now();
         var all=words(request.bookId());var ps=progress(owner);
         long learnedToday=ps.values().stream().filter(v->day.equals(v.learnedDate)).count();
@@ -144,14 +146,18 @@ public class VocabularyService {
             candidates.addAll(incomplete.stream().filter(w->!ps.containsKey(w.termKey)||ps.get(w.termKey).lastAttemptAt==null).limit(available).toList());
         } else if(request.mode().equals("REVIEW")) candidates.addAll(all.stream().filter(w->ps.containsKey(w.termKey)&&isDue(ps.get(w.termKey),day)).toList());
         else candidates.addAll(all.stream().filter(w->ps.containsKey(w.termKey)&&ps.get(w.termKey).mistake&&!ps.get(w.termKey).skipped).toList());
+        if("CONFUSABLE".equals(request.style()))candidates.removeIf(w->CONFUSABLES.stream().noneMatch(pair->pair.contains(w.termKey)));
+        if(candidates.isEmpty()&&"CONFUSABLE".equals(request.style()))return new Next(null,"当前词书没有待练习的内置易混词，可选择其他词书或练习方式",0);
         if(candidates.isEmpty()) return new Next(null,request.mode().equals("REVIEW")?"今天的到期复习已完成":request.mode().equals("MISTAKES")?"当前词书没有待巩固错词":learnedToday>=p.dailyGoal?"今日新词目标已完成，可先复习或调整目标":"本词书的新词已完成或已跳过，可切换词书或复习",0);
         candidates.sort(Comparator.comparing(w->ps.containsKey(w.termKey)&&ps.get(w.termKey).lastAttemptAt!=null?ps.get(w.termKey).lastAttemptAt:Instant.MIN));
         var word=candidates.get(0);var q=new VocabularyQuestionEntity();q.id=UUID.randomUUID().toString();q.ownerId=owner;q.wordId=word.id;q.bookId=word.bookId;q.mode=request.mode();q.createdAt=now();q.expiresAt=now().plusSeconds(1800);
         List<String> distractors=read(word.distractors,new TypeReference<List<String>>(){});Collections.shuffle(distractors);
         var options=new ArrayList<Option>();var correct=new Option(UUID.randomUUID().toString(),word.meaning);options.add(correct);
         distractors.stream().limit(3).forEach(d->options.add(new Option(UUID.randomUUID().toString(),d)));Collections.shuffle(options);
-        q.optionsJson=write(options);q.correctOptionId=correct.id();
-        if("RECALL".equals(request.style())) {
+        q.optionsJson=write(options);q.correctOptionId=correct.id();q.studyStyle=request.style()==null?"CHOICE":request.style();
+        String selectedStyle=q.studyStyle;
+        if("MIXED".equals(selectedStyle))selectedStyle=List.of("RECALL","LISTENING","MEANINGS").get(java.util.concurrent.ThreadLocalRandom.current().nextInt(3));
+        if("RECALL".equals(selectedStyle)) {
             var progress=ps.get(word.termKey); var lesson=lessons.forWord(word);
             var patterns=lesson.collocations().stream().filter(c->c.pattern().matches("[A-Za-z .,\\'/-]+") && c.pattern().length()<=160).toList();
             boolean collocation=progress!=null && progress.spellingCorrect>0 && progress.collocationCorrect<=progress.spellingCorrect && !patterns.isEmpty();
@@ -160,12 +166,23 @@ public class VocabularyService {
             q.promptText=collocation?pattern.meaning():word.meaning;
             q.expectedText=collocation?pattern.pattern():word.term;
         }
+        if("MEANINGS".equals(selectedStyle)) {
+            var meanings=Arrays.stream(word.meaning.split("[；;\\n]" )).map(String::trim).filter(s->!s.isBlank()).toList();
+            String meaning=meanings.isEmpty()?word.meaning:meanings.get(java.util.concurrent.ThreadLocalRandom.current().nextInt(meanings.size()));
+            var target=new Option(UUID.randomUUID().toString(),meaning);var choices=new ArrayList<Option>();choices.add(target);distractors.stream().filter(d->!d.equals(meaning)).limit(3).forEach(d->choices.add(new Option(UUID.randomUUID().toString(),d)));Collections.shuffle(choices);q.optionsJson=write(choices);q.correctOptionId=target.id();q.skillDetail=meaning.length()>500?meaning.substring(0,500):meaning;
+        }
+        if("LISTENING".equals(selectedStyle)){q.practiceKind="LISTENING";q.promptText="听一听，写下你听到的单词";q.expectedText=word.term;}
+        if("CONFUSABLE".equals(selectedStyle)) {
+            var pair=CONFUSABLES.stream().filter(x->x.contains(word.termKey)).findFirst().orElseThrow();
+            var left=new Option(UUID.randomUUID().toString(),pair.get(0));var right=new Option(UUID.randomUUID().toString(),pair.get(1));
+            var choices=new ArrayList<>(List.of(left,right));Collections.shuffle(choices);q.optionsJson=write(choices);q.correctOptionId=(pair.get(0).equals(word.termKey)?left:right).id();q.promptText=word.meaning;q.expectedText=word.term;
+        }
         em.persist(q);return new Next(question(q),null,candidates.size());
     }
     private Question question(VocabularyQuestionEntity q) {
         var word=em.find(VocabularyWordEntity.class,q.wordId);var p=progress(q.ownerId).get(word.termKey);
         var lesson=lessons.forWord(word);
-        return new Question(q.id,word.term,lesson.ipa(),word.pos,q.mode,p==null?0:p.learningCorrect,MASTERY_TARGET,
+        return new Question(q.id,q.studyStyle.equals("CONFUSABLE")?"选择对应的词":word.term,q.studyStyle.equals("CONFUSABLE")?"":lesson.ipa(),word.pos,q.mode,p==null?0:p.learningCorrect,MASTERY_TARGET,
                 q.practiceKind.equals("CHOICE")?read(q.optionsJson,new TypeReference<List<Option>>(){}):List.of(),q.expiresAt,
                 q.practiceKind,q.promptText,p!=null&&(p.introducedAt!=null||p.lastAttemptAt!=null||p.learningCorrect>0),q.hintLevel);
     }
@@ -191,7 +208,7 @@ public class VocabularyService {
         if(!choice&&correct) {
             if(q.hintLevel>0)p.promptedCorrect++;
             else if(delayed)p.independentCorrect++;else p.immediateCorrect++;
-            if(q.hintLevel==0){if(q.practiceKind.equals("SPELLING"))p.spellingCorrect++;else p.collocationCorrect++;}
+            if(q.hintLevel==0){if(q.practiceKind.equals("SPELLING")||q.practiceKind.equals("LISTENING"))p.spellingCorrect++;else p.collocationCorrect++;}
         }
         if(q.mode.equals("REVIEW") && !isDue(p,day)) throw new BusinessException(HttpStatus.CONFLICT,"REVIEW_NOT_DUE","该词尚未到复习日期，请重新取题");
         if(correct && credit) {
@@ -210,6 +227,7 @@ public class VocabularyService {
         p.lastAttemptAt=now();p.updatedAt=now();if(!choice)p.lastViewedAt=now();q.answeredAt=now();q.studyDate=day;q.answerCorrect=correct;
         String message=!correct?"已加入错词巩固，本次不增加记忆次数":learned?"累计答对 4 次，已加入明日复习":q.mode.equals("MISTAKES")?"错词已巩固，学习进度和复习日期保持不变":q.mode.equals("REVIEW")?"复习完成，已安排下一次复习":"答对了，记忆次数 +1";
         if(!choice&&correct&&!credit)message=q.hintLevel>0?"提示后答对：已记录，稍后再独立回忆": "即时回忆正确：已记录，隔开其他单词后再抽查";
+        skills.record(word,q,correct,delayed,now());
         var result=new Answer(q.id,word.id,correct,q.correctOptionId,word.meaning,word.exampleText,word.exampleTranslation,p.learningCorrect,MASTERY_TARGET,learned,p.dueDate,p.reviewStage,p.starred,message,evidence,q.expectedText,p.independentCorrect,p.promptedCorrect,p.immediateCorrect,p.spellingCorrect,p.collocationCorrect,lessons.forWord(word));q.resultJson=write(result);return result;
     }
     @Transactional(readOnly=true)

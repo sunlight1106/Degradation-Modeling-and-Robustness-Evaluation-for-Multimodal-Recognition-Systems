@@ -6,10 +6,13 @@ import AppShell from '@/components/AppShell.vue'
 
 const router = createRouter({
   history: createWebHistory(),
-  scrollBehavior: to => to.hash ? { el: to.hash, behavior: 'smooth', top: 88 } : { top: 0 },
+  scrollBehavior: to => ['/reset-password','/verify-email'].includes(to.path)?{top:0}:to.hash ? { el: to.hash, behavior: 'smooth', top: 88 } : { top: 0 },
   routes: [
     { path: '/', name: 'home', component: HomeView },
     { path: '/login', name: 'login', component: LoginView },
+    { path: '/forgot-password', component: () => import('@/views/AccountRecoveryView.vue') },
+    { path: '/reset-password', component: () => import('@/views/AccountRecoveryView.vue') },
+    { path: '/verify-email', component: () => import('@/views/AccountRecoveryView.vue') },
     { path: '/register', name: 'register', component: () => import('@/views/RegisterView.vue') },
     { path: '/account/switch', name: 'account-switch', component: () => import('@/views/AccountAccessView.vue'), meta: { requiresAuth: true } },
     { path: '/account/logout', name: 'account-logout', component: () => import('@/views/AccountAccessView.vue'), meta: { requiresAuth: true } },

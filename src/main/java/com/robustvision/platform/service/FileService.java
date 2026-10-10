@@ -115,6 +115,10 @@ public class FileService {
             String safeName = sanitizeName(original, extension.isBlank() ? "bin" : extension);
             String storedName = UUID.randomUUID() + (extension.isBlank() ? "" : "." + extension);
             String key = datedKey(storedName); objectStorage.put(key, bytes, contentType);
+            if(org.springframework.transaction.support.TransactionSynchronizationManager.isSynchronizationActive())
+                org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(new org.springframework.transaction.support.TransactionSynchronization(){
+                    @Override public void afterCompletion(int status){if(status==STATUS_ROLLED_BACK)objectStorage.delete(key);}
+                });
             try {
                 return fileRepository.save(new FileAssetEntity(safeName, storedName, contentType, bytes.length, sha256(bytes), key,
                         owner, FileSource.MESSAGE_ATTACHMENT, scan.status(), scan.engine()));

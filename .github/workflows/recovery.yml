@@ -33,6 +33,10 @@ jobs:
           mkdir "$RUNNER_TEMP/mysql84"
           tar --extract --xz --file "$RUNNER_TEMP/mysql84.tar.xz" --directory "$RUNNER_TEMP/mysql84" --strip-components=1
           echo "$RUNNER_TEMP/mysql84/bin" >> "$GITHUB_PATH"
+      - name: Startup controls and scheduled retention
+        run: |
+          python3 -m unittest discover -s scripts -p test_startup.py
+          python3 -m unittest discover -s scripts/backup -p test_scheduled_backup.py
       - name: Backup format and safety refusals
         run: python3 scripts/backup/test_local_backup.py
       - name: Synthetic full-schema and filesystem restore on real MySQL

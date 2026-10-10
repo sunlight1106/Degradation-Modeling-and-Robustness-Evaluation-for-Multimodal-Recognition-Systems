@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onBeforeUnmount, ref } from 'vue'
-const props = defineProps<{ text: string }>()
+const props = defineProps<{ text: string;conceal?:boolean }>()
 const accent = ref('en-US'), slow = ref(false), error = ref(''), speaking = ref(false)
 const available = typeof window !== 'undefined' && 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window
 let utterance: SpeechSynthesisUtterance | null = null
@@ -18,5 +18,5 @@ function speak() {
 }
 onBeforeUnmount(() => { if (utterance) { utterance.onstart = null; utterance.onend = null; utterance.onerror = null; window.speechSynthesis.cancel() } })
 </script>
-<template><div class="word-pronunciation"><button type="button" class="table-action" :aria-label="`朗读 ${text}`" @click="speak">{{ speaking ? '重新听读' : '听读' }}</button><select v-model="accent" aria-label="发音口音"><option value="en-US">美音</option><option value="en-GB">英音</option></select><label><input v-model="slow" type="checkbox" /> 慢速</label><small v-if="error" role="status">{{ error }}</small></div></template>
+<template><div class="word-pronunciation"><button type="button" class="table-action" :aria-label="conceal?'播放本题语音':`朗读 ${text}`" @click="speak">{{ speaking ? '重新听读' : '听读' }}</button><select v-model="accent" aria-label="发音口音"><option value="en-US">美音</option><option value="en-GB">英音</option></select><label><input v-model="slow" type="checkbox" /> 慢速</label><small v-if="error" role="status">{{ error }}</small></div></template>
 <style scoped>.word-pronunciation{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:10px 0;font-size:12px;color:var(--muted)}select{border:0;background:transparent;color:var(--green);font:inherit;padding:4px;cursor:pointer}label{display:flex;align-items:center;gap:5px;font-size:12px}small{flex-basis:100%;color:var(--muted)}</style>

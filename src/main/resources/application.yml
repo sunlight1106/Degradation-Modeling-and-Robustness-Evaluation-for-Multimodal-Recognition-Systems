@@ -5,6 +5,18 @@ server:
     include-message: never
 
 spring:
+  mail:
+    host: ${SMTP_HOST:}
+    port: ${SMTP_PORT:587}
+    username: ${SMTP_USERNAME:}
+    password: ${SMTP_PASSWORD:}
+    properties:
+      mail.smtp.auth: ${SMTP_AUTH:true}
+      mail.smtp.starttls.enable: ${SMTP_STARTTLS:true}
+      mail.smtp.starttls.required: ${SMTP_STARTTLS:true}
+      mail.smtp.connectiontimeout: 5000
+      mail.smtp.timeout: 5000
+      mail.smtp.writetimeout: 5000
   datasource:
     url: ${DB_URL:jdbc:mysql://localhost:3306/robust_vision?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC&allowPublicKeyRetrieval=true&useSSL=false}
     username: ${DB_USERNAME:robust_user}
@@ -51,6 +63,10 @@ spring:
       write-dates-as-timestamps: false
 
 management:
+  health:
+    # Email is optional. A provider outage must not mark the entire platform down.
+    mail:
+      enabled: false
   endpoint:
     health:
       probes:
@@ -68,6 +84,8 @@ springdoc:
     path: /swagger-ui.html
 
 app:
+  mail:
+    from: ${SMTP_FROM:}
   jwt:
     secret: ${JWT_SECRET}
     expiration-minutes: ${JWT_EXPIRATION_MINUTES:120}

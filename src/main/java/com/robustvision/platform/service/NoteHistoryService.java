@@ -12,6 +12,7 @@ import java.util.*;
 
 @Service
 public class NoteHistoryService {
+    @org.springframework.beans.factory.annotation.Autowired private NoteLinkService links;
     private final NoteVersionRepository versions;
     private final NoteRepository notes;
     private final UserRepository users;
@@ -43,6 +44,7 @@ public class NoteHistoryService {
         NoteVersionEntity v=versions.findByIdAndOwnerIdAndNoteId(version,owner,id).orElseThrow(this::missing);
         capture(n); n.setTitle(v.title); n.setBody(v.body); n.setTags(v.tags); n.setLibrary(v.library);
         n.setContentFormat(v.contentFormat); n.setStatus(NoteStatus.valueOf(v.status)); n.incrementRevision(); n.setUpdatedAt(Instant.now());
+        notes.flush(); links.sync(n);
     }
     public record TrashItem(String id,String title,Instant deletedAt) {}
     @Transactional(readOnly=true)

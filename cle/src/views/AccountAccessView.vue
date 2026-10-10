@@ -12,6 +12,7 @@ import { toastStore } from '@/stores/toast'
 const route = useRoute(), router = useRouter()
 const exiting = computed(() => route.name === 'account-logout')
 const username = ref(''), password = ref(''), visible = ref(false), remember = ref(false), busy = ref(false), error = ref('')
+const otp = ref('')
 const passwordInput = ref<HTMLInputElement | null>(null)
 let active = true, completed = false
 const currentRemembered = computed(() => rememberedAccounts.state.items.some(item => item.username === authStore.state.user?.username))
@@ -25,7 +26,7 @@ async function submit() {
   if (busy.value) return
   busy.value = true; error.value = ''
   try {
-    const user = await authStore.switchAccount(username.value.trim(), password.value)
+    const user = await authStore.switchAccount(username.value.trim(), password.value, otp.value)
     if (!active) return
     if (remember.value && !rememberedAccounts.remember(user)) toastStore.info('已切换账号；浏览器没有允许保存账号名称。')
     completed = true; password.value = ''
@@ -62,7 +63,7 @@ onBeforeUnmount(() => { active = false; password.value = '' })
         <form class="login-form" @submit.prevent="submit">
           <label class="field-label">另一个账号的用户名<input v-model="username" class="field-input" autocomplete="username" required maxlength="60" :disabled="busy" placeholder="选择上方账号，或直接输入用户名" /></label>
           <label class="field-label">该账号的密码<span class="password-field"><input ref="passwordInput" v-model="password" class="field-input" :type="visible ? 'text' : 'password'" autocomplete="current-password" required :disabled="busy" /><button type="button" :disabled="busy" @click="visible = !visible">{{ visible ? '隐藏' : '显示' }}</button></span></label>
-          <label class="account-remember"><input v-model="remember" type="checkbox" :disabled="busy" />在此浏览器记住这个账号名称</label>
+          <label class="field-label">验证码或恢复码（启用双重验证时填写）<input v-model="otp" class="field-input" autocomplete="one-time-code" maxlength="32" /></label><label class="account-remember"><input v-model="remember" type="checkbox" :disabled="busy" />在此浏览器记住这个账号名称</label>
           <p v-if="error" class="form-error" role="alert">{{ error }}</p>
           <button class="button button--dark button--full" :disabled="busy || !username.trim() || !password || username.trim().toLowerCase() === authStore.state.user?.username.toLowerCase()">{{ busy ? '正在验证并切换…' : '验证并切换账号' }}</button>
         </form>

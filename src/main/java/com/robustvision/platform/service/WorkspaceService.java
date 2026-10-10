@@ -92,6 +92,7 @@ public class WorkspaceService {
     public ApiDtos.WorkspaceView upsertMember(Long workspaceId, ApiDtos.WorkspaceMemberRequest request) {
         UserEntity current = currentUserService.requireCurrent(); WorkspaceEntity workspace = requireLocked(workspaceId, current);
         requirePermission(workspace, current, "MEMBERS_WRITE"); validatePermissions(request.permissions());
+        if(workspace.isArchived())throw new BusinessException(HttpStatus.CONFLICT,"GROUP_ARCHIVED","群组已归档");
         UserEntity user = userRepository.findById(request.userId())
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "用户不存在"));
         if (user.getStatus() != UserStatus.ACTIVE) throw new BusinessException(HttpStatus.BAD_REQUEST, "WORKSPACE_USER_DISABLED", "不能添加已停用账号");
@@ -144,9 +145,9 @@ public class WorkspaceService {
         UserEntity current = currentUserService.requireCurrent();
         WorkspaceEntity workspace = write ? requireLocked(id, current) : requireAccessible(id, current);
         requirePermission(workspace, current, "CONTENT_READ");
-        if (write) requirePermission(workspace, current, "CONTENT_WRITE");
+        if (write) { if(workspace.isArchived()) throw new BusinessException(HttpStatus.CONFLICT,"GROUP_ARCHIVED","群组已经归档，当前只能阅读"); requirePermission(workspace, current, "CONTENT_WRITE"); }
     }
-    public void requireSettingsPermission(Long id) {UserEntity current=currentUserService.requireCurrent();WorkspaceEntity workspace=requireLocked(id,current);requirePermission(workspace,current,"CONTENT_READ");requirePermission(workspace,current,"SETTINGS_WRITE");}
+    public void requireSettingsPermission(Long id) {UserEntity current=currentUserService.requireCurrent();WorkspaceEntity workspace=requireLocked(id,current);requirePermission(workspace,current,"CONTENT_READ");requirePermission(workspace,current,"SETTINGS_WRITE");if(workspace.isArchived())throw new BusinessException(HttpStatus.CONFLICT,"GROUP_ARCHIVED","群组已归档");}
 
     private WorkspaceEntity requireLocked(Long id, UserEntity current) {
         workspaceRepository.findLockedById(id).orElseThrow(() -> new BusinessException(

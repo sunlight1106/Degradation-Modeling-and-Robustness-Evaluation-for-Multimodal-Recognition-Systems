@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PersonalAiDiagnostics from './PersonalAiDiagnostics.vue'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { ApiClientError } from '@/api/client'
 import { personalApi } from '@/api/personal'
@@ -87,6 +88,6 @@ onBeforeUnmount(() => { active = false; form.apiKey = '' })
       <p class="field-hint">输入的密钥不会写入浏览器存储。保存尝试结束、切换供应商或关闭此页面后，输入框都会清空。</p>
       <div class="settings-button-row"><button class="button button--dark" :disabled="busy">{{ busy ? '处理中…' : '保存个人配置' }}</button><button type="button" class="button button--ghost" :disabled="busy" @click="resetForm">取消更改</button><button v-if="existing" type="button" class="button button--ghost note-danger" :disabled="busy" @click="remove">删除密钥与配置</button></div>
     </form>
-    <div v-if="settings.length" class="settings-saved-list"><h4>我的已保存配置</h4><div v-for="item in settings" :key="item.provider"><strong>{{ providers.find(p => p.provider === item.provider)?.displayName || item.provider }}</strong><span>{{ item.model }}</span><span>{{ item.configured ? item.enabled ? '已启用' : '已停用' : '未配置密钥' }}</span></div></div>
+    <PersonalAiDiagnostics v-if="existing" :key="existing.provider" :setting="existing" :disabled="busy" /><div v-if="settings.length" class="settings-saved-list"><h4>我的已保存配置</h4><div v-for="item in settings" :key="item.provider"><strong>{{ providers.find(p => p.provider === item.provider)?.displayName || item.provider }}</strong><span>{{ item.model }}</span><span>{{ item.configured ? item.enabled ? '已启用' : '已停用' : '未配置密钥' }}</span></div></div>
   </article>
 </template>

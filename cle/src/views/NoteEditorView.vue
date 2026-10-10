@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import NoteConflict from '@/components/NoteConflict.vue'
+import NoteBacklinks from '@/components/NoteBacklinks.vue'
+import NoteAttachments from '@/components/NoteAttachments.vue'
 import { computed, onBeforeUnmount, onMounted, ref, watch, nextTick } from 'vue'
 import { RouterLink, useRoute, useRouter, onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router'
 import { api, ApiClientError, request } from '@/api/client'
@@ -114,6 +117,9 @@ const saving = ref(false)
 const error = ref('')
 const dirty = ref(false)
 const ready = ref(false)
+const mergeOpen = ref(false), savedBody = ref('')
+async function applyMerge(result:{body:string;revision:number;sourceBody:string}) { if(body.value!==result.sourceBody){toastStore.error('本地草稿又有更新，请重新打开合并面板');mergeOpen.value=false;return} body.value=result.body;revision.value=result.revision;syncConflict.value=false;syncError.value='';mergeOpen.value=false;await save() }
+function insertAttachment(text:string) {body.value+=contentFormat.value==='HTML'?'<p>'+text.trim()+'</p>':text}
 const revision = ref(0), syncError = ref(''), syncConflict = ref(false)
 let createKey = crypto.randomUUID(), editSequence = 0, autoTimer: ReturnType<typeof setTimeout> | undefined
 function scheduleSave() {
@@ -159,6 +165,7 @@ watch([title, body, tagsInput, status, library, contentFormat, parentId], () => 
 }, { flush: 'sync' })
 
 function applyNote(note: NoteView) {
+  savedBody.value = note.body
   revision.value = note.revision ?? 0
   currentId.value = note.id
   parentId.value = note.parentId || ''
@@ -236,7 +243,7 @@ async function save(automatic = false): Promise<string | null> {
       : await api.createNote({ ...payload, clientId: createKey })
     if (version !== loadVersion || !ready.value) return null
     // Never replace the current editor text with an older in-flight save response.
-    currentId.value = saved.id; revision.value = saved.revision ?? 0; updatedAt.value = saved.updatedAt
+    savedBody.value = saved.body; currentId.value = saved.id; revision.value = saved.revision ?? 0; updatedAt.value = saved.updatedAt
     references.value = saved.references; shareCount.value = saved.shareCount
     dirty.value = edits !== editSequence || saved.body !== payload.body || saved.title !== payload.title
       || saved.library !== payload.library || saved.contentFormat !== payload.contentFormat || (saved.parentId || '') !== payload.parentId
@@ -523,7 +530,7 @@ onBeforeUnmount(() => { clearTimeout(autoTimer); window.removeEventListener('onl
 
 <template>
   <div class="page-stack note-editor-page">
-    <div v-if="syncError" class="inline-alert inline-alert--error" role="alert"><p>{{ syncError }}</p><button class="button button--ghost button--small" @click="downloadDraft">下载当前草稿</button> <button v-if="syncConflict" class="button button--ghost button--small" @click="reloadServer">重新加载服务器版本</button><button v-else class="button button--ghost button--small" :disabled="saving" @click="save()">重试保存</button></div>
+    <div v-if="syncError" class="inline-alert inline-alert--error" role="alert"><p>{{ syncError }}</p><button class="button button--ghost button--small" @click="downloadDraft">下载当前草稿</button> <button v-if="syncConflict" class="button button--ghost button--small" @click="mergeOpen=true">对比并合并</button><button v-if="syncConflict" class="button button--ghost button--small" @click="reloadServer">重新加载服务器版本</button><button v-else class="button button--ghost button--small" :disabled="saving" @click="save()">重试保存</button></div>
     <div v-if="recoveredDraft" class="inline-alert" role="status">发现此账号在本浏览器保存的未同步草稿（{{ new Date(recoveredDraft.savedAt).toLocaleString() }}）。<button class="button button--ghost" @click="recoverDraft">恢复草稿到编辑区</button><button class="button button--ghost" @click="discardLocalDraft">丢弃本地草稿</button></div>
     <p v-if="localDraftError" role="alert">{{ localDraftError }}</p>
     <section class="page-intro page-intro--split">
@@ -547,7 +554,7 @@ onBeforeUnmount(() => { clearTimeout(autoTimer); window.removeEventListener('onl
       </div>
     </section>
 
-    <NoteHistory v-if="currentId" :key="currentId" :id="currentId" :revision="revision" :body="body" :dirty="dirty||saving" @restored="load()" />
+    <NoteConflict v-if="syncConflict&&mergeOpen&&currentId" :key="currentId" :id="currentId" :ours="body" :base="savedBody" @merged="applyMerge" @close="mergeOpen=false" /><NoteBacklinks v-if="currentId" :key="currentId+revision" :id="currentId" /><NoteAttachments v-if="currentId&&canWrite" :key="currentId" :id="currentId" :disabled="saving||syncConflict" @insert="insertAttachment" /><NoteHistory v-if="currentId" :key="currentId" :id="currentId" :revision="revision" :body="body" :dirty="dirty||saving" @restored="load()" />
     <nav v-if="parentPage || childPages.length" class="note-page-path" aria-label="页面关联">
       <RouterLink v-if="parentPage" :to="{ name: 'note-edit', params: { id: parentPage.id } }">上级：{{ parentPage.title }}</RouterLink>
       <RouterLink v-for="child in childPages" :key="child.id" :to="{ name: 'note-edit', params: { id: child.id } }">子页：{{ child.title }}</RouterLink>
@@ -628,7 +635,7 @@ onBeforeUnmount(() => { clearTimeout(autoTimer); window.removeEventListener('onl
           <strong>预览</strong>
           <span class="note-preview-hint">实时更新 · 仅排版，不执行脚本</span>
         </header>
-        <NotePreview v-if="previewHtml" :body="body" :format="contentFormat" />
+        <NotePreview v-if="previewHtml" :body="body" :format="contentFormat" :note-id="currentId||undefined" />
         <p v-else class="note-preview-empty">预览会随左侧输入实时更新。</p>
       </article>
 

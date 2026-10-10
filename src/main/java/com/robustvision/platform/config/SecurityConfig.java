@@ -43,7 +43,7 @@ public class SecurityConfig {
                         // SSE response redispatches asynchronously without another JWT
                         // filter pass; denying that completion corrupts its HTTP stream.
                         .dispatcherTypeMatchers(jakarta.servlet.DispatcherType.ASYNC).permitAll()
-                        .requestMatchers("/api/v1/auth/login", "/api/v1/auth/register", "/api/v1/public/**", "/actuator/health", "/actuator/health/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        .requestMatchers("/api/v1/auth/login", "/api/v1/auth/register", "/api/v1/auth/forgot-password", "/api/v1/auth/reset-password", "/api/v1/auth/verify-email", "/api/v1/public/**", "/actuator/health", "/actuator/health/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .requestMatchers("/api/v1/vocabulary/**").hasAuthority("vocabulary:use")
                         .requestMatchers("/api/v1/social/**").hasAuthority("contacts:use")
                         .requestMatchers("/api/v1/messages/**").hasAuthority("message:read")
