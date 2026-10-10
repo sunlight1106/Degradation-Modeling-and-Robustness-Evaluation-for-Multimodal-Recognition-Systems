@@ -98,16 +98,23 @@ public class AccountSecurityService {
             if(u.hasActiveAccess(Instant.now()) && u.getEmail().equals(r.get("verified_email"))) issue(u,"RESET");
         });
     }
-    private void issue(UserEntity u,String purpose) {
+    @Transactional(noRollbackFor=BusinessException.class) public void requestBinding(String password,String otp,String email) {
+        available();var u=owner();password(u,password);checkLogin(u,otp);String target=email.trim().toLowerCase(Locale.ROOT);
+        if(users.existsByEmailAndIdNot(target,u.getId()))throw bad("EMAIL_UNAVAILABLE","该邮箱不能绑定，请换一个地址");
+        issue(u,"BIND",target);
+    }
+    private void issue(UserEntity u,String purpose) { issue(u,purpose,u.getEmail()); }
+    private void issue(UserEntity u,String purpose,String destination) {
         var recent=db.queryForList("SELECT id FROM account_challenge WHERE owner_id=? AND created_at>?",u.getId(),Timestamp.from(Instant.now().minusSeconds(60)));
-        if(!recent.isEmpty()) return;
+        if(!recent.isEmpty()) {if(purpose.equals("BIND"))throw bad("MAIL_COOLDOWN","请等待一分钟再发送绑定邮件");return;}
         db.update("DELETE FROM account_challenge WHERE owner_id=? AND expires_at<?",u.getId(),Timestamp.from(Instant.now().minusSeconds(86400)));
         String id=UUID.randomUUID().toString(), token=random(); Instant now=Instant.now();
-        db.update("INSERT INTO account_challenge(id,owner_id,purpose,email,token_hash,expires_at,created_at,consumed,delivery) VALUES (?,?,?,?,?,?,?,?,?)",id,u.getId(),purpose,u.getEmail(),hash(token),Timestamp.from(now.plusSeconds(1800)),Timestamp.from(now),false,"QUEUED");
-        String link=publicUrl+(purpose.equals("VERIFY")?"/verify-email":"/reset-password")+"#token="+id+"."+token;
+        db.update("INSERT INTO account_challenge(id,owner_id,purpose,email,token_hash,expires_at,created_at,consumed,delivery) VALUES (?,?,?,?,?,?,?,?,?)",id,u.getId(),purpose,destination,hash(token),Timestamp.from(now.plusSeconds(1800)),Timestamp.from(now),false,"QUEUED");
+        if(purpose.equals("BIND"))db.update("UPDATE account_challenge SET context_hash=? WHERE id=?",hash(u.getPasswordHash()+":"+u.getEmail()),id);
+        String link=publicUrl+(!purpose.equals("RESET")?"/verify-email":"/reset-password")+"#token="+id+"."+token;
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() { @Override public void afterCommit() {
             try { mailQueue.execute(() -> {
-                try { SimpleMailMessage msg=new SimpleMailMessage(); msg.setFrom(sender); msg.setTo(u.getEmail()); msg.setSubject(purpose.equals("VERIFY")?"验证你的邮箱":"重设密码"); msg.setText("打开以下链接完成操作（30 分钟内有效）：\n"+link+"\n\n如果不是你发起的请求，请忽略这封邮件。"); mail.getObject().send(msg); db.update("UPDATE account_challenge SET delivery='SENT' WHERE id=?",id); }
+                try { SimpleMailMessage msg=new SimpleMailMessage(); msg.setFrom(sender); msg.setTo(destination); msg.setSubject(purpose.equals("RESET")?"重设密码":"验证你的邮箱"); msg.setText("打开以下链接完成操作（30 分钟内有效）：\n"+link+"\n\n如果不是你发起的请求，请忽略这封邮件。"); mail.getObject().send(msg); db.update("UPDATE account_challenge SET delivery='SENT' WHERE id=?",id); }
                 catch(Exception ignored) { db.update("UPDATE account_challenge SET delivery='FAILED' WHERE id=?",id); }
             }); } catch(RejectedExecutionException ignored) { db.update("UPDATE account_challenge SET delivery='FAILED' WHERE id=?",id); }
         }});
@@ -118,10 +125,12 @@ public class AccountSecurityService {
         if(rows.isEmpty()) throw bad("LINK_INVALID","链接无效或已经过期");
         var u=users.findLockedById(((Number)rows.get(0).get("owner_id")).longValue()).orElseThrow();
         var r=db.queryForMap("SELECT * FROM account_challenge WHERE id=? FOR UPDATE",parts[0]);
-        if(!purpose.equals(r.get("purpose")) || Boolean.TRUE.equals(r.get("consumed")) || !instant(r.get("expires_at")).isAfter(Instant.now()) || !u.getEmail().equals(r.get("email")) || !u.hasActiveAccess(Instant.now()) || !MessageDigest.isEqual(hash(parts[1]).getBytes(StandardCharsets.US_ASCII),str(r,"token_hash").getBytes(StandardCharsets.US_ASCII))) throw bad("LINK_INVALID","链接无效或已经过期");
+        boolean binding=purpose.equals("VERIFY") && "BIND".equals(r.get("purpose"));
+        if(!(purpose.equals(r.get("purpose"))||binding) || Boolean.TRUE.equals(r.get("consumed")) || !instant(r.get("expires_at")).isAfter(Instant.now()) || (!binding && !u.getEmail().equals(r.get("email"))) || (binding && !hash(u.getPasswordHash()+":"+u.getEmail()).equals(r.get("context_hash"))) || !u.hasActiveAccess(Instant.now()) || !MessageDigest.isEqual(hash(parts[1]).getBytes(StandardCharsets.US_ASCII),str(r,"token_hash").getBytes(StandardCharsets.US_ASCII))) throw bad("LINK_INVALID","链接无效或已经过期");
         row(u);
+        if(binding){String target=r.get("email").toString();if(users.existsByEmailAndIdNot(target,u.getId()))throw bad("EMAIL_UNAVAILABLE","该邮箱不能绑定，请重新申请");u.setEmail(target);users.save(u);sessions.revokeAll(u.getId());}
         if(purpose.equals("VERIFY")) db.update("UPDATE account_security SET verified_email=? WHERE owner_id=?",u.getEmail(),u.getId());
         else { if(newPassword==null || newPassword.length()<8 || newPassword.getBytes(StandardCharsets.UTF_8).length>72) throw bad("PASSWORD_WEAK","密码至少 8 个字符，且不超过 72 字节"); u.setPasswordHash(passwords.encode(newPassword)); users.save(u); sessions.revokeAll(u.getId()); }
-        db.update("UPDATE account_challenge SET consumed=TRUE WHERE owner_id=? AND purpose=?",u.getId(),purpose);
+        db.update("UPDATE account_challenge SET consumed=TRUE WHERE owner_id=?",u.getId());
     }
 }

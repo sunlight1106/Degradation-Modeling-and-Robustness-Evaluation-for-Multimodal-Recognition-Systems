@@ -109,6 +109,7 @@ public class PersonalAiService {
         sources.buildContext(approved.selectedTaskIds());
         memories.verify(owner,approved.memoryDigest());
         try (PersonalAiRateLimiter.Permit ignored = limits.acquire(owner)) {
+            persistence.requireActiveOwner(owner);
             String key = encryption.decrypt(setting.getEncryptedKey());
             PersonalAiTransport.Completion result;
             try {

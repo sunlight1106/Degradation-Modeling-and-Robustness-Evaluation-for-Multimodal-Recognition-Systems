@@ -45,6 +45,7 @@ class PersonalAiPersistenceIntegrationTest {
     @Autowired PersonalAiUsageRepository usage;
     @Autowired PersonalRecognitionResultRepository results;
     @Autowired FileAssetRepository files;
+    @Autowired UserRepository users;
     @Autowired PlatformTransactionManager transactions;
     private UserEntity owner;
     private FileAssetEntity file;
@@ -155,7 +156,7 @@ class PersonalAiPersistenceIntegrationTest {
             assertThat(results.findTop100ByOwnerIdOrderByCreatedAtDesc(owner.getId())).hasSize(1);
             throw new DataAccessResourceFailureException("synthetic database failure");
         });
-        var completed = execute(new PersonalAiPersistenceService(failingUsage, results, transactions));
+        var completed = execute(new PersonalAiPersistenceService(failingUsage, results, transactions,users));
         assertThat(completed.persistenceStatus()).isEqualTo("UNCONFIRMED");
         assertThat(completed.id()).isNull();
         assertThat(completed.result()).isEqualTo("Synthetic completed output");
@@ -175,7 +176,7 @@ class PersonalAiPersistenceIntegrationTest {
             // The real database rejects the row at transaction commit, outside this repository call.
             return usage.save(row);
         });
-        var completed = execute(new PersonalAiPersistenceService(failingUsage, results, transactions));
+        var completed = execute(new PersonalAiPersistenceService(failingUsage, results, transactions,users));
         assertThat(completed.persistenceStatus()).isEqualTo("UNCONFIRMED");
         assertThat(completed.id()).isNull();
         verify(failingUsage, times(1)).save(any());
@@ -189,7 +190,7 @@ class PersonalAiPersistenceIntegrationTest {
             throw new DataAccessResourceFailureException("synthetic database failure");
         });
         var unusedUsage = mock(PersonalAiUsageRepository.class);
-        var completed = execute(new PersonalAiPersistenceService(unusedUsage, failingResults, transactions));
+        var completed = execute(new PersonalAiPersistenceService(unusedUsage, failingResults, transactions,users));
         assertThat(completed.persistenceStatus()).isEqualTo("UNCONFIRMED");
         assertThat(completed.result()).isEqualTo("Synthetic completed output");
         verifyNoInteractions(unusedUsage);
@@ -197,7 +198,7 @@ class PersonalAiPersistenceIntegrationTest {
     }
 
     @Test void lostCommitAcknowledgementLeavesTruthfulUnconfirmedResultWithoutReplaying() {
-        var completed = execute(new PersonalAiPersistenceService(usage, results, lostCommitAcknowledgement()));
+        var completed = execute(uncertainPersistence());
         assertThat(completed.persistenceStatus()).isEqualTo("UNCONFIRMED");
         assertThat(completed.id()).isNull();
         assertThat(completed.warning()).contains("未能确认").doesNotContain("synthetic-commit-ack");
@@ -209,7 +210,7 @@ class PersonalAiPersistenceIntegrationTest {
         var sources = mock(NoteExperimentSourceService.class);
         when(sources.buildContext(any())).thenReturn("");
         var service = new PersonalAiService(current, settings,
-                new PersonalAiPersistenceService(usage, results, lostCommitAcknowledgement()), encryption, endpoints, transport,
+                uncertainPersistence(), encryption, endpoints, transport,
                 new PersonalAiRateLimiter(), sources, mock(PersonalAiMemoryService.class), true);
         var preview = service.preview(new PreviewRequest(AiProvider.OPENAI, "draft", "Synthetic", "Synthetic body", List.of()));
         var completed = service.execute(new ExecuteRequest(preview.previewToken(), true));
@@ -221,6 +222,13 @@ class PersonalAiPersistenceIntegrationTest {
         assertThat(usage.findTop100ByOwnerIdOrderByCreatedAtDesc(owner.getId())).hasSize(1);
         assertThatThrownBy(() -> service.execute(new ExecuteRequest(preview.previewToken(), true))).isInstanceOf(BusinessException.class);
         verify(transport).execute(any(), any(), any());
+    }
+
+    private PersonalAiPersistenceService uncertainPersistence() {
+        var uncertain=spy(new PersonalAiPersistenceService(usage,results,lostCommitAcknowledgement(),users));
+        // Inject acknowledgement loss only into result writes; admission still uses the real transaction manager.
+        doAnswer(call->{persistence.requireActiveOwner(call.getArgument(0));return null;}).when(uncertain).requireActiveOwner(anyLong());
+        return uncertain;
     }
 
     private PlatformTransactionManager lostCommitAcknowledgement() {

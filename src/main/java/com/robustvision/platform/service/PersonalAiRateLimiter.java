@@ -16,6 +16,7 @@ public class PersonalAiRateLimiter {
     PersonalAiRateLimiter(Clock clock) { this.clock = clock; }
     private static class Window { long start; int previews; int executions; int active; Window(long start) { this.start = start; } }
     public synchronized void preview(Long owner) { Window w = window(owner); if (++w.previews > 30) throw limited(); }
+    public synchronized boolean hasActive(Long owner){Window w=windows.get(owner);return w!=null&&w.active>0;}
     public synchronized Permit acquire(Long owner) {
         Window w = window(owner);
         if (w.active > 0 || w.executions >= 12 || totalInFlight >= 16) throw limited();

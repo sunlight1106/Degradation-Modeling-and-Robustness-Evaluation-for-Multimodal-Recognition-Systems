@@ -1,5 +1,9 @@
 <script setup lang="ts">
 import AccountSecurity from '@/components/AccountSecurity.vue'
+import AccountBindings from '@/components/AccountBindings.vue'
+import AccountActivity from '@/components/AccountActivity.vue'
+import AccountClosure from '@/components/AccountClosure.vue'
+import WorkflowPreferences from '@/components/WorkflowPreferences.vue'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { ApiClientError } from '@/api/client'
@@ -20,6 +24,8 @@ const tabs = computed(() => [
   ...(authStore.hasAny('personal-ai:manage', 'training:use') ? [{ id: 'ai', label: '个人 AI', icon: 'ai' }] : []),
   { id: 'usage', label: '使用情况', icon: 'logs' },
   { id: 'security', label: '安全与登录', icon: 'shield' },
+  { id: 'account', label: '账号与绑定', icon: 'users' },
+  { id: 'workflow', label: '通知与学习计划', icon: 'settings' },
   { id: 'privacy', label: '隐私与数据', icon: 'key' },
   { id: 'appearance', label: '外观', icon: 'eye' },
   ...(authStore.has('workspace:manage') ? [{ id: 'workspace', label: '工作空间', icon: 'settings' }] : []),
@@ -141,13 +147,15 @@ onBeforeUnmount(() => { active = false; loadVersion++; clearSecrets() })
           </article>
           <RouterLink v-if="authStore.has('billing:read')" to="/app/billing" class="settings-inline-link">查看平台实验余额与充值 →</RouterLink>
         </template>
-        <template v-else-if="section === 'security'"><AccountSecurity />
+        <template v-else-if="section === 'security'"><AccountSecurity /><AccountActivity />
           <article class="panel settings-card"><header><div><h3>修改密码</h3><p>修改成功后，所有会话（含当前会话）立即失效。</p></div><AppIcon name="shield" :size="22" /></header><form class="settings-form" @submit.prevent="changePassword"><label class="field-label">当前密码<input v-model="passwords.current" type="password" class="field-input" autocomplete="current-password" required :disabled="!!busy" /></label><div class="settings-fields"><label class="field-label">新密码<input v-model="passwords.next" type="password" class="field-input" autocomplete="new-password" minlength="8" maxlength="72" required :disabled="!!busy" /></label><label class="field-label">再次输入新密码<input v-model="passwords.confirm" type="password" class="field-input" autocomplete="new-password" minlength="8" maxlength="72" required :disabled="!!busy" /></label></div><small>至少 8 个字符。请为这个账户使用独立密码。</small><button class="button button--dark" :disabled="!!busy">{{ busy === 'password' ? '更新中…' : '更新密码并重新登录' }}</button></form></article>
           <article class="panel settings-card"><header><div><h3>登录会话</h3><p>查看仍然有效的会话，撤销不再使用的登录。</p></div><button class="button button--ghost button--small" :disabled="loading || !!busy" @click="loadSection">刷新</button></header><label class="field-label">当前密码（撤销会话时确认）<input v-model="securityPassword" class="field-input" type="password" autocomplete="current-password" :disabled="!!busy" /></label><p v-if="loading" role="status">正在加载会话…</p><p v-else-if="sessionsLoaded && !sessions.length" class="settings-empty">没有可展示的有效会话。</p><div class="settings-session-list"><div v-for="item in sessions" :key="item.id" class="settings-session"><AppIcon name="shield" :size="18" /><div><strong>{{ item.current ? '当前会话' : '其他会话' }}</strong><small>{{ item.userAgent || '未记录设备信息' }}</small><small>登录 {{ fmt(item.createdAt) }} · 到期 {{ fmt(item.expiresAt) }}</small><small v-if="item.lastSeenAt">最近使用 {{ fmt(item.lastSeenAt) }}</small></div><button class="button button--ghost button--small" :disabled="!!busy || !securityPassword" @click="revoke(item)">{{ item.current ? '退出' : '撤销' }}</button></div></div><button class="button button--ghost" :disabled="!!busy || !securityPassword || !sessions.some(item => !item.current)" @click="revoke()">退出其他所有会话</button></article>
         </template>
         <article v-else-if="section === 'privacy'" class="panel settings-card"><header><div><h3>隐私与数据</h3><p>清楚了解数据的去向，保留自己的副本。</p></div><AppIcon name="key" :size="22" /></header><div class="settings-privacy-list"><section><h4>笔记与实验</h4><p>笔记来源选择器仅列出你自己的实验。插入实验结果前可预览内容，插入后需手动保存。</p></section><section><h4>个人 AI 数据传输</h4><p>本地规则整理不向模型供应商发送内容。个人 AI 仅在你确认发送后，将预览中的指令和内容交给选定供应商；对方的数据保留政策适用。请避免发送不需要的个人或机密信息。</p></section><section><h4>分享与访问</h4><p>笔记分享由你主动创建，可在对应笔记底部撤销。分享笔记不会自动授权对底层文件、实验或知识卡的访问。</p><RouterLink to="/app/notes" class="settings-inline-link">管理我的笔记与分享 →</RouterLink></section></div><form class="settings-form settings-export" @submit.prevent="exportData"><h4>导出我的数据</h4><p>下载账户资料、笔记、个人知识卡、文件与实验元数据、AI 使用记录、钱包记录、工作空间、已发送消息和私有词书的 JSON 副本。vocabularyBookImports 中的每个对象可单独另存为词书 JSON，重新确认使用权后导入；不恢复学习进度。这不是完整系统备份，不包含上传文件原件、密码、登录令牌或 AI 密钥。下载后请妥善保管。</p><label class="field-label">当前密码<input v-model="exportPassword" class="field-input" type="password" autocomplete="current-password" required :disabled="!!busy" /></label><button class="button button--dark" :disabled="!!busy">{{ busy === 'export' ? '准备导出…' : '下载个人数据' }}</button></form></article>
         <article v-else-if="section === 'appearance'" class="panel settings-card"><header><div><h3>外观</h3><p>更改即时生效，仅保存在此浏览器的当前账户下。</p></div><AppIcon name="eye" :size="22" /></header><div class="settings-form"><label class="field-label">主题<select :value="themeStore.state.preference" class="field-input" @change="themeStore.setPreference(($event.target as HTMLSelectElement).value as ThemePreference)"><option value="system">跟随系统</option><option value="light">浅色</option><option value="dark">深色</option></select></label><label class="field-label">内容密度<select :value="themeStore.state.density" class="field-input" @change="themeStore.setDensity(($event.target as HTMLSelectElement).value as Density)"><option value="comfortable">舒适</option><option value="compact">紧凑</option></select></label><fieldset class="settings-accent"><legend>强调色</legend><button v-for="color in [{id:'rose',label:'玫红'},{id:'sage',label:'鼠尾草绿'},{id:'blue',label:'蓝色'},{id:'violet',label:'紫色'}]" :key="color.id" :data-color="color.id" :aria-pressed="themeStore.state.accent === color.id" @click="themeStore.setAccent(color.id as Accent)"><i />{{ color.label }}<AppIcon v-if="themeStore.state.accent === color.id" name="check" :size="15" /></button></fieldset><button class="button button--ghost" @click="themeStore.reset">恢复默认外观</button></div></article>
         <WorkspaceSettingsPanel v-else-if="section === 'workspace'" />
+        <WorkflowPreferences v-else-if="section === 'workflow'" />
+        <template v-else-if="section === 'account'"><AccountBindings /><AccountClosure /></template>
       </main>
     </div>
   </div>

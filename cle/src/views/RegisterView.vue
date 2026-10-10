@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import AppLogo from '@/components/AppLogo.vue'
 import AppIcon from '@/components/AppIcon.vue'
@@ -11,6 +11,8 @@ const router = useRouter()
 const username = ref('')
 const email = ref('')
 const password = ref('')
+const confirmation = ref(''), displayName = ref(''), discoverable = ref(true)
+onBeforeUnmount(()=>{password.value='';confirmation.value=''})
 const visible = ref(false)
 const busy = ref(false)
 const error = ref('')
@@ -35,15 +37,17 @@ const strength = computed(() => {
 
 async function submit() {
   error.value = ''
-  if (passwordScore.value < 1) { error.value = '密码至少 8 位，并同时包含字母和数字'; return }
+  if (busy.value) return
+  if (password.value.length<8 || new TextEncoder().encode(password.value).length>72 || !/[A-Za-z]/.test(password.value) || !/\d/.test(password.value)) { error.value = '密码至少 8 位，同时包含字母和数字，UTF-8 编码不超过 72 字节'; return }
+  if (password.value!==confirmation.value) { error.value='两次密码不一致'; return }
   busy.value = true
   try {
-    await api.register({ username: username.value, email: email.value, password: password.value })
+    await api.register({ username: username.value, email: email.value, password: password.value, displayName:displayName.value, discoverable:discoverable.value })
     toastStore.success('账号创建成功，请登录')
     await router.push({ name: 'login', query: { registered: '1', username: username.value } })
   } catch (reason) {
     error.value = reason instanceof ApiClientError ? reason.message : '注册失败，请稍后重试'
-  } finally { busy.value = false }
+  } finally { busy.value = false; password.value=''; confirmation.value='' }
 }
 </script>
 
@@ -63,6 +67,7 @@ async function submit() {
         <label class="field-label">邮箱
           <input v-model.trim="email" class="field-input" type="email" autocomplete="email" required maxlength="160" placeholder="name@example.com" />
         </label>
+        <label class="field-label">显示名称（可重复）<input v-model.trim="displayName" class="field-input" maxlength="80" placeholder="留空则使用用户名" :disabled="busy" /></label>
         <label class="field-label">密码
           <span class="password-field">
             <input v-model="password" class="field-input" :type="visible ? 'text' : 'password'" autocomplete="new-password" required minlength="8" maxlength="72" placeholder="至少 8 位，包含字母和数字" />
@@ -73,6 +78,8 @@ async function submit() {
           <div><i v-for="index in 3" :key="index" :class="{ active: index <= passwordScore }" /></div>
           <span>密码强度 · <b>{{ strength.label }}</b></span>
         </div>
+        <label class="field-label">确认密码<input v-model="confirmation" class="field-input" type="password" autocomplete="new-password" required maxlength="72" :disabled="busy" /></label>
+        <label class="account-remember"><input v-model="discoverable" type="checkbox" :disabled="busy" />允许其他用户搜索到我</label>
         <p class="password-guide">建议使用 12 位以上，并混合大小写、数字和符号。注册后，其他登录用户可以按用户名或昵称搜索你；可在「联系人与聊天」关闭。邮箱和私密笔记不会公开。</p>
         <p v-if="error" class="form-error">{{ error }}</p>
         <button class="button button--dark button--full" type="submit" :disabled="busy">

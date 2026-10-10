@@ -29,6 +29,7 @@ public class PersonalAiDiagnosticsService {
   synchronized(pending){approved=pending.get(token);if(approved==null||approved.owner()!=owner)throw bad("DIAGNOSTIC_EXPIRED","预览无效，请重新检查");pending.remove(token);}
   if(!approved.expires().isAfter(Instant.now()))throw bad("DIAGNOSTIC_EXPIRED","预览已经过期");var setting=settings.findById(approved.setting()).filter(s->s.getOwnerId().equals(owner)&&s.getRevision()==approved.revision()&&s.isEnabled()).orElseThrow(()->bad("DIAGNOSTIC_CHANGED","配置已更改，请重新预览"));
   long start=System.nanoTime();try(var permit=limits.acquire(owner)){
+   persistence.requireActiveOwner(owner);
    String key=encryption.decrypt(setting.getEncryptedKey());
    try {
     if(approved.mode().equals("MODELS")){var models=transport.models(setting.getProvider(),setting.getBaseUrl(),key);return new Result(true,"MODELS_RECEIVED",models.contains(setting.getModel())?"模型目录包含当前模型。实际调用能力请再做连接测试。":"已获取首批模型；未找到当前模型不代表一定不可用，可继续连接测试。",(System.nanoTime()-start)/1000000,models,null,null,"NOT_APPLICABLE");}

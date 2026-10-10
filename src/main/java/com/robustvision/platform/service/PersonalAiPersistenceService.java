@@ -21,9 +21,13 @@ public class PersonalAiPersistenceService {
     private final PersonalAiUsageRepository usage;
     private final PersonalRecognitionResultRepository results;
     private final TransactionTemplate transaction;
+    private final com.robustvision.platform.repository.UserRepository users;
+    public void requireActiveOwner(Long owner){transaction.executeWithoutResult(status->checkOwner(owner));}
+    private void checkOwner(Long owner){var user=users.findLockedById(owner).orElseThrow();if(!user.hasActiveAccess(java.time.Instant.now()))throw new BusinessException(HttpStatus.FORBIDDEN,"ACCOUNT_UNAVAILABLE","账号已停用或使用期限已结束");}
 
     public PersonalAiPersistenceService(PersonalAiUsageRepository usage, PersonalRecognitionResultRepository results,
-                                        PlatformTransactionManager transactionManager) {
+                                        PlatformTransactionManager transactionManager,com.robustvision.platform.repository.UserRepository users) {
+        this.users=users;
         this.usage = usage;
         this.results = results;
         transaction = new TransactionTemplate(transactionManager);
@@ -31,11 +35,12 @@ public class PersonalAiPersistenceService {
     }
 
     public void recordUsage(PersonalAiUsageEntity row) {
-        transaction.executeWithoutResult(status -> usage.save(row));
+        transaction.executeWithoutResult(status -> {checkOwner(row.getOwnerId());usage.save(row);});
     }
 
     public PersonalRecognitionResultEntity recordRecognition(PersonalRecognitionResultEntity result, PersonalAiUsageEntity row) {
         return transaction.execute(status -> {
+            checkOwner(result.getOwnerId());
             var saved = results.save(result);
             usage.save(row);
             return saved;

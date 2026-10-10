@@ -30,7 +30,7 @@ public final class ApiDtos {
     private ApiDtos() {}
 
     public record LoginRequest(
-            @NotBlank @Size(max = 60) String username,
+            @NotBlank @Size(max = 160) String username,
             @NotBlank @Size(max = 100) String password,
             @Size(max = 32) String otp
     ) { public LoginRequest(String username, String password) { this(username,password,null); } }
@@ -40,8 +40,10 @@ public final class ApiDtos {
     public record RegisterRequest(
             @NotBlank @Pattern(regexp = "^[A-Za-z0-9._-]{3,60}$", message = "用户名只能包含字母、数字、点、下划线或连字符") String username,
             @NotBlank @Email @Size(max = 160) String email,
-            @NotBlank @Size(min = 8, max = 72) String password
-    ) {}
+            @NotBlank @Size(min = 8, max = 72) String password,
+            @Size(max=80) String displayName,
+            Boolean discoverable
+    ) { public RegisterRequest(String username,String email,String password){this(username,email,password,null,null);} }
 
     public record UserView(
             Long id,
@@ -344,7 +346,7 @@ public final class ApiDtos {
     /** 笔记列表使用的精简视图，不含正文，减少传输体积。 */
     public record NoteSummaryView(
             String id, String title, String excerpt, List<String> tags,
-            NoteStatusView status, int shareCount, Instant createdAt, Instant updatedAt, String library, String contentFormat, String parentId
+            NoteStatusView status, int shareCount, Instant createdAt, Instant updatedAt, String library, String contentFormat, String parentId, long revision
     ) {}
 
     public record NoteStatusView(String code, String label) {}

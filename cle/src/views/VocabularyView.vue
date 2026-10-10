@@ -1,5 +1,9 @@
 <script setup lang="ts">
+import { wordSpeaker,stopWordSpeech } from '@/lib/pronunciation'
+const automaticSpeaker = wordSpeaker(), autoPronounce = ref(true), audioError = ref('')
+
 import VocabularyStatistics from '@/components/VocabularyStatistics.vue'
+import VocabularyWeeklyPlan from '@/components/VocabularyWeeklyPlan.vue'
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { ApiClientError } from '@/api/client'
 import { authStore } from '@/stores/auth'
@@ -73,13 +77,14 @@ async function previewBook(id: string) {
   await chooseBook(id)
   if (active && !error.value) { wordFilter.value = 'ALL'; wordQuery.value = ''; await selectTab('words') }
 }
-function resetSession() { question.value = null; answer.value = null; emptyReason.value = ''; selectedOption.value = ''; sessionCount.value = 0; sessionCorrect.value = 0; sessionLearned.value = 0 }
+function resetSession() { automaticSpeaker.stop(); question.value = null; answer.value = null; emptyReason.value = ''; selectedOption.value = ''; sessionCount.value = 0; sessionCorrect.value = 0; sessionLearned.value = 0 }
 async function loadQuestion() {
+  stopWordSpeech()
   const value = await vocabularyApi.next(selected.value, mode.value, studyStyle.value)
   if (!active) return
   question.value = value.question; answer.value = null; selectedOption.value = ''; emptyReason.value = value.reason || ''
   await nextTick()
-  if (active) studyCard.value?.focus()
+  if (active) { studyCard.value?.focus(); audioError.value = ''; if (value.question && autoPronounce.value) automaticSpeaker.say(value.question.term, 'en-US', false, { error: message => audioError.value = message }) }
 }
 async function start(nextMode: VocabularyMode) {
   await run('question', async () => {
@@ -189,10 +194,12 @@ function onKey(event: KeyboardEvent) {
   const target = event.target instanceof Element ? event.target : null
   if (event.defaultPrevented || event.repeat || event.isComposing || event.ctrlKey || event.metaKey || event.altKey || target?.closest('input, textarea, select, button, a[href], summary, [contenteditable]:not([contenteditable="false"])') || busy.value || assistantLesson.value || showImport.value || showSettings.value || showBackup.value || tab.value !== 'study') return
   if (/^[1-4]$/.test(event.key) && question.value && !answer.value && (!question.value.practiceKind || question.value.practiceKind === 'CHOICE')) { const option = question.value.options[Number(event.key) - 1]; if (option) { event.preventDefault(); void submit(option.id) } }
+  if (event.key.toLowerCase() === 's' && question.value && !answer.value) { event.preventDefault(); void skipQuestion() }
+  if (event.key === ' ' && question.value) { event.preventDefault(); automaticSpeaker.say(question.value.term) }
   if (event.key === 'Enter' && answer.value) { event.preventDefault(); void next() }
 }
 onMounted(async () => { window.addEventListener('keydown', onKey); try { await refresh() } catch (reason) { error.value = message(reason) } finally { loading.value = false } })
-onBeforeUnmount(() => { active = false; generation++; window.removeEventListener('keydown', onKey) })
+onBeforeUnmount(() => { automaticSpeaker.stop(); active = false; generation++; window.removeEventListener('keydown', onKey) })
 </script>
 
 <template>
@@ -225,6 +232,8 @@ onBeforeUnmount(() => { active = false; generation++; window.removeEventListener
         <article class="panel"><span>今日答题正确率</span><strong>{{ accuracy }}<small> %</small></strong><small>{{ dashboard.today.correct }} / {{ dashboard.today.answers }} 次答对</small></article>
         <article class="panel"><span>连续学习</span><strong>{{ dashboard.streak }}<small> 天</small></strong><small>完成任意一次答题即可记一天</small></article>
       </section>
+      <VocabularyWeeklyPlan :dashboard="dashboard" />
+      <div class="vocab-audio-setting"><label><input v-model="autoPronounce" type="checkbox" @change="!autoPronounce && automaticSpeaker.stop()" /> 新词自动听读 · 美音</label><small>空格听读 · S 跳过 · 1–4 选择 · Enter 继续；输入框中照常输入。</small><span v-if="audioError" role="status">{{ audioError }}</span></div>
       <nav class="vocab-tabs" aria-label="背单词功能"><button v-for="item in [{ id: 'study', text: '今日学习' }, { id: 'books', text: '我的词书' }, { id: 'words', text: '单词本' }, { id: 'stats', text: '学习记录' }]" :key="item.id" :class="{ active: tab === item.id }" :aria-current="tab === item.id ? 'page' : undefined" :disabled="!!busy" @click="selectTab(item.id as typeof tab)">{{ item.text }}</button></nav>
       <section v-if="tab === 'study'" class="vocab-study-layout">
         <aside class="panel vocab-book-summary">
@@ -269,6 +278,7 @@ onBeforeUnmount(() => { active = false; generation++; window.removeEventListener
 <VocabularyAssistant v-if="assistantLesson" :key="assistantLesson.term" :lesson="assistantLesson" @close="assistantLesson = null" /></template>
 
 <style scoped>
+.vocab-audio-setting{display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin:20px 0;font-size:13px}.vocab-audio-setting label{display:flex;gap:8px;align-items:center}.vocab-audio-setting small{color:var(--text-muted,#64748b)}
 .vocab-settings-dialog{position:fixed;inset:0;margin:auto;width:min(650px,calc(100vw - 48px));max-height:85vh;overflow:auto;background:var(--paper);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:30px;box-shadow:0 24px 70px #0003}.vocab-settings-dialog::backdrop{background:#15242c70}.vocab-settings-dialog form{gap:18px}.vocab-settings-dialog label{max-width:none;flex:1;min-width:180px}
 .vocab-toolbar{display:flex;gap:10px}.vocab-word-detail{margin:12px 0;font-size:12px;max-width:600px}.vocab-word-detail summary{cursor:pointer;color:var(--green)}
 .vocab-study-card:focus-visible{outline:3px solid var(--vocab-green);outline-offset:3px}

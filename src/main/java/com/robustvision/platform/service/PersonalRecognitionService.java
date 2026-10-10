@@ -94,6 +94,7 @@ public class PersonalRecognitionService {
         memories.verify(owner,approved.memoryDigest());
         String action=approved.task()==TaskType.RECEIPT?"recognize_receipt":approved.task()==TaskType.LICENSE_PLATE?"recognize_plate":"understand_image";
         try(var permit=limits.acquire(owner)) {
+            persistence.requireActiveOwner(owner);
             String key=encryption.decrypt(setting.getEncryptedKey());
             PersonalAiTransport.Completion completed;
             try {

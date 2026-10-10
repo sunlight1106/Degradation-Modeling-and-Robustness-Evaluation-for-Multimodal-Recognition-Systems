@@ -1,0 +1,9 @@
+<script setup lang="ts">
+import { ref } from 'vue'
+import { noteTemplateCatalog } from '@/lib/noteTemplateCatalog'
+const dialog = ref<HTMLDialogElement>()
+const emit = defineEmits<{ choose: [id: string, library: string] }>()
+function choose(id: string, library: string) { dialog.value?.close(); emit('choose', id, library) }
+</script>
+<template><button class="button button--ghost" @click="dialog?.showModal()">从模板新建</button><dialog ref="dialog" class="template-gallery" aria-labelledby="template-gallery-title"><header><div><p>START WRITING</p><h3 id="template-gallery-title">选一个起点</h3></div><button class="icon-button" aria-label="关闭模板选择" @click="dialog?.close()">×</button></header><div class="template-grid"><button v-for="item in noteTemplateCatalog" :key="item.id" @click="choose(item.id,item.library)"><small>{{ item.library }}</small><strong>{{ item.title }}</strong><span>{{ item.description }}</span></button></div></dialog></template>
+<style scoped>.template-gallery{width:min(740px,85vw);margin:14vh auto;padding:28px;background:var(--paper);color:var(--ink);border:1px solid var(--line);border-radius:6px}.template-gallery::backdrop{background:#15253566}header{display:flex;justify-content:space-between;align-items:start;margin-bottom:22px}header p,small{color:var(--muted);font-size:11px}h3{margin:8px 0;font-size:23px}.template-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.template-grid button{display:grid;gap:10px;padding:22px;text-align:left;color:var(--ink);background:transparent;border:1px solid var(--line);cursor:pointer;transition:background .15s,border-color .15s}.template-grid button:hover,.template-grid button:focus-visible{background:var(--hover-paper);border-color:var(--green)}strong{font-size:16px}span{color:var(--muted);font-size:12px;line-height:1.8}</style>

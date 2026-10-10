@@ -86,6 +86,7 @@ public class UserEntity {
     public Long getId() { return id; }
     public String getIdentityCode() { return identityCode; }
     public String getUsername() { return username; }
+    public void setUsername(String value) { username = value; }
     public String getPasswordHash() { return passwordHash; }
     public String getDisplayName() { return displayName; }
     public String getEmail() { return email; }

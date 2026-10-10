@@ -19,7 +19,7 @@ class PersonalAiAdversarialTest {
   var setting=new PersonalAiSettingEntity(11L,AiProvider.OPENAI);setting.update("model","https://api.openai.com/v1",crypto.encrypt("synthetic-review-api-key"),true);when(settings.findByOwnerIdAndProvider(11L,AiProvider.OPENAI)).thenReturn(Optional.of(setting));
   var policy=new PersonalAiEndpointPolicy("");var transport=spy(new PersonalAiTransport(new ObjectMapper(),policy));var sent=new AtomicInteger();
   doAnswer(call->{sent.incrementAndGet();return new PersonalAiTransport.Completion("fixture",3,2);}).when(transport).execute(any(),any(),any());
-  var service=new PersonalAiService(current,settings,new PersonalAiPersistenceService(usage,mock(PersonalRecognitionResultRepository.class),mock(org.springframework.transaction.PlatformTransactionManager.class)),crypto,policy,transport,new PersonalAiRateLimiter(),sources, mock(PersonalAiMemoryService.class), true);
+  var service=new PersonalAiService(current,settings,new PersonalAiPersistenceService(usage,mock(PersonalRecognitionResultRepository.class),mock(org.springframework.transaction.PlatformTransactionManager.class),PersonalAiTestOwners.active()),crypto,policy,transport,new PersonalAiRateLimiter(),sources, mock(PersonalAiMemoryService.class), true);
   var preview=service.preview(new PreviewRequest(AiProvider.OPENAI,"summarize","title","approved",List.of()));
   var start=new CountDownLatch(1);var pool=Executors.newFixedThreadPool(4);List<Future<Boolean>> outcomes=new ArrayList<>();
   try {

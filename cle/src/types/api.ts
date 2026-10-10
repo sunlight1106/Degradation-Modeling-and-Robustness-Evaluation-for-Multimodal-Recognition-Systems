@@ -340,6 +340,7 @@ export interface NoteSummaryView {
   shareCount: number
   createdAt: string
   updatedAt: string
+  revision: number
 }
 
 /**

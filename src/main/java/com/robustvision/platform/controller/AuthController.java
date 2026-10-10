@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v1/auth")
 public class AuthController {
+    @org.springframework.beans.factory.annotation.Autowired private com.robustvision.platform.service.AccountActivityService activity;
     private final AuthService authService;
     private final UserService userService;
 
@@ -25,7 +26,14 @@ public class AuthController {
 
     @PostMapping("/login")
     public ApiResponse<ApiDtos.LoginResponse> login(@Valid @RequestBody ApiDtos.LoginRequest request, HttpServletRequest httpRequest) {
-        return ApiResponse.ok(authService.login(request, httpRequest.getHeader("User-Agent")));
+        try {var result=authService.login(request,httpRequest.getHeader("User-Agent")); activity.record(request.username(),"LOGIN","SUCCESS",httpRequest);return ApiResponse.ok(result);}
+        catch(com.robustvision.platform.common.BusinessException e){activity.record(request.username(),"LOGIN",e.getCode(),httpRequest);throw e;}
+    }
+
+    @PostMapping("/reactivate")
+    public ApiResponse<ApiDtos.LoginResponse> reactivate(@Valid @RequestBody ApiDtos.LoginRequest request,HttpServletRequest httpRequest) {
+        try{var result=authService.reactivate(request,httpRequest.getHeader("User-Agent"));activity.record(request.username(),"REACTIVATE","SUCCESS",httpRequest);return ApiResponse.ok(result);}
+        catch(com.robustvision.platform.common.BusinessException e){activity.record(request.username(),"REACTIVATE",e.getCode(),httpRequest);throw e;}
     }
 
     @PostMapping("/register")

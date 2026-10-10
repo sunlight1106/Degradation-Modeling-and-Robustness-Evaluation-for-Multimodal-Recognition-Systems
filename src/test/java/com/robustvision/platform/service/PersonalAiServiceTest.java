@@ -19,7 +19,7 @@ class PersonalAiServiceTest {
     private final PersonalAiSettingRepository settings = mock(PersonalAiSettingRepository.class);
     private final PersonalAiUsageRepository usage = mock(PersonalAiUsageRepository.class);
     private final org.springframework.transaction.PlatformTransactionManager transactions = mock(org.springframework.transaction.PlatformTransactionManager.class);
-    private final PersonalAiPersistenceService persistence = new PersonalAiPersistenceService(usage, mock(PersonalRecognitionResultRepository.class), transactions);
+    private final PersonalAiPersistenceService persistence = new PersonalAiPersistenceService(usage, mock(PersonalRecognitionResultRepository.class), transactions,PersonalAiTestOwners.active());
     private final SecretEncryptionService encryption = new SecretEncryptionService("synthetic-test-only-master-key-at-least-32-bytes");
     private final PersonalAiEndpointPolicy policy = new PersonalAiEndpointPolicy("");
     private final PersonalAiTransport transport = spy(new PersonalAiTransport(new ObjectMapper(), policy));
@@ -132,7 +132,7 @@ class PersonalAiServiceTest {
     }
 
     @Test void usageCommitFailurePreservesCompletionAndIsNotLoggedAsProviderFailure() {
-        doThrow(new org.springframework.transaction.TransactionSystemException("synthetic-commit-failure " + KEY)).when(transactions).commit(any());
+        doNothing().doThrow(new org.springframework.transaction.TransactionSystemException("synthetic-commit-failure " + KEY)).when(transactions).commit(any());
         var preview = service.preview(request());
         var result = service.execute(new ExecuteRequest(preview.previewToken(), true));
         assertThat(result.result()).isEqualTo("mock result");

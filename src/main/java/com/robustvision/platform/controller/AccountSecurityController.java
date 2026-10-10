@@ -22,4 +22,7 @@ public class AccountSecurityController {
     @PostMapping("/auth/forgot-password") Object forgot(@Valid @RequestBody Email r) { service.forgot(r.email()); return ApiResponse.ok(null); }
     @PostMapping("/auth/reset-password") Object reset(@Valid @RequestBody Link r) { service.consume(r.token(),"RESET",r.password()); return ApiResponse.ok(null); }
     @PostMapping("/auth/verify-email") Object consume(@Valid @RequestBody Link r) { service.consume(r.token(),"VERIFY",null); return ApiResponse.ok(null); }
+ @org.springframework.security.access.prepost.PreAuthorize("isAuthenticated()")
+ @PostMapping("/account/bindings/email") public Object binding(@Valid @RequestBody Binding request){service.requestBinding(request.password(),request.otp(),request.email());return com.robustvision.platform.common.ApiResponse.ok(null);}
+ public record Binding(@NotBlank @Size(max=100) String password,@Size(max=32) String otp,@jakarta.validation.constraints.Email @NotBlank @Size(max=160) String email) {}
 }

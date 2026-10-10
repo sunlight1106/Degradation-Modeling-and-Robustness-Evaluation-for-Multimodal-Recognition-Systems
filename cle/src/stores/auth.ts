@@ -14,11 +14,11 @@ const state = reactive<{
 export const authStore = {
   state,
   get token() { return tokenStorage.get() },
-  async login(username: string, password: string, otp?: string) {
+  async login(username: string, password: string, otp?: string, reactivate = false) {
     let operationGeneration = tokenStorage.generation()
     state.loading = true
     try {
-      const response = await api.login(username, password, otp)
+      const response = await (reactivate ? api.reactivate(username, password, otp) : api.login(username, password, otp))
       if (tokenStorage.generation() !== operationGeneration) throw new ApiClientError('SESSION_CHANGED', '登录状态已更改，请重试。', 401)
       tokenStorage.set(response.token)
       operationGeneration = tokenStorage.generation()

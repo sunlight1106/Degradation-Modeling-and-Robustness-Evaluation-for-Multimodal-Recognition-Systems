@@ -24,6 +24,10 @@ class Engine:
         self.root.mkdir(parents=True, exist_ok=True)
         self.lock = threading.RLock()
         self.jobs = {}
+        self.closed_owners = set()
+        self.closed_file = self.root / "closed-owners.json"
+        if self.closed_file.exists():
+            self.closed_owners = set(json.loads(self.closed_file.read_text(encoding="utf-8")))
         self.cancels = {}
         self.pool = ThreadPoolExecutor(max_workers=1)
         torch.set_num_threads(2)
@@ -73,6 +77,8 @@ class Engine:
         # All quotas and creation are serialized, including cross-account submissions.
         with self.lock:
             own = [j for j in self.jobs.values() if j["owner"] == owner]
+            if owner in self.closed_owners:
+                raise HTTPException(403, "此账号已注销")
             if len(own) >= 10 or any(j["status"] in ACTIVE for j in own):
                 raise HTTPException(409, "每人最多保留 10 个任务，且同时只能训练一个；请先完成或删除旧任务")
             if len(self.jobs) >= 1000 or sum(j["status"] in ACTIVE for j in self.jobs.values()) >= 8:
@@ -171,6 +177,25 @@ class Engine:
                 raise HTTPException(409, "请先取消训练，等待停止后再删除")
             shutil.rmtree(self.root / job_id)  # ID is generated internally, never taken as a path.
             del self.jobs[job_id]
+
+    def purge_owner(self, owner):
+        with self.lock:
+            self.closed_owners.add(owner)
+            temporary = self.root / "closed-owners.tmp"
+            temporary.write_text(json.dumps(sorted(self.closed_owners)), encoding="utf-8")
+            temporary.replace(self.closed_file)
+            own = [j for j in self.jobs.values() if j["owner"] == owner]
+            for job in own:
+                if job["status"] in ACTIVE:
+                    self.cancels[job["id"]].set()
+            if any(j["status"] in ACTIVE for j in own):
+                raise HTTPException(409, "正在停止训练，请稍后重试清理")
+            for job in own:
+                directory = self.root / job["id"]
+                if directory.is_symlink() or directory.resolve().parent != self.root.resolve():
+                    raise HTTPException(409, "训练目录无法安全清理")
+                shutil.rmtree(directory)
+                del self.jobs[job["id"]]
 
     def predict(self, owner, job_id, text):
         with self.lock:

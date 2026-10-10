@@ -114,7 +114,7 @@ function expireSession(session: RequestSession) {
   }
 }
 export async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const session = captureSession(path === '/auth/login' || path === '/auth/register' || path.startsWith('/public/'))
+  const session = captureSession(['/auth/login','/auth/register','/auth/reactivate','/auth/forgot-password','/auth/reset-password','/auth/verify-email'].includes(path) || path.startsWith('/public/'))
   const headers = new Headers(init.headers)
   headers.delete('Authorization')
   if (session.token) headers.set('Authorization', `Bearer ${session.token}`)
@@ -153,11 +153,12 @@ export async function fetchBlob(path: string): Promise<Blob> {
 }
 
 export const api = {
+  reactivate: (username: string, password: string, otp?: string) => request<LoginResponse>('/auth/reactivate', { method:'POST',body:JSON.stringify({username,password,otp}) }),
   login: (username: string, password: string, otp?: string) => request<LoginResponse>('/auth/login', {
     method: 'POST', body: JSON.stringify({ username, password, otp }),
   }),
   switchAccount: (username: string, password: string, otp?: string) => request<LoginResponse>('/account/switch', { method: 'POST', body: JSON.stringify({ username, password, otp }) }),
-  register: (payload: { username: string; email: string; password: string }) =>
+  register: (payload: { username: string; email: string; password: string; displayName?:string; discoverable?:boolean }) =>
     request<UserView>('/auth/register', { method: 'POST', body: JSON.stringify(payload) }),
   me: () => request<UserView>('/auth/me'),
   dashboard: () => request<DashboardSummary>('/dashboard/summary'),

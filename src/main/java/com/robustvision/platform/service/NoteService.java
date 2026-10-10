@@ -55,22 +55,11 @@ public class NoteService {
     @Transactional(readOnly = true)
     public List<ApiDtos.NoteSummaryView> list(String status, String keyword) {
         UserEntity user = currentUserService.requireCurrent();
-        List<NoteEntity> notes;
-        if (keyword != null && !keyword.isBlank()) {
-            notes = noteRepository.search(user.getId(), keyword.trim());
-            if (status != null && !status.isBlank()) {
-                NoteStatus filter = parseStatus(status);
-                notes = notes.stream().filter(n -> n.getStatus() == filter).toList();
-            }
-        } else if (status != null && !status.isBlank()) {
-            notes = noteRepository.findByOwnerIdAndStatusOrderByUpdatedAtDesc(user.getId(), parseStatus(status));
-        } else {
-            notes = noteRepository.findByOwnerIdOrderByUpdatedAtDesc(user.getId());
-        }
+        var notes = noteRepository.summaries(user.getId(), status == null || status.isBlank() ? null : parseStatus(status), keyword == null ? "" : keyword.trim());
         Map<String, Integer> shareCounts = new HashMap<>();
         // Keep IN clauses bounded and count shares without materializing share entities.
         for (int start = 0; start < notes.size(); start += 500) {
-            List<String> ids = notes.subList(start, Math.min(start + 500, notes.size())).stream().map(NoteEntity::getId).toList();
+            List<String> ids = notes.subList(start, Math.min(start + 500, notes.size())).stream().map(NoteRepository.ListRow::getId).toList();
             for (NoteRepository.ShareCount row : noteRepository.countSharesByNoteIds(ids)) {
                 shareCounts.put(row.getNoteId(), Math.toIntExact(row.getShareCount()));
             }
@@ -187,13 +176,13 @@ public class NoteService {
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "NOTE_NOT_FOUND", "笔记不存在或无权访问"));
     }
 
-    private ApiDtos.NoteSummaryView toSummaryView(NoteEntity note, int shareCount) {
+    private ApiDtos.NoteSummaryView toSummaryView(NoteRepository.ListRow note, int shareCount) {
         return new ApiDtos.NoteSummaryView(
-                note.getId(), note.getTitle(), excerpt("HTML".equals(note.getContentFormat()) ? NoteContent.htmlToMarkdown(note.getBody()) : note.getBody()),
+                note.getId(), note.getTitle(), excerpt("HTML".equals(note.getContentFormat()) ? NoteContent.htmlToMarkdown(note.getPreviewBody()) : note.getPreviewBody()),
                 KnowledgeService.splitTags(note.getTags()),
                 statusView(note.getStatus()),
                 shareCount,
-                note.getCreatedAt(), note.getUpdatedAt(), note.getLibrary(), note.getContentFormat(), note.getParentId());
+                note.getCreatedAt(), note.getUpdatedAt(), note.getLibrary(), note.getContentFormat(), note.getParentId(), note.getRevision());
     }
 
     private ApiDtos.NoteView toView(NoteEntity note) {

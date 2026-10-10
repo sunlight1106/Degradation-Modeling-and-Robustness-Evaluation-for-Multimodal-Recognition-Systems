@@ -81,6 +81,27 @@ class TrainingTest(unittest.TestCase):
         self.assertEqual(self.call("POST", "/jobs", json=request).status_code, 400)
         self.assertEqual(self.call("POST", "/jobs", content=b"x"*160001).status_code, 413)
 
+    def test_permanent_closure_cleans_only_owner_and_blocks_future_jobs(self):
+        own = self.call("POST", "/jobs", json=data()).json()
+        self.complete(own["id"])
+        other_headers = {**self.headers, "X-Training-Owner": "2"}
+        other = self.call("POST", "/jobs", headers=other_headers, json=data()).json()
+        # The sole executor finishes the second user's job before shutdown.
+        for _ in range(300):
+            if self.call("GET", "/jobs/" + other["id"], headers=other_headers).json()["status"] == "COMPLETED": break
+            time.sleep(.02)
+        self.assertEqual(self.client.delete("/owner").status_code, 401)
+        self.assertEqual(self.call("DELETE", "/owner").status_code, 200)
+        from pathlib import Path
+        self.assertFalse((Path(self.directory.name) / own["id"]).exists())
+        self.assertTrue((Path(self.directory.name) / other["id"]).exists())
+        self.assertEqual(self.call("POST", "/jobs", json=data()).status_code, 403)
+        self.assertEqual(self.call("GET", "/jobs/" + other["id"], headers=other_headers).status_code, 200)
+        from engine import Engine
+        restored = Engine(self.directory.name)
+        self.assertIn("1", restored.closed_owners)
+        restored.pool.shutdown()
+
     def test_cancel_and_restart_recovery(self):
         # Occupy the executor so cancellation reliably happens while queued.
         import threading

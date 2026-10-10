@@ -90,6 +90,10 @@ def create_app(root=None, token=None):
     def delete(job_id: str, user=Depends(owner)):
         engine.delete(user, job_id); return None
 
+    @application.delete("/owner")
+    def purge_owner(user=Depends(owner)):
+        engine.purge_owner(user); return None
+
     @application.post("/jobs/{job_id}/predict")
     def predict(job_id: str, request: Prediction, user=Depends(owner)): return engine.predict(user, job_id, request.text)
 

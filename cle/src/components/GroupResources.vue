@@ -1,0 +1,13 @@
+<script setup lang="ts">
+import { onBeforeUnmount,ref } from 'vue'
+import { api } from '@/api/client'
+import { groupApi,type GroupResource } from '@/api/groups'
+import { createRequestGuard } from '@/lib/requestGuard'
+const props=defineProps<{groupId:number}>(),open=ref(false),query=ref(''),rows=ref<GroupResource[]>([]),page=ref(0),more=ref(false),busy=ref(false),error=ref(''),guard=createRequestGuard()
+onBeforeUnmount(()=>guard.cancel())
+async function load(append=false){const request=guard.start();busy.value=true;error.value='';const n=append?page.value+1:0;try{const result=await groupApi.resources(props.groupId,query.value,n,request.signal);if(request.current()){rows.value=append?[...rows.value,...result]:result;more.value=result.length===50;page.value=n}}catch(e){if(request.current())error.value=(e as Error).message}finally{if(request.current())busy.value=false}}
+function toggle(){open.value=!open.value;if(open.value)load();else{guard.cancel();busy.value=false;rows.value=[]}}
+async function download(file:GroupResource){try{await api.download(`/files/${file.id}/download`,file.name)}catch(e){error.value=(e as Error).message}}
+</script>
+<template><section class="group-resources"><button class="resource-toggle" :aria-expanded="open" @click="toggle">群内资料 <span>{{open?'收起 ↑':'查找附件 ↓'}}</span></button><div v-if="open"><form @submit.prevent="load()"><input v-model="query" class="field-input" type="search" maxlength="100" aria-label="按文件名查找群资料" placeholder="搜索文件名称"/><button class="button button--ghost" :disabled="busy">查找</button></form><p v-if="error" role="alert" class="form-error">{{error}}</p><p v-if="!busy&&!rows.length">暂无匹配的资料。</p><ul><li v-for="(file,i) in rows" :key="file.id+i"><button @click="download(file)">{{file.name}} <span>↓</span></button><small>{{file.sender}} · {{Math.ceil(file.size/1024)}} KB · {{new Date(file.createdAt).toLocaleDateString()}}</small></li></ul><button v-if="more" class="button button--ghost" :disabled="busy" @click="load(true)">下一批资料</button><p class="field-hint">仅列出本群未撤回消息中扫描通过的附件。下载时会再次核对权限。</p></div></section></template>
+<style scoped>.group-resources{border-block:1px solid var(--line);margin:16px 0;padding:12px 0}.resource-toggle{width:100%;border:0;background:transparent;display:flex;justify-content:space-between;padding:8px 0;cursor:pointer;color:inherit}.resource-toggle span,small{color:var(--muted);font-size:12px}form{display:flex;gap:10px;margin:12px 0}ul{padding:0;list-style:none}li{padding:12px 0;border-bottom:1px solid var(--line)}li button{border:0;background:none;color:inherit;width:100%;text-align:left;cursor:pointer;display:flex;justify-content:space-between}small{display:block;margin-top:7px}</style>

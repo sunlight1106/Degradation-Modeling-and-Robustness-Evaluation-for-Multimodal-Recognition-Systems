@@ -36,8 +36,8 @@ async function connect(){
  }catch{/* Retry on a bounded delay. The 30-second refresh also covers a missed reconnect event. */}
  finally{if(!disposed)retry=setTimeout(connect,2000)}
 }
-onMounted(()=>{window.addEventListener('keydown',key);void refresh();void connect();poll=setInterval(refresh,30000)})
-onBeforeUnmount(()=>{disposed=true;searchGuard.cancel();savedGuard.cancel();stream?.abort();clearTimeout(debounce);clearTimeout(retry);clearInterval(poll);window.removeEventListener('keydown',key)})
+onMounted(()=>{window.addEventListener('keydown',key);window.addEventListener('personal-platform:notifications-changed',refresh);void refresh();void connect();poll=setInterval(refresh,30000)})
+onBeforeUnmount(()=>{disposed=true;searchGuard.cancel();savedGuard.cancel();stream?.abort();clearTimeout(debounce);clearTimeout(retry);clearInterval(poll);window.removeEventListener('keydown',key);window.removeEventListener('personal-platform:notifications-changed',refresh)})
 </script>
 <template>
  <button v-if="authStore.has('research:use')" class="workspace-search-button" @click="open">搜索 <kbd>Ctrl K</kbd></button>

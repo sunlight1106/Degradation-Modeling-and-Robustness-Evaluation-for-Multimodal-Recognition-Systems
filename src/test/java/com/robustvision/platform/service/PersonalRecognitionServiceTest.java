@@ -20,7 +20,7 @@ class PersonalRecognitionServiceTest {
     PersonalRecognitionResultRepository results=mock(PersonalRecognitionResultRepository.class);
     PersonalAiUsageRepository usage=mock(PersonalAiUsageRepository.class);
     org.springframework.transaction.PlatformTransactionManager transactions=mock(org.springframework.transaction.PlatformTransactionManager.class);
-    PersonalAiPersistenceService persistence=new PersonalAiPersistenceService(usage,results,transactions);
+    PersonalAiPersistenceService persistence=new PersonalAiPersistenceService(usage,results,transactions,PersonalAiTestOwners.active());
     SecretEncryptionService encryption=mock(SecretEncryptionService.class);
     PersonalAiEndpointPolicy endpoints=new PersonalAiEndpointPolicy("");
     PersonalAiTransport transport=mock(PersonalAiTransport.class);
@@ -53,7 +53,7 @@ class PersonalRecognitionServiceTest {
         var result=service.execute(preview.previewToken(),true);
         assertThat(result.result()).contains("金额未知");assertThat(result.inputTokens()).isEqualTo(10);
         assertThat(result.persistenceStatus()).isEqualTo("SAVED");assertThat(result.warning()).isNull();
-        verify(transactions).commit(any());
+        verify(transactions,times(2)).commit(any());
         verify(results).save(argThat(r->r.getOwnerId().equals(1L)&&r.getFileId().equals(fileId)));
         assertThatThrownBy(()->service.execute(preview.previewToken(),true)).isInstanceOf(BusinessException.class);
         verify(transport,times(1)).execute(any(),any(),eq("synthetic-own-key"));
@@ -118,7 +118,7 @@ class PersonalRecognitionServiceTest {
         verify(transport).execute(any(),any(),any());
     }
     @Test void commitAcknowledgementFailureNeverReturnsAnUnconfirmedIdOrFalseSavedStatus() {
-        doThrow(new org.springframework.transaction.TransactionSystemException("synthetic-own-key")).when(transactions).commit(any());
+        doNothing().doThrow(new org.springframework.transaction.TransactionSystemException("synthetic-own-key")).when(transactions).commit(any());
         var service=service(true); var preview=service.preview(AiProvider.OPENAI,fileId,TaskType.RECEIPT);
         var result=service.execute(preview.previewToken(),true);
         assertThat(result.id()).isNull();

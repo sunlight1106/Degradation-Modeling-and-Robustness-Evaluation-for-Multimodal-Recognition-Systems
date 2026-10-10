@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import GroupLifecycle from '@/components/GroupLifecycle.vue'
+import GroupResources from '@/components/GroupResources.vue'
 import GroupInvitations from '@/components/GroupInvitations.vue'
 import GroupMessageActions from '@/components/GroupMessageActions.vue'
 import { request } from '@/api/client'
@@ -18,6 +19,7 @@ const messages = ref<MessageView[]>([])
 const directory = ref<GroupPerson[]>([])
 const features = ref<Record<number, GroupFeatures>>({}), groupQuery = ref('')
 const peopleQuery = ref(''), peoplePage = ref(0), peopleMore = ref(false), peopleBusy = ref(false), pickerOpen = ref(false)
+const searchSender=ref(''),searchFrom=ref(''),searchTo=ref(''),searchAttached=ref(false)
 const searchQuery = ref(''), searchResults = ref<MessageView[]>([]), searchOpen = ref(false), searchPage = ref(0), searchMore = ref(false), searchBusy = ref(false)
 const announcementDraft = ref(''), editingAnnouncement = ref(false)
 const announcementRevision = ref(0)
@@ -72,7 +74,7 @@ async function selectGroup(id: number) {
   const sameGroup = selected.value?.id === id
   const version = ++epoch
   peopleGuard.cancel(); searchGuard.cancel(); clearTimeout(peopleTimer); pickerOpen.value = false; peopleBusy.value = false; searchBusy.value = false
-  searchOpen.value = false; searchResults.value = []; searchQuery.value = ''; peopleQuery.value = ''; editingAnnouncement.value = false
+  searchOpen.value = false; searchResults.value = []; searchQuery.value = ''; searchSender.value='';searchFrom.value='';searchTo.value='';searchAttached.value=false; peopleQuery.value = ''; editingAnnouncement.value = false
   archived.value = false; selected.value = null; messages.value = []; directory.value = []; page.value = 0; more.value = false
   memberId.value = null; memberRole.value = 'MEMBER'; loading.value = true; error.value = ''; notice.value = ''
   if (!sameGroup) clearDraft()
@@ -123,10 +125,10 @@ function editAnnouncement() {
   editingAnnouncement.value = !editingAnnouncement.value
 }
 async function searchMessages(append = false) {
-  if (!selected.value || !canRead.value || !searchQuery.value.trim()) return
+  if (!selected.value || !canRead.value) return
   const request = searchGuard.start(), id = selected.value.id, version = epoch, nextPage = append ? searchPage.value + 1 : 0
   searchBusy.value = true; searchOpen.value = true; if (!append) searchResults.value = []
-  try { const result = await groupApi.search(id, searchQuery.value, nextPage, request.signal); if (request.current() && version === epoch) { searchResults.value = append ? [...searchResults.value, ...result] : result; searchPage.value = nextPage; searchMore.value = result.length === 50 } }
+  try { const result = await groupApi.search(id, searchQuery.value, nextPage, request.signal,{senderId:searchSender.value?Number(searchSender.value):undefined,after:searchFrom.value?new Date(searchFrom.value+'T00:00:00').toISOString():undefined,before:searchTo.value?new Date(new Date(searchTo.value+'T00:00:00').setDate(new Date(searchTo.value+'T00:00:00').getDate()+1)).toISOString():undefined,attached:searchAttached.value}); if (request.current() && version === epoch) { searchResults.value = append ? [...searchResults.value, ...result] : result; searchPage.value = nextPage; searchMore.value = result.length === 50 } }
   catch (reason) { if (request.current() && version === epoch) error.value = detail(reason) }
   finally { if (request.current() && version === epoch) searchBusy.value = false }
 }
@@ -251,7 +253,8 @@ onBeforeUnmount(()=>window.removeEventListener('pkb:live-update',liveRefresh))
           <form v-if="canManage" class="group-add" @submit.prevent="memberId && memberAction(memberId, memberRole)"><div class="group-people field-label"><label for="group-person-search">添加成员</label><input id="group-person-search" v-model="peopleQuery" class="field-input" type="search" maxlength="100" role="combobox" :aria-expanded="pickerOpen" aria-controls="group-people-list" placeholder="姓名、用户名或唯一身份码" :disabled="busy" @focus="pickerOpen = true; findPeople()" @keydown.esc="pickerOpen = false" /><div v-if="pickerOpen" id="group-people-list" class="group-people-menu" role="listbox" aria-label="候选成员"><p v-if="peopleBusy">正在查找…</p><button v-for="person in directory" :key="person.id" type="button" role="option" :aria-selected="memberId === person.id" @click="memberId = person.id"><strong>{{ person.displayName }}</strong><small>{{ person.identityCode }}</small></button><p v-if="!peopleBusy && !directory.length">没有匹配用户。</p><button v-if="peopleMore" type="button" :disabled="peopleBusy" @click="findPeople(true)">更多用户</button><button type="button" @click="pickerOpen = false">收起</button></div><small v-if="memberId">已选 {{ directory.find(p => p.id === memberId)?.displayName }} · {{ directory.find(p => p.id === memberId)?.identityCode }}</small></div><label class="field-label">角色<select v-model="memberRole" class="field-input" :disabled="busy"><option value="MEMBER">成员</option><option value="VIEWER">只读成员</option><option v-if="canPromote" value="ADMIN">群管理员</option></select></label><button class="button button--ghost" :disabled="busy || !memberId">添加</button></form>
           <form v-if="canSettings" class="group-add" @submit.prevent="renameGroup"><label class="field-label">群组名称<input v-model="editName" class="field-input" required maxlength="100" :disabled="busy" /></label><button class="button button--ghost" :disabled="busy">保存名称</button></form>
         </details>
-        <section v-if="searchOpen && canRead" class="group-search"><form @submit.prevent="searchMessages()"><input v-model="searchQuery" class="field-input" type="search" maxlength="100" required aria-label="搜索群内消息" placeholder="输入消息关键词" /><button class="button button--ghost" :disabled="searchBusy">搜索</button></form><p class="field-hint">搜索本群文字；附件请在会话中下载。</p><article v-for="message in searchResults" :key="message.id" class="search-result"><strong>{{ message.senderName }}</strong><time>{{ time(message.createdAt) }}</time><p>{{ message.body }}</p></article><p v-if="!searchBusy && searchQuery && !searchResults.length">暂无匹配消息。</p><button v-if="searchMore" class="table-action" :disabled="searchBusy" @click="searchMessages(true)">更多结果</button></section>
+        <GroupResources v-if="canRead" :key="selected.id" :group-id="selected.id" />
+        <section v-if="searchOpen && canRead" class="group-search"><form @submit.prevent="searchMessages()"><input v-model="searchQuery" class="field-input" type="search" maxlength="100" aria-label="搜索群内消息" placeholder="输入消息关键词" /><button class="button button--ghost" :disabled="searchBusy">搜索</button></form><div class="group-search-filters"><label>发送者<select v-model="searchSender" class="field-input"><option value="">全部成员</option><option v-for="person in selected.members" :key="person.userId" :value="person.userId">{{person.displayName}}</option></select></label><label>开始日期<input v-model="searchFrom" class="field-input" type="date" /></label><label>结束日期<input v-model="searchTo" class="field-input" type="date" /></label><label><input v-model="searchAttached" type="checkbox" />含附件</label></div><p class="field-hint">日期按本机时区；可只选发送者、日期或附件，不填关键词。</p><article v-for="message in searchResults" :key="message.id" class="search-result"><strong>{{ message.senderName }}</strong><time>{{ time(message.createdAt) }}</time><p>{{ message.body }}</p></article><p v-if="!searchBusy && searchQuery && !searchResults.length">暂无匹配消息。</p><button v-if="searchMore" class="table-action" :disabled="searchBusy" @click="searchMessages(true)">更多结果</button></section>
         <div v-else class="group-thread"><button v-if="more" class="table-action" :disabled="busy || loading" @click="older">查看更早的消息</button><p v-if="!messages.length && !loading" class="group-empty">{{ canRead ? '还没有讨论，从第一条消息开始。' : '你没有阅读本群内容的权限。' }}</p>
           <article v-for="message in timeline" :key="message.id" class="group-message" :class="{ 'group-message--own': message.senderId === authStore.state.user?.id }"><header><span class="message-avatar">{{ message.senderName.slice(0,1) }}</span><strong>{{ message.senderName }}</strong><time>{{ time(message.createdAt) }}</time><button v-if="canWrite" :disabled="busy" @click="startReply(message)">回复</button><button v-if="canSettings" :disabled="busy" @click="updateNotice(message.id)">置顶</button></header><small v-if="message.replyToId" class="reply-context">回复 {{ messages.find(item => item.id === message.replyToId)?.senderName || '较早的讨论' }} · {{ messages.find(item => item.id === message.replyToId)?.body.slice(0,100) }}</small><p>{{ message.body }}</p><div class="group-files"><button v-for="file in message.attachments" :key="file.id" @click="download(file)">{{ file.fileName }} <small>{{ Math.ceil(file.sizeBytes / 1024) }} KB ↓</small></button></div><GroupMessageActions :group-id="selected.id" :message-id="message.id" :can-recall="!!canSettings||(message.senderId===authStore.state.user?.id&&Date.now()-Date.parse(message.createdAt)<600000)" :recalled="message.body==='消息已撤回'" @refresh="selectGroup(selected.id)" /></article>
         </div>
@@ -262,6 +265,8 @@ onBeforeUnmount(()=>window.removeEventListener('pkb:live-update',liveRefresh))
 </template>
 
 <style scoped>
+.group-search-filters{display:grid;grid-template-columns:1fr 1fr 1fr auto;align-items:end;gap:12px;margin:12px 0}.group-search-filters label{font-size:12px;display:grid;gap:6px}.group-search-filters input[type=checkbox]{width:auto}
+
 .group-layout{display:grid;grid-template-columns:230px minmax(0,1fr);border-top:1px solid var(--line);min-height:580px}
 .group-sidebar{padding:26px 26px 20px 0;border-right:1px solid var(--line)}
 .group-sidebar>button{display:block;width:100%;padding:12px 14px;margin:0 0 5px;text-align:left;border:0;background:transparent;color:var(--ink);cursor:pointer}

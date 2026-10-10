@@ -4,6 +4,10 @@ import VocabularyView from '../views/VocabularyView.vue'
 import { tokenStorage } from '../api/client.ts'
 
 const passed = []
+const audioCalls=[];let cancelledAudio=0
+class SyntheticSpeech { constructor(text){this.text=text;this.lang='';this.rate=1} }
+window.SpeechSynthesisUtterance=globalThis.SpeechSynthesisUtterance=SyntheticSpeech
+window.speechSynthesis={getVoices:()=>[{lang:'en-US'},{lang:'en-GB'}],speak:utterance=>audioCalls.push(utterance),cancel:()=>cancelledAudio++}
 const fixture = document.getElementById('fixture')
 const assert = (value, message) => { if (!value) throw new Error(message); passed.push(message) }
 const wait = async (until = () => true) => {
@@ -47,6 +51,7 @@ window.fetch = async (url, init = {}) => {
     if (holdDashboard) return new Promise(resolve => { pendingDashboard = () => { pendingDashboard = null; resolve(envelope(dashboard)) } })
     return envelope(dashboard)
   }
+  if(path.endsWith('/account/preferences'))return envelope({groups:true,contacts:true,mail:true,study:true,weeklyTarget:70,studyDays:[1,2,3,4,5],zoneId:'UTC',revision:0})
   if (path.endsWith('/vocabulary/next')) {
     const payload = JSON.parse(init.body)
     nextCalls.push(payload)
@@ -83,6 +88,9 @@ const resolveQuestion = async () => {
   pendingNext()
   await wait(() => options().length === 4 && !options()[0].disabled)
   assert(document.activeElement === card(), 'Loaded question receives focus without requiring a body click')
+  const spoken=audioCalls.filter(call=>call.text===`word-${nextCalls.length}`)
+  assert(spoken.length===1&&spoken[0].lang==='en-US','Each new question automatically speaks exactly once in American English')
+  assert(fixture.querySelector('.word-pronunciation select')?.value==='en-US','Manual pronunciation defaults to American English')
   assert(card().tabIndex === -1 && document.getElementById(card().getAttribute('aria-labelledby'))?.textContent.startsWith('word-'), 'Focused question region has an accessible name and stays out of normal tab order')
 }
 const resolveAnswer = async () => {
@@ -145,7 +153,8 @@ try {
   const handled = new window.KeyboardEvent('keydown', { key: '1', bubbles: true, cancelable: true })
   handled.preventDefault(); card().dispatchEvent(handled)
   assert(answerCalls.length === beforeProtectedKeys, 'Modified, composing, repeating, and already-handled keys never submit')
-  assert(!key('Enter', card()).defaultPrevented && !key(' ', card()).defaultPrevented && answerCalls.length === beforeProtectedKeys, 'Enter and Space on an unanswered question do not pick an option')
+  assert(!key('Enter', card()).defaultPrevented && key(' ', card()).defaultPrevented && answerCalls.length === beforeProtectedKeys, 'Space plays audio while Enter leaves an unanswered question unchanged')
+  assert(cancelledAudio>0,'Changing questions or replaying cancels old audio instead of overlapping')
 
   const editable = document.createElement('div')
   editable.innerHTML = '<input type="text"><textarea></textarea><select><option>1</option></select><div contenteditable="true"><span tabindex="0">editable child</span></div><div contenteditable="plaintext-only" tabindex="0">plain editor</div>'

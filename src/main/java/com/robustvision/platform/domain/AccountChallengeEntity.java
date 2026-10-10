@@ -10,6 +10,7 @@ public class AccountChallengeEntity {
  @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.CHAR) @Column(name="token_hash",nullable=false,length=64,columnDefinition="CHAR(64)") private String tokenHash;
  @Column(name="expires_at",nullable=false) private Instant expiresAt;
  @Column(name="created_at",nullable=false) private Instant createdAt;
+ @Column(name="context_hash",length=64) private String contextHash;
  @Column(nullable=false) private boolean consumed;
  @Column(nullable=false,length=12) private String delivery;
 }

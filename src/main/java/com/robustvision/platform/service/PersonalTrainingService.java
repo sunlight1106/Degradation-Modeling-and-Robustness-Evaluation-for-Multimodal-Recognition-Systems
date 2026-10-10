@@ -38,6 +38,10 @@ public class PersonalTrainingService {
     }
     private byte[] send(String method,String path,JsonNode request) {
         String owner=current.requireCurrent().getId().toString();
+        return sendAs(owner,method,path,request);
+    }
+    public void purgeOwner(long owner){sendAs(Long.toString(owner),"DELETE","/owner",null);}
+    private byte[] sendAs(String owner,String method,String path,JsonNode request) {
         if(token.length()<32)throw unavailable();
         try {
             var body=request==null?HttpRequest.BodyPublishers.noBody():HttpRequest.BodyPublishers.ofByteArray(mapper.writeValueAsBytes(request));

@@ -56,4 +56,18 @@ class AccountRecoveryIntegrationTest {
   call("/api/v1/account/security/email",Map.of("password",PASSWORD),token).andExpect(status().isOk());String issued=mailedToken();db.update("UPDATE app_user SET email=? WHERE id=?","changed-"+user.getUsername()+"@example.invalid",user.getId());
   call("/api/v1/auth/verify-email",Map.of("token",issued),null).andExpect(status().isBadRequest());
  }
+ @Test void newEmailNeedsProofAndRevokesSessionsOnlyAfterVerification()throws Exception{
+  String target="bound-"+user.getUsername()+"@example.invalid";
+  call("/api/v1/account/bindings/email",Map.of("email",target,"password",PASSWORD),token).andExpect(status().isOk());String issued=mailedToken();
+  assertThat(users.findById(user.getId()).orElseThrow().getEmail()).isEqualTo(user.getEmail());
+  call("/api/v1/auth/verify-email",Map.of("token",issued),null).andExpect(status().isOk());
+  assertThat(users.findById(user.getId()).orElseThrow().getEmail()).isEqualTo(target);
+  mvc.perform(get("/api/v1/auth/me").header("Authorization","Bearer "+token)).andExpect(status().isUnauthorized());login(Map.of("username",target,"password",PASSWORD));
+  call("/api/v1/auth/verify-email",Map.of("token",issued),null).andExpect(status().isBadRequest());
+ }
+ @Test void pendingBindingCannotOverrideChangedCredentials()throws Exception{
+  call("/api/v1/account/bindings/email",Map.of("email","changed-"+user.getUsername()+"@example.invalid","password",PASSWORD),token).andExpect(status().isOk());String issued=mailedToken();
+  db.update("UPDATE app_user SET password_hash=? WHERE id=?",passwords.encode("SyntheticChanged456!"),user.getId());
+  call("/api/v1/auth/verify-email",Map.of("token",issued),null).andExpect(status().isBadRequest());assertThat(users.findById(user.getId()).orElseThrow().getEmail()).isEqualTo(user.getEmail());
+ }
 }

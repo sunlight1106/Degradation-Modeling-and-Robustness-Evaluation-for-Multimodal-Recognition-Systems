@@ -91,6 +91,19 @@ public class FileService {
         }
     }
 
+    /** Called only by the committed account-cleanup queue for unshared objects. */
+    public void deletePrivateObject(String key) {
+        objectStorage.delete(key);
+        Path path=legacyRoot.resolve(key).normalize();
+        if(!path.startsWith(legacyRoot))throw new IllegalArgumentException("Invalid legacy storage key");
+        if(!Files.exists(path,java.nio.file.LinkOption.NOFOLLOW_LINKS))return;
+        try {
+            if(Files.isSymbolicLink(path)||!path.toRealPath().startsWith(legacyRoot.toRealPath()))throw new IllegalArgumentException("Legacy file escapes storage root");
+            if(!Files.isRegularFile(path,java.nio.file.LinkOption.NOFOLLOW_LINKS))throw new IllegalArgumentException("Legacy key is not a file");
+            Files.delete(path);
+        } catch(IOException e){throw new IllegalStateException("Legacy private file cleanup failed",e);}
+    }
+
     @Transactional(readOnly = true)
     public List<ApiDtos.FileView> listAccessible() {
         UserEntity current = currentUserService.requireCurrent();

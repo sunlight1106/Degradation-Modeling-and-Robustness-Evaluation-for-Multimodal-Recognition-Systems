@@ -57,6 +57,7 @@ public class UserService {
         UserEntity operator = requireAdminForMutation();
         AccountService.validateNewPassword(request.password());
         String username = request.username().trim();
+        if(username.matches("(?i)PKB-[A-F0-9]{32}"))throw new BusinessException(HttpStatus.BAD_REQUEST,"USERNAME_RESERVED","此格式保留给系统身份码，请换一个用户名");
         String email = request.email().trim().toLowerCase(java.util.Locale.ROOT);
         if (userRepository.existsByUsername(username)) {
             throw new BusinessException(HttpStatus.CONFLICT, "USERNAME_EXISTS", "用户名已存在");
@@ -75,6 +76,7 @@ public class UserService {
     @Transactional
     public ApiDtos.UserView register(ApiDtos.RegisterRequest request) {
         String username = request.username().trim();
+        if(username.matches("(?i)PKB-[A-F0-9]{32}"))throw new BusinessException(HttpStatus.BAD_REQUEST,"USERNAME_RESERVED","此格式保留给系统身份码，请换一个用户名");
         String email = request.email().trim().toLowerCase(java.util.Locale.ROOT);
         if (userRepository.existsByUsername(username)) {
             throw new BusinessException(HttpStatus.CONFLICT, "USERNAME_EXISTS", "用户名已存在");
@@ -87,6 +89,8 @@ public class UserService {
         RoleEntity role = roleRepository.findByCode("RESEARCHER")
                 .orElseThrow(() -> new BusinessException(HttpStatus.SERVICE_UNAVAILABLE, "DEFAULT_ROLE_MISSING", "默认用户角色尚未初始化"));
         UserEntity user = new UserEntity(username, passwordEncoder.encode(password), username, email, role);
+        if(request.displayName()!=null&&!request.displayName().isBlank())user.setDisplayName(request.displayName().trim());
+        if(request.discoverable()!=null)user.setDiscoverable(request.discoverable());
         return toView(userRepository.save(user));
     }
 

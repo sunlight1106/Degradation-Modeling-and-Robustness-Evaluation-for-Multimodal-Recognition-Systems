@@ -6,6 +6,8 @@ export interface GroupFeatures {
 }
 export interface GroupPerson { id: number; identityCode: string; username: string; displayName: string }
 export interface GroupDirectory { items: GroupPerson[]; hasMore: boolean; page: number }
+export interface GroupResource { id:string; name:string; type:string; size:number; sender:string; createdAt:string }
+export interface GroupSearchFilters { senderId?:number; after?:string; before?:string; attached?:boolean }
 const json = (body: unknown) => ({ method: 'PUT', body: JSON.stringify(body) })
 export const groupApi = {
   overview: () => request<{ groups: WorkspaceView[]; features: GroupFeatures[] }>('/workspaces/overview'),
@@ -16,5 +18,6 @@ export const groupApi = {
   pin: (id: number, messageId: string | null, revision: number) => request<GroupFeatures>(`/workspaces/${id}/pin`, json({ messageId, revision })),
   read: (id: number, messageId: string) => request<GroupFeatures>(`/workspaces/${id}/read`, { method: 'POST', body: JSON.stringify({ messageId }) }),
   people: (id: number, q: string, page = 0, signal?: AbortSignal) => request<GroupDirectory>(`/workspaces/${id}/people?${new URLSearchParams({ q, page: String(page) })}`, { signal }),
-  search: (id: number, q: string, page = 0, signal?: AbortSignal) => request<MessageView[]>(`/workspaces/${id}/search?${new URLSearchParams({ q, page: String(page) })}`, { signal }),
+  search: (id: number, q: string, page = 0, signal?: AbortSignal, filters:GroupSearchFilters={}) => {const params=new URLSearchParams({q,page:String(page)});for(const [k,v] of Object.entries(filters))if(v!==undefined&&v!=='')params.set(k,String(v));return request<MessageView[]>(`/workspaces/${id}/search?${params}`,{signal})},
+  resources:(id:number,q:string,page=0,signal?:AbortSignal)=>request<GroupResource[]>(`/workspaces/${id}/resources?${new URLSearchParams({q,page:String(page)})}`,{signal}),
 }

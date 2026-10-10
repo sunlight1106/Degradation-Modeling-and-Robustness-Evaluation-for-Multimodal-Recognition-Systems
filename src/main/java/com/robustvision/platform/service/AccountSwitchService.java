@@ -21,6 +21,7 @@ public class AccountSwitchService {
     private final UserSessionService sessions;
     private final AuthService auth;
     private final EntityManager entityManager;
+    @org.springframework.beans.factory.annotation.Autowired private LoginIdentityService identities;
     public AccountSwitchService(CurrentUserService current, UserRepository users, UserSessionRepository sessionRows,
                                 UserSessionService sessions, AuthService auth, EntityManager entityManager) {
         this.current = current; this.users = users; this.sessionRows = sessionRows;
@@ -31,7 +32,7 @@ public class AccountSwitchService {
     public ApiDtos.LoginResponse switchAccount(ApiDtos.LoginRequest request, String userAgent) {
         var source = current.requireCurrent();
         String sessionId = sessions.currentSessionId();
-        Long targetId = users.findIdByUsername(request.username().trim()).orElseThrow(this::invalidTarget);
+        Long targetId = users.findIdByUsername(identities.username(request.username())).orElseThrow(this::invalidTarget);
         if (source.getId().equals(targetId))
             throw new BusinessException(HttpStatus.BAD_REQUEST, "ACCOUNT_ALREADY_CURRENT", "这个账号已经登录，请选择另一个账号");
         // Use the same stable user-lock order as other account mutations.

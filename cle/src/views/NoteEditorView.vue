@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import NoteReminder from '@/components/NoteReminder.vue'
+import { noteTemplateCatalog } from '@/lib/noteTemplateCatalog'
 import NoteConflict from '@/components/NoteConflict.vue'
 import NoteBacklinks from '@/components/NoteBacklinks.vue'
 import NoteAttachments from '@/components/NoteAttachments.vue'
@@ -188,7 +190,7 @@ async function load() {
   if (typeof raw !== 'string' || !raw) {
     parentId.value = typeof route.query.parent === 'string' ? route.query.parent : ''
     library.value = typeof route.query.library === 'string' ? route.query.library.slice(0, 40) : '综合学习'
-    if (route.query.template === 'study') useTemplate()
+    if (typeof route.query.template === 'string') useTemplate(route.query.template)
     if (typeof route.query.entry === 'string') {
       try {
         const entry = await api.knowledgeEntry(route.query.entry)
@@ -316,9 +318,9 @@ const tools: Array<{ label: string; title: string; run: () => void }> = [
   { label: '</>', title: '行内代码', run: () => surround('`') },
 ]
 
-function useTemplate() {
+function useTemplate(id:unknown = route.query.template) {
   if (body.value.trim() && !window.confirm("用学习模板替换当前正文？")) return
-  const template = noteTemplates[library.value] || noteTemplates["综合学习"]!
+  const template = noteTemplateCatalog.find(t => t.id === id) || noteTemplates[library.value] || noteTemplates["综合学习"]!
   title.value = title.value || template.title
   body.value = template.body
   contentFormat.value = "MARKDOWN"
@@ -554,7 +556,7 @@ onBeforeUnmount(() => { clearTimeout(autoTimer); window.removeEventListener('onl
       </div>
     </section>
 
-    <NoteConflict v-if="syncConflict&&mergeOpen&&currentId" :key="currentId" :id="currentId" :ours="body" :base="savedBody" @merged="applyMerge" @close="mergeOpen=false" /><NoteBacklinks v-if="currentId" :key="currentId+revision" :id="currentId" /><NoteAttachments v-if="currentId&&canWrite" :key="currentId" :id="currentId" :disabled="saving||syncConflict" @insert="insertAttachment" /><NoteHistory v-if="currentId" :key="currentId" :id="currentId" :revision="revision" :body="body" :dirty="dirty||saving" @restored="load()" />
+    <NoteConflict v-if="syncConflict&&mergeOpen&&currentId" :key="currentId" :id="currentId" :ours="body" :base="savedBody" @merged="applyMerge" @close="mergeOpen=false" /><NoteReminder v-if="currentId && canWrite" :key="currentId" :id="currentId" /><NoteBacklinks v-if="currentId" :key="currentId+revision" :id="currentId" /><NoteAttachments v-if="currentId&&canWrite" :key="currentId" :id="currentId" :disabled="saving||syncConflict" @insert="insertAttachment" /><NoteHistory v-if="currentId" :key="currentId" :id="currentId" :revision="revision" :body="body" :dirty="dirty||saving" @restored="load()" />
     <nav v-if="parentPage || childPages.length" class="note-page-path" aria-label="页面关联">
       <RouterLink v-if="parentPage" :to="{ name: 'note-edit', params: { id: parentPage.id } }">上级：{{ parentPage.title }}</RouterLink>
       <RouterLink v-for="child in childPages" :key="child.id" :to="{ name: 'note-edit', params: { id: child.id } }">子页：{{ child.title }}</RouterLink>
