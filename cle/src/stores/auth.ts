@@ -47,9 +47,9 @@ export const authStore = {
       return response.user
     } finally { if (tokenStorage.generation() === generation) state.loading = false }
   },
-  async ensureUser() {
-    if (state.user && tokenStorage.get()) return state.user
-    if (state.user) authStore.clearSession()
+  async ensureUser(refresh = false) {
+    if (!refresh && state.user && tokenStorage.get()) return state.user
+    if (state.user && !tokenStorage.get()) authStore.clearSession()
     if (!tokenStorage.get()) {
       state.initialized = true
       return null
@@ -66,6 +66,7 @@ export const authStore = {
       return user
     } catch (reason) {
       if (!isCurrent()) return state.user
+      if (refresh && !(reason instanceof ApiClientError && reason.status === 401)) return state.user
       if (reason instanceof ApiClientError && reason.status === 401) tokenStorage.clear()
       state.user = null
       return null
@@ -89,7 +90,7 @@ export const authStore = {
     state.initialized = true
   },
   has(permission: string) {
-    return state.user?.roleCode === 'ADMIN' || (state.user?.permissions?.includes(permission) ?? false)
+    return state.user?.permissions?.includes(permission) ?? false
   },
   hasAny(...permissions: string[]) {
     return permissions.some(permission => authStore.has(permission))

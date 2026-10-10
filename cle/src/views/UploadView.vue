@@ -32,6 +32,8 @@ const mediaMatchesTask = computed(() => selectedMediaIsVideo.value
   ? taskType.value === 'VIDEO_ANALYSIS'
   : taskType.value !== 'VIDEO_ANALYSIS')
 const canRun = computed(() => Boolean(
+  authStore.has('file:write') && authStore.has('model:read')
+  &&
   (selectedFile.value || uploadedFile.value)
   && modelId.value
   && mediaMatchesTask.value
@@ -41,7 +43,7 @@ const canRun = computed(() => Boolean(
 
 onMounted(async () => {
   try {
-    const [modelList, runtimeInfo] = await Promise.all([api.models(), api.modelRuntime()])
+    const [modelList, runtimeInfo] = await Promise.all([api.models(), authStore.has('model:read') ? api.modelRuntime() : Promise.resolve(null)])
     models.value = modelList
     runtime.value = runtimeInfo
     const requested = Number(route.query.model)
@@ -124,7 +126,8 @@ async function run() {
       <p>选择一张图片，或一段视频。你也可以把文件直接拖入右侧。</p>
       <p class="experiment-caption">JPEG、PNG、WEBP / MP4、WEBM<br />单个文件最大 20 MB</p>
       <template #detail>
-        <UploadDropzone v-if="!selectedFile" @selected="handleFile" />
+        <p v-if="!authStore.has('file:write')" class="experiment-caption" role="status">当前账号没有上传权限。需要上传样本时，请联系管理员开放文件上传。</p>
+        <UploadDropzone v-else-if="!selectedFile" @selected="handleFile" />
         <div v-else class="experiment-preview">
           <video v-if="selectedFile.type.startsWith('video/')" :src="previewUrl" controls playsinline muted />
           <img v-else :src="previewUrl" alt="待识别图片预览" />
@@ -133,6 +136,7 @@ async function run() {
       </template>
     </DocRow>
     <DocRow id="configuration" title="模型与任务">
+      <p v-if="!authStore.has('model:read')" class="experiment-caption" role="status">当前账号没有查看模型运行状态的权限，暂时不能运行 DEMO 实验。</p>
       <p>任务决定模型的识别目标。选择文件后，会自动匹配图片或视频任务。</p>
       <p><RouterLink to="/app/models">查看模型说明 ↗</RouterLink></p>
       <template #detail>

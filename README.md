@@ -192,6 +192,8 @@ npm run build --prefix cle
 
 后端测试：Windows 运行 `.\mvnw.cmd -B verify`，Linux / macOS 运行 `./mvnw -B verify`。H2 仅用于测试；MySQL 检查步骤见 [数据库说明](database/README.md)。
 
+需要检查不同用户能做什么，可按 [权限检查](docs/PERMISSION_TESTS.md) 操作。权限矩阵会逐个验证单独授权和禁止，账号安全测试检查角色变更、登录撤销和私有资料隔离。
+
 [自动构建记录](https://github.com/sunlight1106/Personal-Knowledge-Base-and-AI-Recognition-Evaluation/actions) · [验证范围](docs/VALIDATION.md) · [账户安全](docs/SECURITY.md) · [上传内容检查](docs/CONTENT_SECURITY.md)
 
 ## 许可

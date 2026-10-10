@@ -28,7 +28,7 @@ const tabs = computed(() => [
   { id: 'workflow', label: '通知与学习计划', icon: 'settings' },
   { id: 'privacy', label: '隐私与数据', icon: 'key' },
   { id: 'appearance', label: '外观', icon: 'eye' },
-  ...(authStore.has('workspace:manage') ? [{ id: 'workspace', label: '工作空间', icon: 'settings' }] : []),
+  ...(authStore.has('workspace:manage') && authStore.has('group:use') ? [{ id: 'workspace', label: '工作空间', icon: 'settings' }] : []),
 ])
 const section = computed(() => tabs.value.some(tab => tab.id === route.query.section) ? String(route.query.section) : 'profile')
 const profile = reactive({ displayName: '', email: '', currentPassword: '' })

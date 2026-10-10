@@ -32,7 +32,7 @@ let refreshTimer = 0
 let paymentTimer = 0
 
 const isAdmin = computed(() => authStore.has('billing:read:any'))
-const canManage = computed(() => authStore.has('billing:manage'))
+const canManage = computed(() => authStore.state.user?.roleCode === 'ADMIN' && authStore.has('billing:manage'))
 
 async function load(silent = false) {
   if (!silent) loading.value = true

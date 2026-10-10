@@ -19,7 +19,7 @@ const envelope = data => new Response(JSON.stringify({ success: true, data }), {
 const button = text => [...fixture.querySelectorAll('button')].find(n => n.textContent.includes(text))
 const link = href => fixture.querySelector(`a[href="${href}"]`)
 async function set(node, value) { node.value = value; node.dispatchEvent(new Event('input', { bubbles: true })); await nextTick() }
-const admin = { id: 1, username: 'synthetic-admin', displayName: 'Synthetic Admin', roleName: '管理员', roleCode: 'ADMIN', permissions: ['dashboard:read', 'note:read', 'note:write', 'user:read', 'role:read'] }
+const admin = { id: 1, username: 'synthetic-admin', displayName: 'Synthetic Admin', roleName: '管理员', roleCode: 'ADMIN', permissions: ['dashboard:read', 'note:read', 'note:write', 'user:read', 'role:read', 'contacts:use'] }
 const member = { ...admin, id: 2, username: 'synthetic-member', displayName: 'Synthetic Member', roleName: '成员', roleCode: 'VIEWER', permissions: ['dashboard:read'] }
 const note = { id: 'one', title: 'Private A title', body: 'Private A content', tags: [], library: '计算机学习', contentFormat: 'MARKDOWN', status: { code: 'DRAFT', label: '草稿' }, references: [], shareCount: 0, revision: 0 }
 let app, resolveSwitch, resolveLogout, switchCalls = 0, logoutCalls = 0, rejectTarget = true, allowLeave = false

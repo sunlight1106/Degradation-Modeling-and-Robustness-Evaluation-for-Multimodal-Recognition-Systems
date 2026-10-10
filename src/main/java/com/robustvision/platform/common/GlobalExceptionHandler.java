@@ -40,7 +40,10 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler({org.springframework.http.converter.HttpMessageNotReadableException.class,
-            org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class})
+            org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class,
+            org.springframework.web.bind.ServletRequestBindingException.class,
+            org.springframework.web.multipart.support.MissingServletRequestPartException.class,
+            org.springframework.web.multipart.MultipartException.class})
     public ResponseEntity<ApiResponse<Void>> handleMalformedRequest(Exception exception) {
         return ResponseEntity.badRequest().body(ApiResponse.failure("INVALID_REQUEST", "请求格式不正确"));
     }

@@ -49,7 +49,7 @@ public class UserService {
 
     @Transactional(readOnly = true)
     public ApiDtos.UserView currentUser() {
-        return toView(currentUserService.requireCurrent());
+        return toCurrentView(currentUserService.requireCurrent());
     }
 
     @Transactional
@@ -206,10 +206,19 @@ public class UserService {
     }
 
     public ApiDtos.UserView toView(UserEntity user) {
+        return view(user, Permissions.effective(user));
+    }
+
+    /** Current account responses include temporary restrictions; directory rows show configured access. */
+    public ApiDtos.UserView toCurrentView(UserEntity user) {
+        return view(user, currentUserService.effectivePermissions(user));
+    }
+
+    private ApiDtos.UserView view(UserEntity user, Set<String> permissions) {
         return new ApiDtos.UserView(
                 user.getId(), user.getIdentityCode(), user.getUsername(), user.getDisplayName(), user.getEmail(), user.getStatus(),
                 user.getRole().getId(), user.getRole().getCode(), user.getRole().getName(),
-                Permissions.effective(user), user.getCreatedAt(), user.getAccessExpiresAt()
+                permissions, user.getCreatedAt(), user.getAccessExpiresAt()
         );
     }
 

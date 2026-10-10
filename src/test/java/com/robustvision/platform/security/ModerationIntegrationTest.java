@@ -50,9 +50,15 @@ class ModerationIntegrationTest extends GroupCommunicationIntegrationTest {
   String id=report("MESSAGE",message("Evidence"),ownerToken);review(id,"FEATURE",Set.of("GROUP","VOCABULARY"));
   mvc.perform(auth(get("/api/v1/workspaces"),memberToken)).andExpect(status().isForbidden()).andExpect(jsonPath("$.error.code").value("MODERATION_FEATURE"));
   mvc.perform(auth(get("/api/v1/moderation/mine"),memberToken)).andExpect(status().isOk());
+  for(String path:List.of("/api/v1/auth/me","/api/v1/account/profile")) {
+   var permissions=data(mvc.perform(auth(get(path),memberToken)).andExpect(status().isOk()).andReturn()).path("permissions");
+   assertThat(permissions.toString()).doesNotContain("group:use","workspace:manage","vocabulary:use");
+  }
+  assertThat(data(mvc.perform(json(post("/api/v1/auth/login"),null,Map.of("username",member.getUsername(),"password",PASSWORD))).andExpect(status().isOk()).andReturn()).path("user").path("permissions").toString()).doesNotContain("group:use");
   mvc.perform(auth(get("/api/v1/vocabulary/books"),memberToken)).andExpect(status().isForbidden());
   db.update("UPDATE moderation_penalty SET expires_at=? WHERE report_id=?",Timestamp.from(Instant.now().minusSeconds(1)),id);
   mvc.perform(auth(get("/api/v1/workspaces"),memberToken)).andExpect(status().isOk());
+  assertThat(data(mvc.perform(auth(get("/api/v1/auth/me"),memberToken)).andReturn()).path("permissions").toString()).contains("group:use").doesNotContain("vocabulary:use");
   mvc.perform(auth(get("/api/v1/vocabulary/books"),memberToken)).andExpect(status().isForbidden());
  }
  @Test void banAllowsOwnAppealOnlyAndRevocationDoesNotReactivateDisabledAccounts()throws Exception{

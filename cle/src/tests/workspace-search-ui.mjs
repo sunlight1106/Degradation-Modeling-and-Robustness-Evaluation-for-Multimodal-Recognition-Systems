@@ -17,7 +17,7 @@ const filters={q:'alpha',type:'NOTE',tag:'',since:null,group:null,sort:'recent'}
 let app,bookmarked=0,searches=[],resolveOld,oldSignal
 try{
  const router=createRouter({history:createMemoryHistory(),routes:[{path:'/:pathMatch(.*)*',component:{template:'<div />'}}]});await router.push('/app/research');await router.isReady()
- authStore.state.user={id:1,roleCode:'ADMIN',permissions:[]};personalApi.settings=async()=>[]
+ authStore.state.user={id:1,roleCode:'ADMIN',permissions:['research:use','note:read','note:write','personal-ai:use']};personalApi.settings=async()=>[]
  researchApi.search=async params=>{searches.push(params);return {items:[hit],hasMore:false,page:0}}
  researchApi.savedSearches=async()=>[{id:'saved',name:'Reading',filters}]
  researchApi.bookmarkKeys=async()=>[];researchApi.bookmarks=async()=>({items:[hit],hasMore:false,page:0})

@@ -2,9 +2,11 @@
 import {ref,watch,onMounted,onBeforeUnmount} from 'vue'
 import {RouterLink,useRouter} from 'vue-router'
 import {safetyApi,labels,activePenalty,type Penalty} from '@/api/moderation'
+import {authStore} from '@/stores/auth'
 const active=ref<Penalty[]>([]),router=useRouter();let alive=true,timer:ReturnType<typeof setInterval>|undefined
 watch(()=>router.currentRoute.value.path,p=>{if(p!=='/app/safety'&&active.value.some(x=>x.kind==='BAN'&&activePenalty(x)))void router.replace('/app/safety')})
-async function load(){if(document.hidden)return;try{const d=await safetyApi.mine();if(alive){active.value=d.penalties.filter(activePenalty);if(active.value.some(p=>p.kind==='BAN')&&router.currentRoute.value.path!=='/app/safety')void router.replace('/app/safety')}}catch{/* Existing session and request handlers handle connection failures. */}}
+let restrictions=''
+async function load(){if(document.hidden)return;try{const d=await safetyApi.mine();if(alive){active.value=d.penalties.filter(activePenalty);const next=active.value.map(p=>p.id).sort().join(',');if(next!==restrictions){restrictions=next;await authStore.ensureUser(true);if(!alive)return}if(active.value.some(p=>p.kind==='BAN')&&router.currentRoute.value.path!=='/app/safety')void router.replace('/app/safety')}}catch{/* Existing session and request handlers handle connection failures. */}}
 onMounted(()=>{void load();timer=setInterval(load,60000);window.addEventListener('pkb:live-update',load)})
 onBeforeUnmount(()=>{alive=false;clearInterval(timer);window.removeEventListener('pkb:live-update',load)})
 </script>

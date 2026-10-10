@@ -14,8 +14,8 @@ const days = [{ date:'2026-10-09',registrations:2,loginUsers:3,notes:4,aiCalls:5
 const original = { ...adminApi }
 let app
 try {
-  authStore.state.user = { id:1,roleCode:'ADMIN',permissions:[] }
-  assert(authStore.has('admin:stats') && authStore.has('training:use'), 'ADMIN can reach new modules even with an older client permission list')
+  authStore.state.user = { id:1,roleCode:'ADMIN',permissions:['admin:stats','admin:audit','training:use','user:read','user:write','role:read','role:write','billing:manage'] }
+  assert(authStore.has('admin:stats') && authStore.has('training:use'), 'ADMIN uses the complete permission list resolved by the server')
   app = createApp(AdminTrendChart, { days }); app.mount(fixture)
   assert(fixture.querySelectorAll('polyline').length === 2, 'Chart starts with two clear series')
   button('新建笔记').click(); await nextTick(); assert(fixture.querySelectorAll('polyline').length === 3, 'Legend toggles actual series')

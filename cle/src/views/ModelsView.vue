@@ -21,7 +21,7 @@ const isPublic = computed(() => route.path === '/models')
 onMounted(async () => {
   try {
     await authStore.ensureUser()
-    const [modelList, runtimeInfo] = await Promise.all([api.models(), authStore.state.user ? api.modelRuntime() : Promise.resolve(null)])
+    const [modelList, runtimeInfo] = await Promise.all([api.models(), authStore.has('model:read') ? api.modelRuntime() : Promise.resolve(null)])
     models.value = modelList
     runtime.value = runtimeInfo
   } catch (reason) {

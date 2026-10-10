@@ -71,7 +71,7 @@ public class AuthService {
             Instant issuedAt = Instant.now();
             var session = sessions.create(user, issuedAt, jwtService.expiresAt(issuedAt), userAgent);
             return new ApiDtos.LoginResponse(
-                    jwtService.createToken(principal, session.getId(), issuedAt), "Bearer", jwtService.expiresAt(issuedAt), userService.toView(user));
+                    jwtService.createToken(principal, session.getId(), issuedAt), "Bearer", jwtService.expiresAt(issuedAt), userService.toCurrentView(user));
         } catch (AuthenticationException exception) {
             throw new BusinessException(HttpStatus.UNAUTHORIZED, "LOGIN_FAILED", "用户名或密码错误");
         }

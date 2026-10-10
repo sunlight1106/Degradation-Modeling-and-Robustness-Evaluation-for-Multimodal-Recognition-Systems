@@ -29,7 +29,11 @@ public class CurrentUserService {
     }
 
     public boolean hasPermission(UserEntity user, String permission) {
-        return moderation.permissions(user.getId(),com.robustvision.platform.security.Permissions.effective(user)).contains(permission);
+        return effectivePermissions(user).contains(permission);
+    }
+
+    public java.util.Set<String> effectivePermissions(UserEntity user) {
+        return moderation.permissions(user.getId(),com.robustvision.platform.security.Permissions.effective(user));
     }
 
     public boolean isSuperAdmin(UserEntity user) { return "ADMIN".equals(user.getRole().getCode()); }

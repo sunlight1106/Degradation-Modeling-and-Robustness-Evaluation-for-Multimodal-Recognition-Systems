@@ -32,7 +32,7 @@ public class AccountService {
         this.passwords = passwords; this.sessions = sessions; this.exports = exports; this.entityManager = entityManager;
     }
     @Transactional(readOnly = true)
-    public ApiDtos.UserView profile() { return users.toView(current.requireCurrent()); }
+    public ApiDtos.UserView profile() { return users.toCurrentView(current.requireCurrent()); }
 
     @Transactional
     public ApiDtos.UserView updateProfile(AccountDtos.ProfileUpdateRequest request) {
@@ -53,7 +53,7 @@ public class AccountService {
             if (displayName.isEmpty()) throw new BusinessException(HttpStatus.BAD_REQUEST, "DISPLAY_NAME_REQUIRED", "显示名称不能为空");
             user.setDisplayName(displayName);
         }
-        return users.toView(repository.save(user));
+        return users.toCurrentView(repository.save(user));
     }
     @Transactional
     public void changePassword(AccountDtos.PasswordChangeRequest request) {

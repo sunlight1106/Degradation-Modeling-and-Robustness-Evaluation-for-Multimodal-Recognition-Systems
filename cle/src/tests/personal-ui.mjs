@@ -138,6 +138,8 @@ try {
   const originalRevoke = URL.revokeObjectURL
   URL.createObjectURL = () => 'blob:synthetic-image'
   URL.revokeObjectURL = () => {}
+  tokenStorage.set('synthetic-recognition-session')
+  authStore.state.user={id:1001,permissions:['file:write','personal-ai:use']}
   app = createApp(PersonalRecognitionPanel).use(router); app.mount(fixture)
   await wait(() => fixture.querySelector('select')?.options.length === 2)
   const imageInput = fixture.querySelector('input[type=file]')

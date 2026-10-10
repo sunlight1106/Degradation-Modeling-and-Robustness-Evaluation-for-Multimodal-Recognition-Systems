@@ -7,6 +7,7 @@ import type { FileView } from '@/types/api'
 import type { PersonalAiProvider, PersonalAiSetting, PersonalRecognitionTask, RecognitionPreview, RecognitionResult } from '@/types/personal'
 import { createRequestGuard, isPreviewExpired } from '@/lib/requestGuard'
 import { toastStore } from '@/stores/toast'
+import { authStore } from '@/stores/auth'
 
 const catalog = ref<PersonalAiProvider[]>([]), settings = ref<PersonalAiSetting[]>([])
 const provider = ref(''), taskType = ref<PersonalRecognitionTask>('IMAGE_UNDERSTANDING')
@@ -53,7 +54,7 @@ async function load() {
   finally { if (request.current()) loading.value = false }
 }
 async function prepare() {
-  if (busy.value || !file.value || !provider.value || !visionConfirmed.value) return
+  if (!authStore.has('file:write') || busy.value || !file.value || !provider.value || !visionConfirmed.value) return
   cancel(); result.value = null; error.value = ''
   const request = requestGuard.start()
   try {
@@ -104,12 +105,13 @@ onBeforeUnmount(() => { cancel(); loadGuard.cancel(); historyGuard.cancel(); win
       <p v-if="error" class="inline-alert inline-alert--error" role="alert">{{ error }}</p>
       <div class="settings-fields"><label class="field-label">我的供应商 / 模型<select v-model="provider" class="field-input" :disabled="loading || !!busy"><option value="" disabled>请选择已启用的个人配置</option><option v-for="item in available" :key="item.provider" :value="item.provider">{{ item.provider }} · {{ item.model }}</option></select></label><label class="field-label">识别任务<select v-model="taskType" class="field-input" :disabled="!!busy"><option value="IMAGE_UNDERSTANDING">图片内容理解</option><option value="RECEIPT">票据识别</option><option value="LICENSE_PLATE">车牌识别</option></select></label></div>
       <div class="settings-button-row"><button class="button button--ghost button--small" :disabled="loading || !!busy" @click="load">刷新个人配置</button><span v-if="loading" role="status">正在加载…</span><span v-else-if="!available.length">尚未启用个人配置，请先前往设置。</span></div>
-      <label class="field-label">选择图片（JPEG / PNG / WEBP，最多 5 MB）<input ref="fileInput" class="field-input" type="file" accept="image/jpeg,image/png,image/webp" :disabled="!!busy" @change="chooseFile" /></label>
+      <p v-if="!authStore.has('file:write')" role="status">当前账号没有上传图片的权限，请联系管理员开放文件上传。</p>
+      <label class="field-label">选择图片（JPEG / PNG / WEBP，最多 5 MB）<input ref="fileInput" class="field-input" type="file" accept="image/jpeg,image/png,image/webp" :disabled="!!busy || !authStore.has('file:write')" @change="chooseFile" /></label>
       <label class="field-label">想了解图片的什么内容？（可选）<textarea v-model="question" class="field-input" rows="3" maxlength="1000" :disabled="!!busy" placeholder="例如：提取图片中的文字；解释这张图表；描述照片中的场景。" /></label>
       <figure v-if="imageUrl && file" class="recognition-image"><img :src="imageUrl" alt="你选择的待识别图片" /><figcaption>{{ file.name }} · {{ (file.size / 1024).toFixed(1) }} KB</figcaption></figure>
       <label class="settings-check"><input v-model="visionConfirmed" type="checkbox" :disabled="!!busy || !provider" /> 我已确认模型 {{ selectedModel || '（未选择）' }} 支持图片输入。供应商可用性与权限未由平台验证。</label>
       <p v-if="provider && !remoteEnabled" class="inline-alert">此部署尚未开启外部模型调用。可上传及预览，实际发送需部署管理员启用。</p>
-      <div class="settings-button-row"><button class="button button--dark" :disabled="!!busy || !file || !provider || !visionConfirmed" @click="prepare">{{ busy === 'upload' ? '上传到平台…' : busy === 'preview' ? '准备预览…' : '上传并预览发送内容' }}</button><button v-if="busy" class="button button--ghost" @click="cancel">停止等待</button></div>
+      <div class="settings-button-row"><button class="button button--dark" :disabled="!authStore.has('file:write') || !!busy || !file || !provider || !visionConfirmed" @click="prepare">{{ busy === 'upload' ? '上传到平台…' : busy === 'preview' ? '准备预览…' : '上传并预览发送内容' }}</button><button v-if="busy" class="button button--ghost" @click="cancel">停止等待</button></div>
       <p v-if="busy === 'execute'" class="field-hint" role="status">正在调用你的模型。停止等待或离开页面不能撤销供应商已接收的请求；结果可能仍会保存，请稍后刷新。</p>
       <section v-if="review" class="note-outbound-review" aria-label="图片发送前确认"><h4>确认发送这张图片及指令</h4><dl class="settings-facts"><dt>供应商 / 模型</dt><dd>{{ review.provider }} / {{ review.model }}</dd><dt>实际端点</dt><dd>{{ review.endpoint }}</dd><dt>原图</dt><dd>{{ review.fileName }} · {{ review.mime }} · {{ review.sizeBytes.toLocaleString() }} 字节</dd><dt>SHA-256</dt><dd>{{ review.sha256 }}</dd><dt>总发送大小</dt><dd>{{ review.outboundBytes.toLocaleString() }} 字节</dd><dt>有效期</dt><dd>{{ new Date(review.expiresAt).toLocaleTimeString('zh-CN') }}</dd></dl><h5>系统指令</h5><pre>{{ review.systemPrompt }}</pre><h5>用户指令</h5><pre>{{ review.prompt }}</pre><p class="field-hint">上方图片为将发送的原图。更换图片、供应商或任务会使本次预览失效。</p><p v-if="expired" class="inline-alert inline-alert--error">预览已过期，请重新准备。</p><label class="settings-check"><input v-model="consent" type="checkbox" :disabled="expired" /> 我允许将上述图片及完整指令发送到 {{ review.provider }}，并使用我的个人 API 额度。</label><div class="settings-button-row"><button class="button button--dark" :disabled="!consent || expired || !remoteEnabled || !visionConfirmed || !!busy" @click="execute">确认发送并识别</button><button class="button button--ghost" @click="cancel">取消，不发送</button></div></section>
       <section v-if="result" class="note-outbound-review" aria-label="图片识别结果"><div class="settings-button-row"><h4>{{ result.fileName }} · {{ taskLabel(result.taskType) }}</h4><button class="table-action" @click="result = null">收起</button></div><p v-if="!resultSaved" class="inline-alert inline-alert--error" role="alert">{{ result.warning || '模型已完成识别，但无法确认结果及用量记录已保存。请先复制下方内容；请求可能已产生费用，请勿重复发送。' }}</p><p class="field-hint">{{ result.provider }} / {{ result.model }} · {{ resultSaved ? '结果已保存。' : '仅在当前页面显示，请手动复制留存。尚未修改任何笔记。' }}请核对原图，模型输出可能不准确。</p><p class="field-hint">已报告 Tokens：{{ result.inputTokens ?? '未提供' }} / {{ result.outputTokens ?? '未提供' }}</p><pre>{{ result.result }}</pre><RouterLink v-if="resultSaved" to="/app/notes" class="settings-inline-link">前往笔记，选择这个结果插入 →</RouterLink></section>
